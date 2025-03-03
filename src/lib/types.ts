@@ -61,12 +61,10 @@ export type Exam = {
 	title: string
 	courseId: string
 	courseName: string
-	totalMarks: number
-	questionCount: number
+	markingScheme: string
 	createdBy: string
 	createdAt: string
 	updatedAt: string
-	questions?: Question[]
 }
 
 export type CreateExamDto = {
@@ -77,13 +75,21 @@ export type CreateExamDto = {
 	description?: string
 }
 
+// export type Question = {
+// 	id: string
+// 	text: string
+// 	type: 'Text' // Can be expanded if there are other types
+// 	components: AssessmentComponent[]
+// 	totalMarks: number
+// 	questionNumber: number
+// }
+
 export type Question = {
-	id: string
-	text: string
-	type: 'Text' // Can be expanded if there are other types
-	components: AssessmentComponent[]
-	totalMarks: number
-	questionNumber: number
+	question: string
+	score: number
+	confidence: number
+	feedback: string
+	issues: string[]
 }
 
 export type AssessmentComponent = {
@@ -100,11 +106,19 @@ export type ExamStats = {
 }
 
 export type StudentResult = {
+	id: string
+	courseId: string
+	courseName: string
+	examId: string
+	examTitle: string
 	studentId: string
 	studentName: string
 	score: number
-	totalMarks: number
-	percentage: number
+	feedback: string
+	questions: Question[]
+	createdBy: string
+	createdAt: Date
+	updatedAt: Date
 }
 
 export type QuestionStat = {

@@ -11,21 +11,15 @@ import {
 } from '@/components/ui/table'
 import { Input } from '@/components/ui/input'
 import { getStudentResults } from '@/lib/actions/exams'
+import { StudentResult } from '@/lib/types'
 
 interface StudentResultsProps {
 	examId: string
 }
 
 export function StudentResults({ examId }: StudentResultsProps) {
-	const [results, setResults] = useState<
-		{
-			studentId: string
-			studentName: string
-			score: number
-			totalMarks: number
-			percentage: number
-		}[]
-	>([])
+	const [results, setResults] = useState<StudentResult[]>([])
+
 	const [search, setSearch] = useState('')
 
 	useEffect(() => {
@@ -61,8 +55,8 @@ export function StudentResults({ examId }: StudentResultsProps) {
 						<TableRow key={result.studentId}>
 							<TableCell>{result.studentName}</TableCell>
 							<TableCell className='text-right'>{result.score}</TableCell>
-							<TableCell className='text-right'>{result.totalMarks}</TableCell>
-							<TableCell className='text-right'>{result.percentage}%</TableCell>
+							{/* <TableCell className='text-right'>{result.totalMarks}</TableCell>
+							<TableCell className='text-right'>{result.percentage}%</TableCell> */}
 						</TableRow>
 					))}
 				</TableBody>

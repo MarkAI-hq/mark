@@ -12,45 +12,35 @@ import {
 	DialogHeader,
 	DialogTitle
 } from '@/components/ui/dialog'
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue
-} from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
 import { uploadAnswers } from '@/lib/actions/exams'
 import { cn } from '@/lib/utils'
-import { Student } from '@/lib/types'
 
-interface AnswerUploadDialogProps {
+interface AnswerDialogProps {
 	open: boolean
 	onOpenChange: (open: boolean) => void
 	examId: string
-	students: Student[]
 }
 
 interface FileWithPreview {
-	file: File
+	answer: File
 	preview?: string
 	studentId?: string
 }
 
-export function AnswerUploadDialog({
+export function AnswerDialog({
 	open,
 	onOpenChange,
-	examId,
-	students
-}: AnswerUploadDialogProps) {
-	const [files, setFiles] = useState<FileWithPreview[]>([])
+	examId
+}: AnswerDialogProps) {
+	const [answers, setAnswers] = useState<FileWithPreview[]>([])
 	const [uploading, setUploading] = useState(false)
 
 	const onDrop = useCallback((acceptedFiles: File[]) => {
-		setFiles((prev) => [
+		setAnswers((prev) => [
 			...prev,
 			...acceptedFiles.map((file) => ({
-				file, // Preserve the original File instance
+				answer: file, // Preserve the original File instance
 				preview: file.type.startsWith('image/')
 					? URL.createObjectURL(file)
 					: undefined
@@ -67,53 +57,27 @@ export function AnswerUploadDialog({
 		maxSize: 5 * 1024 * 1024 // 5MB
 	})
 
-	const handleStudentSelect = (fileIndex: number, studentId: string) => {
-		setFiles((prev) =>
-			prev.map((file, index) =>
-				index === fileIndex ? { ...file, studentId } : file
-			)
-		)
-	}
-
 	const removeFile = (index: number) => {
-		setFiles((prev) => {
-			const newFiles = [...prev]
-			const file = newFiles[index]
-			if (file.preview) {
-				URL.revokeObjectURL(file.preview)
+		setAnswers((prev) => {
+			const newAnswers = [...prev]
+			const answer = newAnswers[index]
+			if (answer.preview) {
+				URL.revokeObjectURL(answer.preview)
 			}
-			newFiles.splice(index, 1)
-			return newFiles
+			newAnswers.splice(index, 1)
+			return newAnswers
 		})
 	}
 
 	const handleUpload = async () => {
-		// Validate that all files have students assigned
-		const unassignedFiles = files.filter((file) => !file.studentId)
-		if (unassignedFiles.length > 0) {
-			toast.error('Missing student assignments', {
-				description: 'Please assign a student to each file before uploading'
-			})
-			return
-		}
-
 		setUploading(true)
 
 		// Create FormData
 		const formData = new FormData()
 
-		// Create answers array
-		const answers = files.map((item) => ({
-			studentId: item.studentId!,
-			filename: item.file.name
-		}))
-
-		// Add answers array as JSON string
-		formData.append('answers', JSON.stringify(answers))
-
 		// Add all files
-		files.forEach((item) => {
-			formData.append('files', item.file)
+		answers.forEach((item) => {
+			formData.append('answers', item.answer)
 		})
 
 		const { data, error } = await uploadAnswers(examId, formData)
@@ -165,16 +129,16 @@ export function AnswerUploadDialog({
 
 					{/* File List */}
 					<div className='space-y-3'>
-						{files.map((file, index) => (
+						{answers.map((answer, index) => (
 							<div
 								key={index}
 								className='flex flex-col sm:flex-row items-start sm:items-center gap-2 p-3 border rounded-lg'
 							>
 								{/* File Info */}
 								<div className='flex items-center gap-2 min-w-0'>
-									{file.preview ? (
+									{answer.preview ? (
 										<Image
-											src={file.preview}
+											src={answer.preview}
 											alt='Preview'
 											className='w-8 h-8 object-cover rounded'
 											width={32}
@@ -184,34 +148,12 @@ export function AnswerUploadDialog({
 										<FileText className='w-8 h-8' />
 									)}
 									<span className='text-sm truncate max-w-[150px] sm:max-w-[200px]'>
-										{file.file.name}
+										{answer.answer.name}
 									</span>
 								</div>
 
-								{/* Student Selection & Remove */}
+								{/* Remove */}
 								<div className='flex items-center gap-2 w-full sm:w-auto ml-auto'>
-									<Select
-										value={file.studentId}
-										onValueChange={(value) => handleStudentSelect(index, value)}
-									>
-										<SelectTrigger className='w-full sm:w-[180px]'>
-											<SelectValue placeholder='Select student' />
-										</SelectTrigger>
-										<SelectContent>
-											{students.map((student) => (
-												<SelectItem
-													key={student.id}
-													value={student.id}
-													disabled={files.some(
-														(f) => f.studentId === student.id && f !== file
-													)}
-												>
-													{student.name}
-												</SelectItem>
-											))}
-										</SelectContent>
-									</Select>
-
 									<Button
 										variant='ghost'
 										size='icon'
@@ -223,9 +165,9 @@ export function AnswerUploadDialog({
 							</div>
 						))}
 
-						{files.length > 0 && (
+						{answers.length > 0 && (
 							<p className='text-xs text-muted-foreground'>
-								{files.filter((f) => !f.studentId).length} files need student
+								{answers.filter((a) => !a.studentId).length} files need student
 								assignment
 							</p>
 						)}
@@ -237,7 +179,7 @@ export function AnswerUploadDialog({
 							variant='outline'
 							onClick={() => {
 								onOpenChange(false)
-								setFiles([])
+								setAnswers([])
 							}}
 							disabled={uploading}
 						>
@@ -245,7 +187,7 @@ export function AnswerUploadDialog({
 						</Button>
 						<Button
 							onClick={handleUpload}
-							disabled={files.length === 0 || uploading}
+							disabled={answers.length === 0 || uploading}
 						>
 							{uploading ? 'Processing...' : 'Submit'}
 						</Button>

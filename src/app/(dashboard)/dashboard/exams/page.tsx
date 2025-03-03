@@ -3,7 +3,6 @@ import { Metadata } from 'next'
 import { ExamsClient } from './exams-client'
 import { getExams } from '@/lib/actions/exams'
 import { getSubjects } from '@/lib/actions/subjects'
-import { getStudents } from '@/lib/actions/students'
 
 export const metadata: Metadata = {
 	title: 'Exams - Mark',
@@ -11,14 +10,9 @@ export const metadata: Metadata = {
 }
 
 export default async function ExamsPage() {
-	const [
-		{ data: exams },
-		{ data: subjects },
-		{ data: students }
-	] = await Promise.all([
+	const [{ data: exams }, { data: subjects }] = await Promise.all([
 		getExams(),
-		getSubjects(),
-		getStudents()
+		getSubjects()
 	])
 
 	return (
@@ -26,11 +20,7 @@ export default async function ExamsPage() {
 			<div className='flex items-center justify-between'>
 				<h2 className='text-3xl font-bold tracking-tight'>Exams</h2>
 			</div>
-			<ExamsClient 
-				exams={exams ?? []} 
-				subjects={subjects ?? []} 
-				students={students ?? []}
-			/>
+			<ExamsClient exams={exams ?? []} subjects={subjects ?? []} />
 		</div>
 	)
 }

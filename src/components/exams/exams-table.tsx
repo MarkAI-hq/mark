@@ -5,7 +5,8 @@ import {
 	Upload,
 	PencilIcon,
 	TrashIcon,
-	ChartBarIcon
+	ChartBarIcon,
+	FileText
 } from 'lucide-react'
 import { ColumnDef } from '@tanstack/react-table'
 import { format, parseISO } from 'date-fns'
@@ -36,7 +37,6 @@ export function ExamsTable({
 	onDelete,
 	onUpload
 }: ExamsTableProps) {
-
 	const columns: ColumnDef<Exam>[] = [
 		{
 			accessorKey: 'title',
@@ -46,14 +46,14 @@ export function ExamsTable({
 			accessorKey: 'courseName',
 			header: 'Subject'
 		},
-		{
-			accessorKey: 'totalMarks',
-			header: 'Total Marks'
-		},
-		{
-			accessorKey: 'questionCount',
-			header: 'Questions'
-		},
+		// {
+		// 	accessorKey: 'totalMarks',
+		// 	header: 'Total Marks'
+		// },
+		// {
+		// 	accessorKey: 'questionCount',
+		// 	header: 'Questions'
+		// },
 		{
 			accessorKey: 'createdAt',
 			header: 'Created',
@@ -84,7 +84,10 @@ export function ExamsTable({
 						</DropdownMenuTrigger>
 						<DropdownMenuContent align='end'>
 							<DropdownMenuItem asChild>
-								<Link href={`/dashboard/exams/${exam.id}`}>View Details</Link>
+								<Link href={`/dashboard/exams/${exam.id}`}>
+									<FileText className='w-4 h-4 mr-2' />
+									View Details
+								</Link>
 							</DropdownMenuItem>
 							<DropdownMenuItem asChild>
 								<Link href={`/dashboard/exams/${exam.id}/results`}>

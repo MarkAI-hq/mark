@@ -19,7 +19,7 @@ export function Footer() {
 				</div>
 				<div className='mt-8 md:order-1 md:mt-0'>
 					<p className='text-center text-sm text-muted-foreground'>
-						&copy; {getYear(new Date())} X Refracted. All rights reserved.
+						&copy; {getYear(new Date())} xRefracted. All rights reserved.
 					</p>
 				</div>
 			</div>

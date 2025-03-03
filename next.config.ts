@@ -10,7 +10,8 @@ const nextConfig: NextConfig = {
 			},
 			{
 				protocol: 'https',
-				hostname: '**.cloudflarestorage.com'
+				hostname: '**.cloudflarestorage.com',
+				port: ''
 			}
 		]
 	},

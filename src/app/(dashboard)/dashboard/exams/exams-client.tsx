@@ -8,28 +8,27 @@ import { useHotkeys } from 'react-hotkeys-hook'
 import { Button } from '@/components/ui/button'
 import { ExamsTable } from '@/components/exams/exams-table'
 import { DeleteSubjectDialog } from '@/components/subjects/delete-subject-dialog'
-import { Exam, Student, Subject } from '@/lib/types'
+import { Exam, Subject } from '@/lib/types'
 import { deleteExam } from '@/lib/actions/exams'
 import { ExamDialog } from '@/components/exams/exam-dialog'
-import { AnswerUploadDialog } from '@/components/exams/answer-upload-dialog'
+import { AnswerDialog } from '@/components/exams/answer-dialog'
 
 interface ExamsClientProps {
 	exams: Exam[]
 	subjects: Subject[]
-	students: Student[]
 }
 
-export function ExamsClient({ exams, subjects, students }: ExamsClientProps) {
+export function ExamsClient({ exams, subjects }: ExamsClientProps) {
 	const [selectedExam, setSelectedExam] = useState<Exam>()
 	const [dialogOpen, setDialogOpen] = useState(false)
 	const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
 	const [uploadDialogOpen, setUploadDialogOpen] = useState(false)
 
 	const resetState = () => {
+		setSelectedExam(undefined)
 		setDialogOpen(false)
 		setDeleteDialogOpen(false)
 		setUploadDialogOpen(false)
-		setSelectedExam(undefined)
 	}
 
 	useHotkeys('n', () => setDialogOpen(true), {
@@ -99,10 +98,9 @@ export function ExamsClient({ exams, subjects, students }: ExamsClientProps) {
 			/>
 
 			{selectedExam && (
-				<AnswerUploadDialog
+				<AnswerDialog
 					open={uploadDialogOpen}
 					examId={selectedExam.id}
-					students={students}
 					onOpenChange={(open) => {
 						setUploadDialogOpen(open)
 						if (!open) setSelectedExam(undefined)
