@@ -87,6 +87,7 @@ export type CreateExamDto = {
 export type Question = {
 	question: string
 	score: number
+	maxScore: number
 	confidence: number
 	feedback: string
 	issues: string[]
@@ -113,7 +114,8 @@ export type StudentResult = {
 	examTitle: string
 	studentId: string
 	studentName: string
-	score: number
+	totalScore: number
+	maxTotalScore: number
 	feedback: string
 	questions: Question[]
 	createdBy: string

@@ -9,10 +9,10 @@ const items = [
 		title: 'Dashboard',
 		href: '/dashboard'
 	},
-	{
-		title: 'Students',
-		href: '/dashboard/students'
-	},
+	// {
+	// 	title: 'Students',
+	// 	href: '/dashboard/students'
+	// },
 	{
 		title: 'Subjects', // Courses
 		href: '/dashboard/subjects'

@@ -13,11 +13,8 @@ import { Input } from '@/components/ui/input'
 import { getStudentResults } from '@/lib/actions/exams'
 import { StudentResult } from '@/lib/types'
 
-interface StudentResultsProps {
-	examId: string
-}
 
-export function StudentResults({ examId }: StudentResultsProps) {
+export function StudentResults({ examId }: { examId: string }) {
 	const [results, setResults] = useState<StudentResult[]>([])
 
 	const [search, setSearch] = useState('')
@@ -47,14 +44,14 @@ export function StudentResults({ examId }: StudentResultsProps) {
 						<TableHead>Student</TableHead>
 						<TableHead className='text-right'>Score</TableHead>
 						<TableHead className='text-right'>Total Marks</TableHead>
-						<TableHead className='text-right'>Percentage</TableHead>
+						{/* <TableHead className='text-right'>Percentage</TableHead> */}
 					</TableRow>
 				</TableHeader>
 				<TableBody>
 					{filteredResults.map((result) => (
-						<TableRow key={result.studentId}>
-							<TableCell>{result.studentName}</TableCell>
-							<TableCell className='text-right'>{result.score}</TableCell>
+						<TableRow key={result?.studentId}>
+							<TableCell>{result?.studentName}</TableCell>
+							<TableCell className='text-right'>{result?.totalScore}</TableCell>
 							{/* <TableCell className='text-right'>{result.totalMarks}</TableCell>
 							<TableCell className='text-right'>{result.percentage}%</TableCell> */}
 						</TableRow>
