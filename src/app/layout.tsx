@@ -4,7 +4,7 @@ import { CookiesProvider } from 'next-client-cookies/server'
 
 import './globals.css'
 import { Toaster } from '@/components/ui/sonner'
-import { ThemeProvider } from '@/components/theme/theme-provider'
+import { ThemeProvider } from '@/components/layout/theme-provider'
 
 const geistSans = Geist({
 	variable: '--font-geist-sans',
