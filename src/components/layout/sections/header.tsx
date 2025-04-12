@@ -65,7 +65,7 @@ const Header = () => {
                 and parents who want to build this new future of education, will you answer?
                 </p>
                 <a
-                href="mailto://tusii.ug@gmail.com"
+                href="mailto:info@xrefracted.com ?subject=How%20Can%20We%20Collaborate?"
                 target="_blank"
                 rel="noopener"
                 className="px-8 py-4 text-lg font-medium text-center text-white bg-purple-600 rounded-md ">
