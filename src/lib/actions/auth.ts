@@ -99,6 +99,14 @@ export async function signUp(name: string, email: string, password: string) {
                 path: '/'
             }
         )
+
+        // Set a cookie to indicate it's the first login
+        cookieStore.set('isFirstLogin', 'true', {
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax',
+            path: '/',
+            maxAge: 60 * 60 * 24, // 1 day
+        });
     }
 
     return {
@@ -108,7 +116,6 @@ export async function signUp(name: string, email: string, password: string) {
 }
 
 export async function logout() {
-    // TODO: Review
     try {
         // await fetcher('/auth/logout', { method: 'POST' })
         const cookieStore = await cookies()

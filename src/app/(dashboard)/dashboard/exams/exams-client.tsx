@@ -72,7 +72,7 @@ export function ExamsClient({ exams, subjects }: ExamsClientProps) {
 					setUploadDialogOpen(true)
 				}}
 				headerSlot={
-					<Button onClick={() => setDialogOpen(true)}>
+					<Button onClick={() => setDialogOpen(true)} id="create-exam">
 						<Plus className='mr-2 h-4 w-4' />
 						New Exam
 					</Button>

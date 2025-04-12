@@ -1,6 +1,11 @@
-import { Footer } from '@/components/nav/footer'
 import { Metadata } from 'next'
 import { HeroSection } from '@/components/layout/sections/hero'
+import { Navbar } from '../components/layout/sections/navbar'
+import SponsorsSection from '@/components/layout/ui/sponsors'
+import { FooterSection } from '@/components/layout/ui/footer'
+import { FAQSection } from '@/components/layout/sections/faq'
+import { FeaturesSection } from '@/components/layout/sections/features'
+import Header from '@/components/layout/sections/header'
 
 export const metadata: Metadata = {
   title: 'Home - Mark',
@@ -10,15 +15,13 @@ export const metadata: Metadata = {
 export default function HomePage() {
   return (
     <>
+      <Navbar/>
       <HeroSection />
-      {/* <div className='flex-1 space-y-4 p-8 pt-6'>
-        <h1 className='text-3xl font-bold tracking-tight'>Welcome to Mark</h1>
-        <p className='text-lg'>
-          This is the home page. Please <Link href='/login' className='text-blue-500 hover:underline'>login</Link> to access your dashboard.
-        </p>
-        <Footer />
-      </div> */}
-      <Footer/>
+      <SponsorsSection />
+      <FeaturesSection />
+      <Header />
+      <FAQSection />
+      <FooterSection/>
     </>
   )
 }

@@ -10,16 +10,16 @@ export function Footer() {
 			<div className='mx-auto max-w-7xl px-4 py-6 sm:px-6 md:flex md:items-center md:justify-between lg:px-8'>
 				<div className='flex justify-center space-x-6 md:order-2'>
 					<Link
-						href='https://github.com/your-repo'
+						href='#'
 						className='text-muted-foreground hover:text-primary'
-						target='_blank'
+						// target='_blank'
 					>
 						<Github className='h-5 w-5' />
 					</Link>
 				</div>
 				<div className='mt-8 md:order-1 md:mt-0'>
 					<p className='text-center text-sm text-muted-foreground'>
-						&copy; {getYear(new Date())} xRefracted. All rights reserved.
+						&copy; {getYear(new Date())} xRefracted.
 					</p>
 				</div>
 			</div>
