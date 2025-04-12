@@ -67,7 +67,7 @@ export const FAQSection = () => {
               {question}
             </AccordionTrigger>
 
-            <AccordionContent className="text-base md:text-lg py-2">
+            <AccordionContent className="text-base md:text-lg py-2 text-muted-foreground">
               {answer}
             </AccordionContent>
           </AccordionItem>
