@@ -16,13 +16,10 @@ import {
   NavigationMenuItem,
   NavigationMenuLink,
   NavigationMenuList,
-  NavigationMenuTrigger,
 } from "../ui/navigation-menu";
 import { Button } from "../ui/button";
 import Link from "next/link";
-import Image from "next/image";
 import { ToggleTheme } from "./toogle-theme";
-import { CheckboxItem } from "@radix-ui/react-dropdown-menu";
 
 interface RouteProps {
   href: string;
@@ -45,7 +42,7 @@ const routeList: RouteProps[] = [
   //   label: "Team",
   // },
   {
-    href: "#contact",
+    href: "mailto:info@xrefracted.com ?subject=Mark%20AI",
     label: "Contact Us",
   },
   {
