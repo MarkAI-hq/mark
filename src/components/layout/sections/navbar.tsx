@@ -1,4 +1,6 @@
 "use client";
+
+import Image from "next/image";
 import { Menu } from "lucide-react";
 import React from "react";
 import {
@@ -20,6 +22,7 @@ import {
 import { Button } from "../ui/button";
 import Link from "next/link";
 import { ToggleTheme } from "./toogle-theme";
+import { useTheme } from "next-themes"; // Import useTheme
 
 interface RouteProps {
   href: string;
@@ -37,10 +40,6 @@ const routeList: RouteProps[] = [
     href: "login",
     label: "Demo",
   },
-  // {
-  //   href: "#team",
-  //   label: "Team",
-  // },
   {
     href: "mailto:info@xrefracted.com ?subject=Mark%20AI",
     label: "Contact Us",
@@ -51,32 +50,25 @@ const routeList: RouteProps[] = [
   },
 ];
 
-const featureList: FeatureProps[] = [
-  // {
-  //   title: "Mark AI",
-  //   description: "Mark AI is a technology that automatically marks exams.",
-  //   href: "https://mark.xrefracted.com"
-  // },
-  // {
-  //   title: "Build Trust",
-  //   description:
-  //     "Leverages social proof elements to establish trust and credibility.",
-  // },
-  // {
-  //   title: "Capture Leads",
-  //   description:
-  //     "Make your lead capture form visually appealing and strategically.",
-  // },
-];
+const featureList: FeatureProps[] = [];
 
 export const Navbar = () => {
   const [isOpen, setIsOpen] = React.useState(false);
+  const { theme } = useTheme(); // Get the current theme
+
+  const logoSrc = theme === "light" ? "/images/markWhiteBg.png" : "/images/markBlackBg.png"; // Change image source based on theme
+
   return (
     <header className="shadow-inner bg-opacity-15 w-[90%] md:w-[70%] lg:w-[75%] lg:max-w-screen-xl top-5 mx-auto sticky border border-secondary z-40 rounded-2xl flex justify-between items-center p-2 bg-card">
       <Link href="/" className="font-bold text-lg flex items-center">
-        Mark AI
+        <Image
+          src={logoSrc} // Use the theme-dependent image source
+          alt="Mark AI Logo"
+          width={150}
+          height={50}
+        />
       </Link>
-      {/* <!-- Mobile --> */}
+      {/* Mobile */}
       <div className="flex items-center lg:hidden">
         <Sheet open={isOpen} onOpenChange={setIsOpen}>
           <SheetTrigger asChild>
@@ -93,7 +85,7 @@ export const Navbar = () => {
             <div>
               <SheetHeader className="mb-4 ml-4">
                 <SheetTitle className="flex items-center">
-                  <Link href="/" className="flex items-center"> 
+                  <Link href="/" className="flex items-center">
                     Mark AI
                   </Link>
                 </SheetTitle>
@@ -123,22 +115,12 @@ export const Navbar = () => {
         </Sheet>
       </div>
 
-      {/* <!-- Desktop --> */}
+      {/* Desktop */}
       <NavigationMenu className="hidden lg:block mx-auto">
         <NavigationMenuList>
           <NavigationMenuItem>
-            {/* <NavigationMenuTrigger className="bg-card text-base">
-              Products
-            </NavigationMenuTrigger> */}
             <NavigationMenuContent>
               <div className="grid w-[600px] grid-cols-2 gap-5 p-4">
-                {/* <Image
-                  src="/assets/default-avatar.jpg"
-                  alt="RadixLogo"
-                  className="h-full w-full rounded-md object-cover"
-                  width={600}
-                  height={600}
-                /> */}
                 <ul className="flex flex-col gap-2">
                   {featureList.map(({ title, description }) => (
                     <li
@@ -172,16 +154,6 @@ export const Navbar = () => {
 
       <div className="hidden lg:flex">
         <ToggleTheme />
-
-        {/* <Button asChild size="sm" variant="ghost" aria-label="View on GitHub">
-          <Link
-            aria-label="View on GitHub"
-            href="#"
-            target="_blank"
-          >
-            <Github className="size-5" />
-          </Link>
-        </Button> */}
       </div>
     </header>
   );

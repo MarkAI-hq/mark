@@ -26,8 +26,8 @@ export const HeroSection = () => {
 
   const imageUrl =
     theme === "light"
-      ? "https://drive.google.com/uc?export=view&id=1JRk0tLqXOfkFvrbLuc_rwlo5PmONIxRE"
-      : "https://drive.google.com/uc?export=view&id=1cKMMqqI5Kr3THVvvrdJ8okqWH_gRA26j";
+      ? "/images/dashWhite.jpg"
+      : "/images/dashDark.jpg";
 
   const placeholderSrc = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII="; // Tiny transparent placeholder
 

@@ -4,6 +4,7 @@ import type { NextConfig } from 'next'
 
 const nextConfig: NextConfig = { reactStrictMode: true, images: {
   remotePatterns: [
+  
     {
       protocol: 'http',
       hostname: 'localhost',
@@ -19,7 +20,6 @@ const nextConfig: NextConfig = { reactStrictMode: true, images: {
         pathname: '/Projectx-mark/images/**',
       },
     ],
-      domains: ['images.unsplash.com', 'drive.google.com'],
     },
     experimental: {
       esmExternals: true,
@@ -28,6 +28,12 @@ const nextConfig: NextConfig = { reactStrictMode: true, images: {
     serverActions: {
       bodySizeLimit: '5mb'
     },
+}
+
+module.exports = {
+  images: {
+    domains: ['localhost', 'images.unsplash.com', 'drive.google.com'],
+  }
 }
 
 export default nextConfig

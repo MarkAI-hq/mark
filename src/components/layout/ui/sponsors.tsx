@@ -11,9 +11,9 @@ interface Sponsor {
 }
 
 const sponsors: Sponsor[] = [
-  { logo: "https://drive.google.com/uc?export=view&id=13hbJHsfWg71car5y6kTeBM30THENTDeL", name: "UNACU" },
-  { logo: "https://drive.google.com/uc?export=view&id=1WmAcjbvcSf8Y2UcXgQ7AT3rDM1vO0wFU", name: "PCTech Magazine" },
-  { logo: "https://drive.google.com/uc?export=view&id=1hGu8HL9jaUyCsbWlrFgnRSTKIxVkAymf", name: "Hope Channel" },
+  { logo: "/images/unacuall.jpg", name: "UNACU" },
+  { logo: "/images/pctechall.jpg", name: "PCTech Magazine" },
+  { logo: "/images/hopechannelall.png", name: "Hope Channel" },
 ];
 
 const SponsorMarquee: React.FC = () => {

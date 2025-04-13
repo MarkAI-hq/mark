@@ -1,17 +1,27 @@
+"use client";
+
 import { Separator } from "../../ui/separator";
-import { ChevronsDownIcon } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
+import { useTheme } from "next-themes"; // Import useTheme
 
 export const FooterSection = () => {
+  const { theme } = useTheme(); // Get the current theme
+
+  const logoSrc = theme === "light" ? "/images/markWhiteBg.png" : "/images/markBlackBg.png"; // Change image source based on theme
+
   return (
     <footer id="footer" className="container py-24 sm:py-32 center p-10">
       <div className="p-10 bg-card border border-secondary rounded-2xl">
         <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-6 gap-x-12 gap-y-8">
           <div className="col-span-full xl:col-span-2">
             <Link href="#" className="flex font-bold items-center">
-              {/* <ChevronsDownIcon className="w-9 h-9 mr-2 bg-gradient-to-tr from-primary via-primary/70 to-primary rounded-lg border border-secondary" /> */}
-
-              <h3 className="text-2xl">Mark AI</h3>
+              <Image
+                src={logoSrc} // Use theme-dependent image source
+                alt="Mark AI Logo"
+                width={120}
+                height={50}
+              />
             </Link>
           </div>
 
@@ -102,9 +112,7 @@ export const FooterSection = () => {
 
         <Separator className="my-6" />
         <section className="">
-          <h3 className="">
-            &copy; xRefracted
-          </h3>
+          <h3 className="">&copy; xRefracted</h3>
         </section>
       </div>
     </footer>

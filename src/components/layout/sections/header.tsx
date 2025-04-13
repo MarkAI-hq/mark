@@ -12,14 +12,14 @@ const Header = () => {
                 <div className="w-full px-3 sm:px-4 xl:w-1/2">
                   <div className="py-3 sm:py-4">
                     <img
-                      src="https://external-content.duckduckgo.com/iu/?u=https%3A%2F%2Fwww.rippleafrica.org%2Fwp-content%2Fuploads%2F2017%2F02%2FEducation-Malawi-Africa-7-charity.jpg&f=1&nofb=1&ipt=26a6423e39e8fa61b7ea41daabdb9ae53e6d3065bb09e579d40b1506e099f82a"
+                      src="/images/school.jpg"
                       alt="African kids studying under a tree while seated on ground"
                       className="w-full rounded-2xl shadow-xl"
                     />
                   </div>
                   <div className="py-3 sm:py-4">
                     <img
-                      src="https://external-content.duckduckgo.com/iu/?u=http%3A%2F%2Fsophie-sticatedmom.com%2Fwp-content%2Fuploads%2F2018%2F04%2F26458463_l.jpg&f=1&nofb=1&ipt=d5941655fb86405dadd58be14146cb963480ede6529e588fea7ffa37e547e94c"
+                      src="/images/graduand.jpg"
                       alt="A young lady in a gown graduating"
                       className="w-full rounded-2xl shadow-md dark:shadow-xl"
                     />
@@ -28,7 +28,7 @@ const Header = () => {
                 <div className="w-full px-3 sm:px-4 xl:w-1/2">
                   <div className="relative z-9 my-4">
                     <img
-                      src="https://external-content.duckduckgo.com/iu/?u=http%3A%2F%2Fcdn.history.com%2Fsites%2F2%2F2015%2F10%2FGettyImages-2669928.jpg&f=1&nofb=1&ipt=bc4c6c7ab5af8e3ff3f0b1f1a2720bb776895f17c7c6db220d9e264bdbd1cba6"
+                      src="/images/enstein.jpg"
                       alt="Albert Enstein"
                       className="w-full rounded-2xl shadow-xl"
                     />
