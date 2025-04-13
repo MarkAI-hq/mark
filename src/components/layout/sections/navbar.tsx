@@ -85,9 +85,12 @@ export const Navbar = () => {
             <div>
               <SheetHeader className="mb-4 ml-4">
                 <SheetTitle className="flex items-center">
-                  <Link href="/" className="flex items-center">
-                    Mark AI
-                  </Link>
+                <Image
+                  src={logoSrc} // Use the theme-dependent image source
+                  alt="Mark AI Logo"
+                  width={150}
+                  height={50}
+                />
                 </SheetTitle>
               </SheetHeader>
 
