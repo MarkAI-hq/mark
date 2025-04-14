@@ -1,9 +1,7 @@
-// next.config.js
-
 import type { NextConfig } from 'next'
 
 const nextConfig: NextConfig = {
-  reactStrictMode: true, images: {
+  images: {
     remotePatterns: [
       {
         protocol: 'http',
@@ -24,7 +22,7 @@ const nextConfig: NextConfig = {
   },
   experimental: {
     serverActions: {
-      bodySizeLimit: '5mb'
+      bodySizeLimit: '50mb'
     }
   }
 }

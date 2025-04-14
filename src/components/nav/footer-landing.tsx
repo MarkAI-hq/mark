@@ -27,6 +27,7 @@ export const FooterSection = () => {
                 alt="Mark AI Logo"
                 width={120}
                 height={50}
+                priority
               />
             </Link>
           </div>
