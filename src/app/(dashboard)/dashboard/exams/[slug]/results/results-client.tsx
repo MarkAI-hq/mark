@@ -7,6 +7,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { QuestionAnalytics } from '@/components/results/question-analytics'
 import SummaryView from '@/components/results/summary-view'
 import DetailedView from '@/components/results/detailed-view'
+// import FollowUpAssignments from '@/components/results/followup-assignments'
 interface ExamResultsClientProps {
 	examId: string
 }

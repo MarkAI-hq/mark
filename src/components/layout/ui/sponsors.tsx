@@ -19,7 +19,7 @@ const sponsors: Sponsor[] = [
 const SponsorMarquee: React.FC = () => {
   return (
     <div className="relative w-full flex justify-center py-12 pb-15">
-      <div className="w-[60%] overflow-hidden bg-background">
+      <div className="w-[80%] overflow-hidden bg-background">
         <h3 className="mb-6 text-center text-3xl font-semibold">As Seen in</h3>
         <Marquee className="gap-[4rem] [--duration:25s]">
           {sponsors.map((sponsor) => (

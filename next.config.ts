@@ -32,7 +32,7 @@ const nextConfig: NextConfig = { reactStrictMode: true, images: {
 
 module.exports = {
   images: {
-    domains: ['localhost', 'images.unsplash.com', 'drive.google.com'],
+    domains: ['localhost', 'images.unsplash.com', 'drive.google.com', ''],
   }
 }
 

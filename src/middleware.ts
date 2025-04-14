@@ -10,6 +10,11 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
+   // Allow static files
+   if (pathname.startsWith('/images/')) {
+    return NextResponse.next();
+  }
+
   // Handle the login page
   if (pathname.startsWith('/login')) {
     const token = request.cookies.get('token')
