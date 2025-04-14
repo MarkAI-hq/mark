@@ -118,7 +118,7 @@ export function SubjectsClient({ subjects }: { subjects: Subject[] }) {
 					setDeleteDialogOpen(true)
 				}}
 				headerSlot={
-					<Button onClick={() => setOpen(true)}>
+					<Button onClick={() => setOpen(true)} id="create-subject">
 						<Plus className='mr-2 h-4 w-4' /> New Subject
 					</Button>
 				}
@@ -144,3 +144,4 @@ export function SubjectsClient({ subjects }: { subjects: Subject[] }) {
 		</>
 	)
 }
+
