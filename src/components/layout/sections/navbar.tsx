@@ -1,28 +1,29 @@
 "use client";
 
+import { useState } from "react";
 import Image from "next/image";
 import { Menu } from "lucide-react";
-import React from "react";
+import Link from "next/link";
+import { useTheme } from "next-themes";
+
+// import { ToggleTheme } from "./toogle-theme";
 import {
-  Sheet,
-  SheetContent,
+  Sheet, SheetContent,
   SheetFooter,
   SheetHeader,
   SheetTitle,
-  SheetTrigger,
-} from "../ui/sheet";
-import { Separator } from "../ui/separator";
+  SheetTrigger
+} from "@/components/ui/sheet";
+import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
 import {
   NavigationMenu,
   NavigationMenuContent,
   NavigationMenuItem,
   NavigationMenuLink,
-  NavigationMenuList,
-} from "../ui/navigation-menu";
-import { Button } from "../ui/button";
-import Link from "next/link";
-import { ToggleTheme } from "./toogle-theme";
-import { useTheme } from "next-themes"; // Import useTheme
+  NavigationMenuList
+} from "@/components/ui/navigation-menu";
+import { ThemeToggle } from "../theme-toggle";
 
 interface RouteProps {
   href: string;
@@ -53,21 +54,22 @@ const routeList: RouteProps[] = [
 const featureList: FeatureProps[] = [];
 
 export const Navbar = () => {
-  const [isOpen, setIsOpen] = React.useState(false);
+  const [isOpen, setIsOpen] = useState(false);
   const { theme } = useTheme(); // Get the current theme
 
-  const logoSrc = theme === "light" ? "/images/markWhiteBg.png" : "/images/markBlackBg.png"; // Change image source based on theme
+  const logoSrc = theme === "light" ? "/assets/images/markWhiteBg.png" : "/assets/images/markBlackBg.png";
 
   return (
-    <header className="shadow-inner bg-opacity-15 w-[90%] md:w-[70%] lg:w-[75%] lg:max-w-screen-xl top-5 mx-auto sticky border border-secondary z-40 rounded-2xl flex justify-between items-center p-2 bg-card">
+    <header className="shadow-inner bg-opacity-15 w-[90%] md:w-[70%] lg:w-[75%] lg:max-w-screen-xl top-5 mx-auto sticky border border-secondary z-40 rounded-2xl flex justify-between items-center p-2 bg-card mx-auto">
       <Link href="/" className="font-bold text-lg flex items-center">
         <Image
-          src={logoSrc} // Use the theme-dependent image source
+          src={logoSrc}
           alt="Mark AI Logo"
           width={150}
           height={50}
         />
       </Link>
+
       {/* Mobile */}
       <div className="flex items-center lg:hidden">
         <Sheet open={isOpen} onOpenChange={setIsOpen}>
@@ -85,12 +87,12 @@ export const Navbar = () => {
             <div>
               <SheetHeader className="mb-4 ml-4">
                 <SheetTitle className="flex items-center">
-                <Image
-                  src={logoSrc} // Use the theme-dependent image source
-                  alt="Mark AI Logo"
-                  width={150}
-                  height={50}
-                />
+                  <Image
+                    src={logoSrc}
+                    alt="Mark AI Logo"
+                    width={150}
+                    height={50}
+                  />
                 </SheetTitle>
               </SheetHeader>
 
@@ -111,8 +113,7 @@ export const Navbar = () => {
 
             <SheetFooter className="flex-col sm:flex-col justify-start items-start">
               <Separator className="mb-2" />
-
-              <ToggleTheme />
+              <ThemeToggle />
             </SheetFooter>
           </SheetContent>
         </Sheet>
@@ -156,7 +157,7 @@ export const Navbar = () => {
       </NavigationMenu>
 
       <div className="hidden lg:flex">
-        <ToggleTheme />
+        <ThemeToggle />
       </div>
     </header>
   );

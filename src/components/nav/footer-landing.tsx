@@ -1,23 +1,29 @@
 "use client";
 
-import { Separator } from "../../ui/separator";
 import Link from "next/link";
 import Image from "next/image";
-import { useTheme } from "next-themes"; // Import useTheme
+import { getYear } from "date-fns";
+import { TZDate } from '@date-fns/tz';
+
+import { useTheme } from "next-themes";
+import { Separator } from "@/components/ui/separator";
+
+
 
 export const FooterSection = () => {
-  const { theme } = useTheme(); // Get the current theme
+  const { theme } = useTheme();
+  const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
-  const logoSrc = theme === "light" ? "/images/markWhiteBg.png" : "/images/markBlackBg.png"; // Change image source based on theme
+  const logoSrc = theme === "light" ? "/assets/images/markWhiteBg.png" : "/assets/images/markBlackBg.png";
 
   return (
-    <footer id="footer" className="container py-24 sm:py-32 center p-10">
+    <footer id="footer" className="container py-24 sm:py-32 center p-10 mx-auto">
       <div className="p-10 bg-card border border-secondary rounded-2xl">
         <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-6 gap-x-12 gap-y-8">
           <div className="col-span-full xl:col-span-2">
             <Link href="#" className="flex font-bold items-center">
               <Image
-                src={logoSrc} // Use theme-dependent image source
+                src={logoSrc}
                 alt="Mark AI Logo"
                 width={120}
                 height={50}
@@ -111,9 +117,7 @@ export const FooterSection = () => {
         </div>
 
         <Separator className="my-6" />
-        <section className="">
-          <h3 className="">&copy; xRefracted</h3>
-        </section>
+        <h3 className="text-center">&copy; {getYear(new TZDate(new Date(), tz))} xRefracted</h3>
       </div>
     </footer>
   );

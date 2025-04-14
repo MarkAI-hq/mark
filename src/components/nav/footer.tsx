@@ -2,9 +2,12 @@
 
 import Link from 'next/link'
 import { getYear } from 'date-fns'
+import { TZDate } from '@date-fns/tz';
 import { Github } from 'lucide-react'
 
 export function Footer() {
+	const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
 	return (
 		<footer className='border-t'>
 			<div className='mx-auto max-w-7xl px-4 py-6 sm:px-6 md:flex md:items-center md:justify-between lg:px-8'>
@@ -19,7 +22,7 @@ export function Footer() {
 				</div>
 				<div className='mt-8 md:order-1 md:mt-0'>
 					<p className='text-center text-sm text-muted-foreground'>
-						&copy; {getYear(new Date())} xRefracted.
+						&copy; {getYear(new TZDate(new Date(), tz))} xRefracted.
 					</p>
 				</div>
 			</div>
