@@ -1,4 +1,3 @@
-import React from "react";
 import { useId } from "react";
 
 export function FeaturesSection() {
@@ -105,10 +104,10 @@ export function GridPattern({ width, height, x, y, squares, ...props }: any) {
       />
       {squares && (
         <svg x={x} y={y} className="overflow-visible">
-          {squares.map(([x, y]: any) => (
+          {squares.map(([x, y]: any, i:number) => (
             <rect
               strokeWidth="0"
-              key={`${x}-${y}`}
+              key={i}
               width={width + 1}
               height={height + 1}
               x={x * width}

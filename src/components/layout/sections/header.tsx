@@ -1,7 +1,4 @@
-import React from "react";
-
-const Header = () => {
-
+export default function Header() {
   return (
     <>
       <section className="overflow-hidden m-4 min-w-10 dark:min-w-14 dark:m-4 lg:pt-[16px] dark:lg:pt-[16px] lg:pb-[0px]">
@@ -12,14 +9,14 @@ const Header = () => {
                 <div className="w-full px-3 sm:px-4 xl:w-1/2">
                   <div className="py-3 sm:py-4">
                     <img
-                      src="/images/school.jpg"
+                      src="/assets/images/school.jpg"
                       alt="African kids studying under a tree while seated on ground"
                       className="w-full rounded-2xl shadow-xl"
                     />
                   </div>
                   <div className="py-3 sm:py-4">
                     <img
-                      src="/images/graduand.jpg"
+                      src="/assets/images/graduand.jpg"
                       alt="A young lady in a gown graduating"
                       className="w-full rounded-2xl shadow-md dark:shadow-xl"
                     />
@@ -28,7 +25,7 @@ const Header = () => {
                 <div className="w-full px-3 sm:px-4 xl:w-1/2">
                   <div className="relative z-9 my-4">
                     <img
-                      src="/images/enstein.jpg"
+                      src="/assets/images/enstein.jpg"
                       alt="Albert Enstein"
                       className="w-full rounded-2xl shadow-xl"
                     />
@@ -55,22 +52,22 @@ const Header = () => {
                   What if every student could become?
                 </h2>
                 <p className="mb-5 text-base text-body-color dark:text-gray-500">
-                Learners loose their dreams because of a one-for-all instruction model.
+                  Learners loose their dreams because of a one-for-all instruction model.
                 </p>
                 <p className="mb-8 text-base text-body-color dark:text-gray-500">
-                Using AI, we help teachers understand each learner and tailor support to them. 
-                We're building a new way of instruction and learning backed by the decades of  
-                research in the science of learning creating unique experiences for both the  
-                the teachers and students. We're looking for principals or headteachers, students 
-                and parents who want to build this new future of education, will you answer?
+                  Using AI, we help teachers understand each learner and tailor support to them.
+                  We're building a new way of instruction and learning backed by the decades of
+                  research in the science of learning creating unique experiences for both the
+                  the teachers and students. We're looking for principals or headteachers, students
+                  and parents who want to build this new future of education, will you answer?
                 </p>
                 <a
-                href="mailto:info@xrefracted.com ?subject=How%20Can%20We%20Collaborate?"
-                target="_blank"
-                rel="noopener"
-                className="px-8 py-4 text-lg font-medium text-center text-white bg-purple-600 rounded-md ">
-                Join Us
-              </a>
+                  href="mailto:info@xrefracted.com ?subject=How%20Can%20We%20Collaborate?"
+                  target="_blank"
+                  rel="noopener"
+                  className="px-8 py-4 text-lg font-medium text-center text-white bg-purple-600 rounded-md ">
+                  Join Us
+                </a>
               </div>
             </div>
           </div>
@@ -79,5 +76,3 @@ const Header = () => {
     </>
   );
 };
-
-export default Header;

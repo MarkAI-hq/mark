@@ -1,11 +1,13 @@
 "use client";
-import { Badge } from "../../ui/badge";
-import { Button } from "../../ui/button";
-import { ArrowRight } from "lucide-react";
-import { useTheme } from "next-themes";
+
 import Image from "next/image";
 import Link from "next/link";
 import { useState, useEffect } from "react";
+import { useTheme } from "next-themes";
+
+import { Badge } from "../../ui/badge";
+import { Button } from "../../ui/button";
+import { ArrowRight } from "lucide-react";
 
 export const HeroSection = () => {
   const { theme } = useTheme();
@@ -26,13 +28,13 @@ export const HeroSection = () => {
 
   const imageUrl =
     theme === "light"
-      ? "/images/dashWhite.jpg"
-      : "/images/dashDark.jpg";
+      ? "/assets/images/dashWhite.jpg"
+      : "/assets/images/dashDark.jpg";
 
   const placeholderSrc = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII="; // Tiny transparent placeholder
 
   return (
-    <section className="container w-full">
+    <section className="container w-full mx-auto">
       <div className="grid place-items-center lg:max-w-screen-xl gap-8 mx-auto py-20 md:py-32">
         <div className="text-center space-y-8">
           <Badge variant="outline" className="text-sm py-2">
@@ -52,10 +54,10 @@ export const HeroSection = () => {
             </h1>
           </div>
           <p className="max-w-screen-sm mx-auto text-base sm:text-lg md:text-xl text-muted-foreground px-6">
-            {`Mark AI helps teachers create and grade assignments in minutes and provide personalized feedback helping student's perform at their best.`}
+            Mark AI helps teachers create and grade assignments in minutes and provide personalized feedback helping student's perform at their best.
           </p>
           <div className="space-y-4 md:space-y-0 md:space-x-4">
-            <Button className="w-5/6 md:w-1/4 font-bold group/arrow">
+            <Button className="font-bold group/arrow">
               <Link href="/login">
                 Start Grading Now
               </Link>

@@ -10,6 +10,7 @@ import {
 } from 'lucide-react'
 import { ColumnDef } from '@tanstack/react-table'
 import { format, parseISO } from 'date-fns'
+import { TZDate } from '@date-fns/tz';
 import Link from 'next/link'
 
 import {
@@ -37,6 +38,8 @@ export function ExamsTable({
 	onDelete,
 	onUpload
 }: ExamsTableProps) {
+	const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
 	const columns: ColumnDef<Exam>[] = [
 		{
 			accessorKey: 'title',
@@ -58,14 +61,14 @@ export function ExamsTable({
 			accessorKey: 'createdAt',
 			header: 'Created',
 			cell: ({ row }) => {
-				return format(parseISO(row.original.createdAt), 'MMM d, yyyy')
+				return format(new TZDate(parseISO(row.original.createdAt), tz), 'MMM d, yyyy')
 			}
 		},
 		{
 			accessorKey: 'updatedAt',
 			header: 'Updated',
 			cell: ({ row }) => {
-				return format(parseISO(row.original.updatedAt), 'MMM d, yyyy')
+				return format(new TZDate(parseISO(row.original.updatedAt), tz), 'MMM d, yyyy')
 			}
 		},
 		{

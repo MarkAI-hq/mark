@@ -1,9 +1,8 @@
 "use client";
 
+import Image from "next/image";
 import { Marquee } from "@devnomic/marquee";
 import "@devnomic/marquee/dist/index.css";
-import Image from "next/image";
-import React from "react";
 
 interface Sponsor {
   logo: string;
@@ -11,16 +10,16 @@ interface Sponsor {
 }
 
 const sponsors: Sponsor[] = [
-  { logo: "/images/unacuall.jpg", name: "UNACU" },
-  { logo: "/images/pctechall.jpg", name: "PCTech Magazine" },
-  { logo: "/images/hopechannelall.png", name: "Hope Channel" },
+  { logo: "/assets/images/unacuall.jpg", name: "UNACU" },
+  { logo: "/assets/images/pctechall.jpg", name: "PCTech Magazine" },
+  { logo: "/assets/images/hopechannelall.png", name: "Hope Channel" },
 ];
 
 const SponsorMarquee: React.FC = () => {
   return (
-    <div className="relative w-full flex justify-center py-12 pb-15">
-      <div className="w-[80%] overflow-hidden bg-background">
-        <h3 className="mb-6 text-center text-3xl font-semibold">As Seen in</h3>
+    <div className="w-full flex justify-center py-12 pb-15 mx-auto">
+      <div className="overflow-hidden bg-background text-center">
+        <h3 className="mb-6 text-center text-3xl font-semibold">Featured on</h3>
         <Marquee className="gap-[4rem] [--duration:25s]">
           {sponsors.map((sponsor) => (
             <div key={sponsor.name} className="flex items-center">

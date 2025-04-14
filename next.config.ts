@@ -2,13 +2,14 @@
 
 import type { NextConfig } from 'next'
 
-const nextConfig: NextConfig = { reactStrictMode: true, images: {
-  remotePatterns: [
-  
-    {
-      protocol: 'http',
-      hostname: 'localhost',
-      port: '8000',},
+const nextConfig: NextConfig = {
+  reactStrictMode: true, images: {
+    remotePatterns: [
+      {
+        protocol: 'http',
+        hostname: 'localhost',
+        port: '3000'
+      },
       {
         protocol: 'https',
         hostname: '**.cloudflarestorage.com',
@@ -16,23 +17,15 @@ const nextConfig: NextConfig = { reactStrictMode: true, images: {
       },
       {
         protocol: 'https',
-        hostname: 'github.com',
-        pathname: '/Projectx-mark/images/**',
-      },
+        hostname: '**.unsplash.com',
+        port: ''
+      }
     ],
-    },
-    experimental: {
-      esmExternals: true,
-    },
-    transpilePackages: ['nextstepjs'],
+  },
+  experimental: {
     serverActions: {
       bodySizeLimit: '5mb'
-    },
-}
-
-module.exports = {
-  images: {
-    domains: ['localhost', 'images.unsplash.com', 'drive.google.com', ''],
+    }
   }
 }
 

@@ -11,7 +11,7 @@ export async function middleware(request: NextRequest) {
   }
 
    // Allow static files
-   if (pathname.startsWith('/images/')) {
+   if (pathname.startsWith('/assets/images/')) {
     return NextResponse.next();
   }
 
