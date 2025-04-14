@@ -68,7 +68,7 @@ export const HeroSection = () => {
               className="w-5/6 md:w-1/4 font-bold"
             >
               <Link
-                href="mailto:info@xrefracted.com ?subject=Inquiry%20from%20Mark%20AI%20"
+                href="mailto:info@xrefracted.com?subject=Mark AI"
                 target="_blank"
               >
                 Talk to Us
