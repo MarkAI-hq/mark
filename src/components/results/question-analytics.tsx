@@ -14,11 +14,7 @@ import { getQuestionStats } from '@/lib/actions/exams'
 import { QuestionStat } from '@/lib/types'
 import { Progress } from '@/components/ui/progress'
 
-interface QuestionAnalyticsProps {
-	examId: string
-}
-
-export function QuestionAnalytics({ examId }: QuestionAnalyticsProps) {
+export function QuestionAnalytics({ examId }: { examId: string }) {
 	const [stats, setStats] = useState<QuestionStat[]>([])
 
 	useEffect(() => {

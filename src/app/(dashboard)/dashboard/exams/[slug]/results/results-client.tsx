@@ -5,14 +5,11 @@ import { ExamStats, StudentResult } from '@/lib/types'
 import { getExamStats, getStudentResults } from '@/lib/actions/exams'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { QuestionAnalytics } from '@/components/results/question-analytics'
-import SummaryView from '@/components/results/summary-view'
-import DetailedView from '@/components/results/detailed-view'
-// import FollowUpAssignments from '@/components/results/followup-assignments'
-interface ExamResultsClientProps {
-	examId: string
-}
+import { SummaryView } from '@/components/results/summary-view'
+import { DetailedView } from '@/components/results/detailed-view'
+import { Assignment } from '@/components/results/follow-up-assignment'
 
-export function ExamResultsClient({ examId }: ExamResultsClientProps) {
+export function ExamResultsClient({ examId }: { examId: string }) {
 	const [stats, setStats] = useState<ExamStats>()
 	const [activeTab, setActiveTab] = useState('summary')
 	const [examData, setExamData] = useState<StudentResult[]>([])
@@ -56,8 +53,7 @@ export function ExamResultsClient({ examId }: ExamResultsClientProps) {
 				<QuestionAnalytics examId={examId} />
 			</TabsContent>
 			<TabsContent value='follow-up'>
-				{/* <FollowUpAssignments examId={examId} /> */}
-				<></>
+				<Assignment examData={examData} />
 			</TabsContent>
 		</Tabs>
 	)

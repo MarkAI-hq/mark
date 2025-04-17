@@ -84,7 +84,7 @@ export type CreateExamDto = {
 // 	questionNumber: number
 // }
 
-export type Question = {
+export type TQuestion = {
 	question: string
 	score: number
 	maxScore: number
@@ -93,10 +93,15 @@ export type Question = {
 	issues: string[]
 }
 
-export type AssessmentComponent = {
-	marks: number
-	description: string
+export type TAssessment = {
+	number: number
+	question: string
 }
+
+// export type AssessmentComponent = {
+// 	marks: number
+// 	description: string
+// }
 
 export type ExamStats = {
 	totalStudents: number
@@ -117,7 +122,8 @@ export type StudentResult = {
 	totalScore: number
 	maxTotalScore: number
 	feedback: string
-	questions: Question[]
+	questions: TQuestion[]
+	assignments: TAssessment[]
 	createdBy: string
 	createdAt: Date
 	updatedAt: Date
