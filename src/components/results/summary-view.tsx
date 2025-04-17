@@ -13,7 +13,7 @@ interface SummaryViewProps {
 	examData: StudentResult[]
 }
 
-export default function SummaryView({ examData }: SummaryViewProps) {
+export const SummaryView = ({ examData }: SummaryViewProps) => {
 	return (
 		<Table>
 			<TableHeader>

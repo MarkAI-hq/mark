@@ -1,10 +1,10 @@
-import type { Question } from '@/lib/types'
+import type { TQuestion } from '@/lib/types'
 
 interface QuestionDetailsProps {
-	questionData: Question
+	questionData: TQuestion
 }
 
-export default function QuestionDetails({
+export function QuestionDetails({
 	questionData
 }: QuestionDetailsProps) {
 

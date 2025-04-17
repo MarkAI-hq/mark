@@ -4,11 +4,11 @@ import { useState } from 'react'
 import { ChevronDown, ChevronUp } from 'lucide-react'
 
 import { Card, CardContent } from '@/components/ui/card'
-import QuestionDetails from './question-details'
+import { QuestionDetails } from './question-details'
 import type { StudentResult } from '@/lib/types'
 
 
-export default function StudentCard({ studentData }: { studentData: StudentResult }) {
+export function StudentCard({ studentData }: { studentData: StudentResult }) {
 	const [isExpanded, setIsExpanded] = useState(false)
 
 	return (
@@ -18,14 +18,6 @@ export default function StudentCard({ studentData }: { studentData: StudentResul
 					<div className='flex justify-between items-start mb-4'>
 						<h2 className='text-2xl font-bold'>{studentData?.studentName}</h2>
 						<div className='text-right'>
-							{/* <Badge
-								className='font-semibold'
-								variant={
-									studentData.score >= studentData.maxTotalScore / 2 ? 'default' : 'destructive'
-								}
-							>
-								Score: {studentData.totalScore}/{studentData.maxTotalScore}
-							</Badge> */}
 							<p className='font-semibold'>
 								Score: {studentData?.totalScore}/{studentData?.maxTotalScore}
 							</p>
