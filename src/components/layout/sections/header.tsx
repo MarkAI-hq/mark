@@ -1,3 +1,5 @@
+import Image from "next/image";
+
 export default function Header() {
   return (
     <>
@@ -8,26 +10,32 @@ export default function Header() {
               <div className="flex items-center -mx-3 sm:-mx-4 dark:sm:-mx-4 dark:-mx-3">
                 <div className="w-full px-3 sm:px-4 xl:w-1/2">
                   <div className="py-3 sm:py-4">
-                    <img
+                    <Image
                       src="/assets/images/school.jpg"
                       alt="African kids studying under a tree while seated on ground"
                       className="w-full rounded-2xl shadow-xl"
+                      width={1200}
+                      height={500}  
                     />
                   </div>
                   <div className="py-3 sm:py-4">
-                    <img
+                    <Image
                       src="/assets/images/graduand.jpg"
                       alt="A young lady in a gown graduating"
                       className="w-full rounded-2xl shadow-md dark:shadow-xl"
+                      width={1200}
+                      height={500}
                     />
                   </div>
                 </div>
                 <div className="w-full px-3 sm:px-4 xl:w-1/2">
                   <div className="relative z-9 my-4">
-                    <img
+                    <Image
                       src="/assets/images/enstein.jpg"
                       alt="Albert Enstein"
                       className="w-full rounded-2xl shadow-xl"
+                      width={1200}
+                      height={500}
                     />
                     <span className="absolute -right-7 -bottom-7 z-[-1]">
                       <svg
@@ -56,9 +64,9 @@ export default function Header() {
                 </p>
                 <p className="mb-8 text-base text-body-color dark:text-gray-500">
                   Using AI, we help teachers understand each learner and tailor support to them.
-                  We're building a new way of instruction and learning backed by the decades of
+                  We&#39;re building a new way of instruction and learning backed by the decades of
                   research in the science of learning creating unique experiences for both the
-                  the teachers and students. We're looking for principals or headteachers, students
+                  the teachers and students. We&#39;re looking for principals or headteachers, students
                   and parents who want to build this new future of education, will you answer?
                 </p>
                 <a

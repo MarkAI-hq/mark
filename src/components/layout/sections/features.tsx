@@ -1,11 +1,14 @@
-import { useId } from "react";
+'use client';
+
+import {useId } from "react";
+import React from "react";
 
 export function FeaturesSection() {
   return (
     <div className="py-20 lg:py-40">
-        <h2 className="text-4xl md:text-5xl text-center font-bold mb-4">
-          What we do
-        </h2>
+      <h2 className="text-4xl md:text-5xl text-center font-bold mb-4">
+        What we do
+      </h2>
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-2 gap-14 md:gap-7 max-w-6xl mx-auto">
         {grid.map((feature) => (
           <div
@@ -46,40 +49,52 @@ const grid = [
     title: "Deepening metacognition",
     description:
       "Plan, monitor and help the learners reflect on progress through methods that work for them.",
-    },
+  },
 ];
 
-export const Grid = ({
-  pattern,
-  size,
-}: {
+interface GridProps {
   pattern?: number[][];
   size?: number;
-}) => {
-  const p = pattern ?? [
-    [Math.floor(Math.random() * 4) + 7, Math.floor(Math.random() * 6) + 1],
-    [Math.floor(Math.random() * 4) + 7, Math.floor(Math.random() * 6) + 1],
-    [Math.floor(Math.random() * 4) + 7, Math.floor(Math.random() * 6) + 1],
-    [Math.floor(Math.random() * 4) + 7, Math.floor(Math.random() * 6) + 1],
-    [Math.floor(Math.random() * 4) + 7, Math.floor(Math.random() * 6) + 1],
-  ];
+}
+
+export const Grid: React.FC<GridProps> = ({ pattern, size }) => {
+  const [p, setP] = React.useState<number[][]>(() => {
+    return [
+      [Math.floor(Math.random() * 4) + 7, Math.floor(Math.random() * 6) + 1],
+      [Math.floor(Math.random() * 4) + 7, Math.floor(Math.random() * 6) + 1],
+      [Math.floor(Math.random() * 4) + 7, Math.floor(Math.random() * 6) + 1],
+      [Math.floor(Math.random() * 4) + 7, Math.floor(Math.random() * 6) + 1],
+      [Math.floor(Math.random() * 4) + 7, Math.floor(Math.random() * 6) + 1],
+    ];
+  });
+
+  React.useMemo(() => setP(pattern ?? p), [pattern, p]);
+
   return (
-    <div className="pointer-events-none absolute left-1/2 top-0  -ml-20 -mt-2 h-full w-full [mask-image:linear-gradient(white,transparent)]">
-      <div className="absolute inset-0 bg-gradient-to-r  [mask-image:radial-gradient(farthest-side_at_top,white,transparent)] dark:from-zinc-900/30 from-zinc-100/30 to-zinc-300/30 dark:to-zinc-900/30 opacity-100">
+    <div className="pointer-events-none absolute left-1/2 top-0 -ml-20 -mt-2 h-full w-full [mask-image:linear-gradient(white,transparent)]">
+      <div className="absolute inset-0 bg-gradient-to-r [mask-image:radial-gradient(farthest-side_at_top,white,transparent)] dark:from-zinc-900/30 from-zinc-100/30 to-zinc-300/30 dark:to-zinc-900/30 opacity-100">
         <GridPattern
           width={size ?? 20}
           height={size ?? 20}
-          x="-12"
-          y="4"
+          x={-12}
+          y={4}
           squares={p}
-          className="absolute inset-0 h-full w-full  mix-blend-overlay dark:fill-white/10 dark:stroke-white/10 stroke-black/10 fill-black/10"
+          className="absolute inset-0 h-full w-full mix-blend-overlay dark:fill-white/10 dark:stroke-white/10 stroke-black/10 fill-black/10"
         />
       </div>
     </div>
   );
 };
 
-export function GridPattern({ width, height, x, y, squares, ...props }: any) {
+interface GridPatternProps extends React.SVGProps<SVGSVGElement> {
+  width: number;
+  height: number;
+  x: number;
+  y: number;
+  squares: number[][];
+}
+
+export function GridPattern({ width, height, x, y, squares, ...props }: GridPatternProps) {
   const patternId = useId();
 
   return (
@@ -104,7 +119,7 @@ export function GridPattern({ width, height, x, y, squares, ...props }: any) {
       />
       {squares && (
         <svg x={x} y={y} className="overflow-visible">
-          {squares.map(([x, y]: any, i:number) => (
+          {squares.map(([x, y], i) => (
             <rect
               strokeWidth="0"
               key={i}

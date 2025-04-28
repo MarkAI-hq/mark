@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
@@ -37,55 +37,43 @@ import { Subject, Exam } from '@/lib/types'
 import { createExam, updateExam } from '@/lib/actions/exams'
 import { cn } from '@/lib/utils'
 
-// Schema for create
 const createSchema = z.object({
 	title: z.string().min(1, 'Title is required'),
 	courseId: z.string().uuid('Please select a subject'),
 	scheme: z
 		.instanceof(File, { message: 'Please upload a marking guide' })
-		.refine(
-			(file) => file.type === 'application/pdf',
-			'Only PDF files are allowed'
-		)
-		.refine(
-			(file) => file.size <= 5 * 1024 * 1024,
-			'File size must be less than 5MB'
-		)
+		.refine((file) => file.type === 'application/pdf', 'Only PDF files are allowed')
+		.refine((file) => file.size <= 5 * 1024 * 1024, 'File size must be less than 5MB')
 })
 
-// Schema for update - all fields optional but at least one required
-const updateSchema = z
-	.object({
-		title: z.string().min(1, 'Title is required').optional(),
-		courseId: z.string().uuid('Please select a subject').optional(),
-		scheme: z
-			.instanceof(File)
-			.refine(
-				(file) => file.type === 'application/pdf',
-				'Only PDF files are allowed'
-			)
-			.refine(
-				(file) => file.size <= 5 * 1024 * 1024,
-				'File size must be less than 5MB'
-			)
-			.optional()
-	})
-	.refine((data) => Object.values(data).some(Boolean), {
-		message: 'At least one field must be provided'
-	})
+const updateSchema = z.object({
+	title: z.string().min(1, 'Title is required').optional(),
+	courseId: z.string().uuid('Please select a subject').optional(),
+	scheme: z
+		.instanceof(File)
+		.refine((file) => file.type === 'application/pdf', 'Only PDF files are allowed')
+		.refine((file) => file.size <= 5 * 1024 * 1024, 'File size must be less than 5MB')
+		.optional()
+}).refine((data) => Object.values(data).some(Boolean), {
+	message: 'At least one field must be provided'
+})
 
 interface ExamDialogProps {
 	open: boolean
 	subjects: Subject[]
 	onOpenChange: (open: boolean) => void
 	exam?: Exam
+	initialCourseId?: string
+	disableCourseSelect?: boolean
 }
 
 export function ExamDialog({
 	open,
 	subjects,
 	onOpenChange,
-	exam
+	exam,
+	initialCourseId,
+	disableCourseSelect = false
 }: ExamDialogProps) {
 	const router = useRouter()
 	const [pdfPreview, setPdfPreview] = useState<string>()
@@ -96,10 +84,16 @@ export function ExamDialog({
 		resolver: zodResolver(exam?.id ? updateSchema : createSchema),
 		defaultValues: {
 			title: exam?.title || '',
-			courseId: exam?.courseId || '',
+			courseId: exam?.courseId || initialCourseId || '',
 			scheme: undefined
 		}
 	})
+
+	useEffect(() => {
+		if (initialCourseId && !exam?.id) {
+			form.setValue('courseId', initialCourseId)
+		}
+	}, [initialCourseId, form, exam?.id])
 
 	const onDrop = useCallback(
 		(acceptedFiles: File[]) => {
@@ -119,11 +113,9 @@ export function ExamDialog({
 
 	const { getRootProps, getInputProps, isDragActive } = useDropzone({
 		onDrop,
-		accept: {
-			'application/pdf': ['.pdf']
-		},
+		accept: { 'application/pdf': ['.pdf'] },
 		multiple: false,
-		maxSize: 5 * 1024 * 1024 // 5MB
+		maxSize: 5 * 1024 * 1024
 	})
 
 	const clearFile = () => {
@@ -135,7 +127,6 @@ export function ExamDialog({
 		data: z.infer<typeof createSchema> | z.infer<typeof updateSchema>
 	) {
 		const formData = new FormData()
-		// Only append fields that have values
 		if (data.title) formData.append('title', data.title)
 		if (data.courseId) formData.append('courseId', data.courseId)
 		if (data.scheme) formData.append('scheme', data.scheme)
@@ -200,6 +191,7 @@ export function ExamDialog({
 									<Select
 										onValueChange={field.onChange}
 										defaultValue={field.value}
+										disabled={disableCourseSelect}
 									>
 										<FormControl>
 											<SelectTrigger>
@@ -234,7 +226,6 @@ export function ExamDialog({
 												)
 											})}
 										>
-											{/* Do not override getInputProps */}
 											<input {...getInputProps()} />
 											<div className='flex flex-col items-center justify-center gap-2 text-center'>
 												<Upload className='h-8 w-8 text-muted-foreground' />
@@ -250,14 +241,9 @@ export function ExamDialog({
 																	/>
 																</div>
 																<div className='flex flex-col'>
-																	<p className='text-sm font-medium'>
-																		{value?.name}
-																	</p>
+																	<p className='text-sm font-medium'>{value?.name}</p>
 																	<p className='text-xs text-muted-foreground'>
-																		{((value?.size ?? 0) / 1024 / 1024).toFixed(
-																			2
-																		)}
-																		MB
+																		{((value?.size ?? 0) / 1024 / 1024).toFixed(2)}MB
 																	</p>
 																</div>
 															</div>
@@ -278,13 +264,9 @@ export function ExamDialog({
 												) : (
 													<div className='text-sm'>
 														<p className='font-medium'>
-															{isDragActive
-																? 'Drop the file here'
-																: 'Click or drag & drop'}
+															{isDragActive ? 'Drop the file here' : 'Click or drag & drop'}
 														</p>
-														<p className='text-muted-foreground'>
-															PDF file (max 5MB)
-														</p>
+														<p className='text-muted-foreground'>PDF file (max 5MB)</p>
 													</div>
 												)}
 											</div>

@@ -6,6 +6,7 @@ import { FooterSection } from '@/components/nav/footer-landing'
 import { FAQSection } from '@/components/layout/sections/faq'
 import { FeaturesSection } from '@/components/layout/sections/features'
 import Header from '@/components/layout/sections/header'
+// import BackgroundVideo from '@/components/layout/sections/backgroundVideo'
 
 export const metadata: Metadata = {
   title: 'Home - Mark',
@@ -16,6 +17,7 @@ export default function HomePage() {
   return (
     <>
       <Navbar/>
+      {/* <BackgroundVideo/> */}
       <HeroSection />
       <SponsorsSection />
       <FeaturesSection />

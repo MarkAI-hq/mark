@@ -12,6 +12,7 @@ import { ArrowRight } from "lucide-react";
 export const HeroSection = () => {
   const { theme } = useTheme();
   const [isMobile, setIsMobile] = useState(false);
+  const defaultImageUrl = "/assets/images/dashWhite.jpg";
 
   useEffect(() => {
     const handleResize = () => {
@@ -29,8 +30,10 @@ export const HeroSection = () => {
   const imageUrl =
     theme === "light"
       ? "/assets/images/dashWhite.jpg"
-      : "/assets/images/dashDark.jpg";
-
+      : theme === "dark"
+      ? "/assets/images/dashDark.jpg"
+      : defaultImageUrl; // Use default if theme is neither light nor dark
+      
   const placeholderSrc = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII="; // Tiny transparent placeholder
 
   return (
@@ -41,7 +44,7 @@ export const HeroSection = () => {
             <span className="mr-2 text-primary">
               <Badge>New</Badge>
             </span>
-            <span> The Teachers' evaluation companion! </span>
+            <span> The Teachers evaluation companion! </span>
           </Badge>
 
           <div className="max-w-screen-sm mx-auto text-center text-3xl md:text-5xl font-bold">
@@ -54,7 +57,7 @@ export const HeroSection = () => {
             </h1>
           </div>
           <p className="max-w-screen-sm mx-auto text-base sm:text-lg md:text-xl text-muted-foreground px-6">
-            Mark AI helps teachers create and grade assignments in minutes and provide personalized feedback helping student's perform at their best.
+            Mark AI helps teachers create and grade assignments in minutes and provide personalized feedback helping student&#39;s perform at their best.
           </p>
           <div className="space-y-4 md:space-y-0 md:space-x-4">
             <Button className="font-bold group/arrow">

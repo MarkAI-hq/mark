@@ -69,7 +69,7 @@ export function UserNav() {
 					<DropdownMenuSeparator />
 					<DropdownMenuItem
 						className='cursor-pointer'
-						onClick={() => router.push('/dashboard/profile')}
+						onClick={() => router.push('#')}
 					>
 						Profile
 					</DropdownMenuItem>
