@@ -39,15 +39,15 @@ export function SubjectsTable({
     const columns: ColumnDef<Subject>[] = [
         {
             accessorKey: 'code',
-            header: 'Code'
+            header: 'Subject Code'
         },
         {
             accessorKey: 'title',
-            header: 'Title'
+            header: 'Subject Name'
         },
         {
             accessorKey: 'description',
-            header: 'Description'
+            header: 'Subject Description'
         },
         {
             id: 'actions',

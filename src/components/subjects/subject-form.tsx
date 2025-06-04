@@ -25,8 +25,8 @@ import { Button } from '@/components/ui/button'
 import { Subject } from '@/lib/types'
 
 const formSchema = z.object({
-	code: z.string().min(1, 'Code is required'),
-	title: z.string().min(1, 'Title is required'),
+	code: z.string().min(1, 'Subject Code is required'),
+	title: z.string().min(1, 'Subject Title is required'),
 	description: z.string().optional(),
 })
 
@@ -74,7 +74,7 @@ export function SubjectForm({ open, initialData, onOpenChange, onSubmit }: Subje
 								<FormItem>
 									<FormLabel>Code</FormLabel>
 									<FormControl>
-										<Input placeholder='Enter subject code' {...field} />
+										<Input placeholder='Enter subject code e.g MTC for Maths' {...field} />
 									</FormControl>
 									<FormMessage />
 								</FormItem>
@@ -87,7 +87,7 @@ export function SubjectForm({ open, initialData, onOpenChange, onSubmit }: Subje
 								<FormItem>
 									<FormLabel>Title</FormLabel>
 									<FormControl>
-										<Input placeholder='Enter subject title' {...field} />
+										<Input placeholder='Enter subject title e.g Mathematics' {...field} />
 									</FormControl>
 									<FormMessage />
 								</FormItem>

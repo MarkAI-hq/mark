@@ -14,6 +14,11 @@ export async function middleware(request: NextRequest) {
    if (pathname.startsWith('/assets/images/')) {
     return NextResponse.next();
   }
+//Allow sign up
+   if (pathname.startsWith('/signup')) {
+    return NextResponse.next();
+  }
+
 
   // Handle the login page
   if (pathname.startsWith('/login')) {

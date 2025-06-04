@@ -59,7 +59,7 @@ export function DataTable<TData, TValue>({
 
 	return (
 		<div>
-			<div className='flex items-center justify-between py-4'>
+			<div className='flex items-center justify-between py-4 mx-auto'>
 				<Input
 					placeholder={filter.prompt}
 					value={
@@ -72,7 +72,7 @@ export function DataTable<TData, TValue>({
 				/>
 				{headerSlot}
 			</div>
-			<div className='rounded-md border'>
+			<div className='rounded-md border p-8'>
 				<Table>
 					<TableHeader>
 						{table.getHeaderGroups().map((headerGroup) => (

@@ -120,7 +120,7 @@ export function LoginForm() {
                             <Link href="#" className="text-sm hover:underline">
                                 Forgot password?
                             </Link>
-                            <Link href="#" className="text-sm hover:underline ">
+                            <Link href="/signup" className="text-sm hover:underline ">
                                 Sign up
                             </Link>
                         </div>

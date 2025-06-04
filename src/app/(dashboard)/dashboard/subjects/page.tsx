@@ -13,7 +13,7 @@ export default async function SubjectsPage() {
 
 	return (
 		<div className='flex-1 space-y-4 p-8 pt-6'>
-			<div className='flex items-center justify-between'>
+			<div className='flex items-center justify-between mb-4'>
 				<div className='text-3xl font-bold tracking-tight'>Subjects
 					<h4 className='pt-3 text-lg font-normal text-muted-foreground'>Click the + New Subject button or press C to start grading.</h4>
 				</div>
