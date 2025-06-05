@@ -10,18 +10,18 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
-   // Allow static files
-   if (pathname.startsWith('/assets/images/')) {
-    return NextResponse.next();
-  }
-//Allow sign up
-   if (pathname.startsWith('/signup')) {
+  // Allow static files
+  if (pathname.startsWith('/assets/images/')) {
     return NextResponse.next();
   }
 
-
-  // Handle the login page
-  if (pathname.startsWith('/login')) {
+  // Allow public routes that do not require authentication
+  // These routes are typically for login, signup, forgot password, etc.
+  if (pathname.startsWith('/login') ||
+    pathname.startsWith('/signup') ||
+    pathname.startsWith('/forgot-password') ||
+    pathname.startsWith('/reset-password') ||
+    pathname.startsWith('/verify-email')) {
     const token = request.cookies.get('token')
     const user = request.cookies.get('user')
 
@@ -32,7 +32,9 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
-  // For all other routes, enforce authentication
+  // Enforce authentication for all other routes
+  // Check if the user is authenticated by looking for a token and user cookie
+  // If not authenticated, redirect to the login page with the original URL as a return URL
   const token = request.cookies.get('token')
   const refreshToken = request.cookies.get('refreshToken')
   const user = request.cookies.get('user')
@@ -47,7 +49,7 @@ export async function middleware(request: NextRequest) {
       }
     }
 
-    // Not authenticated, so redirect to /login with the original URL as a return URL
+    // Not authenticated, redirect to /login with the original URL as the return URL
     const loginUrl = new URL('/login', request.url)
     loginUrl.searchParams.set('return_url', pathname + search)
     return NextResponse.redirect(loginUrl)

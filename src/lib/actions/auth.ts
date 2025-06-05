@@ -3,7 +3,7 @@
 import { cookies } from 'next/headers'
 
 import { fetcher } from '../fetch'
-import { ApiResponse, LoginResponse, RefreshTokenResponse, VerifyEmailSuccessPayload} from '../types'
+import { ApiResponse, LoginResponse, RefreshTokenResponse, RegisterResponse } from '../types'
 
 
 export async function login(email: string, password: string) {
@@ -57,7 +57,7 @@ export async function login(email: string, password: string) {
     }
 }
 
-export async function signUp(name: string, email: string, password: string, phone: string, photo?: File) {
+export async function signUp({ name, email, password, phone, photo }: { name: string, email: string, password: string, phone: string, photo?: File }) {
     const cookieStore = await cookies()
 
     const formData = new FormData();
@@ -65,13 +65,13 @@ export async function signUp(name: string, email: string, password: string, phon
     formData.append('email', email);
     formData.append('password', password);
     formData.append('phone', phone);
-    
+
     // Only append the photo if it exists (i.e., not undefined)
     if (photo) {
         formData.append('photo', photo);
     }
 
-    const { data, error } = await fetcher<ApiResponse<LoginResponse>>(
+    const { data, error } = await fetcher<ApiResponse<RegisterResponse>>(
         '/auth/register',
         {
             method: 'POST',
@@ -79,23 +79,8 @@ export async function signUp(name: string, email: string, password: string, phon
         }
     )
 
-    // Set cookies
+    // Set user cookie
     if (data) {
-        cookieStore.set('token', data.accessToken, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'lax',
-            path: '/'
-        })
-
-        cookieStore.set('refreshToken', data.refreshToken, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'lax',
-            path: '/'
-        })
-
-        // Store user data in a regular cookie
         cookieStore.set(
             'user',
             JSON.stringify({
@@ -111,14 +96,6 @@ export async function signUp(name: string, email: string, password: string, phon
                 path: '/'
             }
         )
-
-        // Set a cookie to indicate it's the first login
-        cookieStore.set('isFirstLogin', 'true', {
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'lax',
-            path: '/',
-            maxAge: 60 * 60 * 24, // 1 day
-        });
     }
 
     return {
@@ -158,12 +135,7 @@ export async function refreshAccessToken() {
         ApiResponse<RefreshTokenResponse>
     >('/auth/refresh', {
         method: 'POST',
-        body: JSON.stringify({
-            refreshToken
-        }),
-        headers: { // Explicitly set Content-Type for JSON body
-            'Content-Type': 'application/json',
-        },
+        body: JSON.stringify({ refreshToken }),
     })
 
     if (tokens) {
@@ -187,7 +159,7 @@ export async function refreshAccessToken() {
         data: tokens,
         error
     }
-    
+
 }
 
 /**
@@ -195,48 +167,18 @@ export async function refreshAccessToken() {
  * This is a server action, called from the client-side verification page.
  * @param token The verification token extracted from the URL query parameters.
  */
-
-
 export async function verifyEmail(
     token: string
-): Promise<{ data?: ApiResponse<VerifyEmailSuccessPayload>; error?: { message: string; status?: number } }> {
-    try {
-        // The fetcher utility is expected to handle the API response wrapping in ApiResponse<T>
-        const { data, error } = await fetcher<ApiResponse<VerifyEmailSuccessPayload>>(
-            '/auth/verify-email', // <-- IMPORTANT: Confirm this is your backend's exact endpoint
-            {
-                method: 'POST', // POST is recommended for sending data and changing state on the server
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ token }), // Send the token in the request body
-            }
-        );
-
-        // Return the data or error received from the fetcher
-        return { data, error };
-
-    } catch (err: unknown) { // Use unknown for caught errors
-        let errorMessage = 'An unexpected error occurred during email verification.';
-        let errorStatus: number | undefined = 500; // Initialize with 'let' if it might be reassigned
-
-        if (err instanceof Error) {
-            errorMessage = err.message;
-        } else if (typeof err === 'object' && err !== null && 'message' in err) {
-            // Attempt to extract message and status from a generic object error
-            errorMessage = (err as { message: string }).message;
-            if ('status' in (err as { status?: number })) { // Check for status if present
-                errorStatus = (err as { status?: number }).status;
-            }
+) {
+    const { data, error } = await fetcher<ApiResponse<{ message: string; }>>(
+        '/auth/verify-email',
+        {
+            method: 'POST',
+            body: JSON.stringify({ token }),
         }
+    );
 
-        return {
-            error: {
-                message: errorMessage,
-                status: errorStatus,
-            },
-        };
-    }
+    return { data, error };
 }
 
 

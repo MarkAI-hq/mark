@@ -33,7 +33,7 @@ export async function fetcher<T>(url: string, init?: RequestInit): Promise<T> {
 		// NestJS typically returns { data: T } or { data: T, message: string }
 		return { data: data.data || data } as T
 	} catch (err: unknown) {
-		let status = 500
+		let status = 417 // Default to 417 Expectation Failed
 		if (err && typeof err === 'object' && 'status' in err) {
 			status = (err as { status: number }).status
 		}
