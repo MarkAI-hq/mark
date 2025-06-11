@@ -1,15 +1,19 @@
 'use client';
 
-import {useId } from "react";
+import { useId } from "react";
 import React from "react";
 
 export function FeaturesSection() {
   return (
-    <div className="py-20 lg:py-40">
-      <h2 className="text-4xl md:text-5xl text-center font-bold mb-4">
-        What we do
+    <div className="py-15 px-5 lg:py-30">
+      <h2 className="text-4xl md:text-5xl text-center font-bold mb-4 py-10">
+        Transformative Benefits
       </h2>
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-2 gap-14 md:gap-7 max-w-6xl mx-auto">
+      <p className="text-xl text-center text-neutral-700 dark:text-neutral-300 mb-12 max-w-3xl mx-auto">
+        Unlock Potential for Everyone in Your Learning Community.
+      </p>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-2 gap-14 md:gap-7 max-w-6xl mx-auto ">
         {grid.map((feature) => (
           <div
             key={feature.title}
@@ -19,9 +23,16 @@ export function FeaturesSection() {
             <p className="text-base font-bold text-neutral-800 dark:text-white relative z-20">
               {feature.title}
             </p>
-            <p className="text-neutral-600 dark:text-neutral-400 mt-4 text-base font-normal relative z-20">
+            <p className="text-neutral-900 dark:text-neutral-400 mt-4 text-base font-normal relative z-20">
               {feature.description}
             </p>
+            {feature.applications && (
+              <ul className="list-decimal list-inside mt-4 text-neutral-600 dark:text-neutral-400 relative z-20 space-y-1">
+                {feature.applications.map((item, index) => (
+                  <li key={index}>{item}</li>
+                ))}
+              </ul>
+            )}
           </div>
         ))}
       </div>
@@ -31,24 +42,26 @@ export function FeaturesSection() {
 
 const grid = [
   {
-    title: "Made for all assignments",
+    title: "For Students:",
     description:
       "Mark AI handles both digital and handwritten assignments at all levels of learning in minutes.",
+    applications: [
+                  " Truly Personalized Learning: Experience education tailored precisely to their unique needs, learning styles, and pace.", 
+                  " Deeper Understanding: Overcome misconceptions with adaptive explanations and varied teaching methods.", 
+                  " Enhanced Engagement: Stay motivated with relevant, challenging, and supportive learning paths.",
+                  "Achieve More: Measurably improve outcomes and build lasting knowledge."
+                  ],
   },
   {
-    title: "Personalized Feedback",
+    title: "For Educators and Institutions:",
     description:
-      "We've made Mark AI in a way that it gives insights made specifically for you to perform better.",
-  },
-  {
-    title: "Advanced Analytics",
-    description:
-      "Gain insights into your students' performance with detailed analytics and reporting tools to measure engagement and ROI.",
-  },
-  {
-    title: "Deepening metacognition",
-    description:
-      "Plan, monitor and help the learners reflect on progress through methods that work for them.",
+      "Drastically reduce the burden of differentiation. Provide expert pedagogy and student insights.",
+    applications: [
+      "Scale True Personalization: Implement individualized learning across your school or district, moving beyond generic content delivery.",
+      "Empower Your Teachers: Drastically reduce the burden of differentiation. Provide powerful, data-driven insights into student needs and access to a wealth of expert pedagogical strategies.",
+      "Integrate Best Practices: Seamlessly incorporate cutting-edge teaching methodologies and research-backed approaches into your curriculum.",
+      "Data-Driven Pedagogical Insights: Gain unprecedented analytics on what pedagogical strategies work best for which learners, driving continuous improvement."
+    ],
   },
 ];
 
@@ -59,16 +72,17 @@ interface GridProps {
 
 export const Grid: React.FC<GridProps> = ({ pattern, size }) => {
   const [p, setP] = React.useState<number[][]>(() => {
-    return [
-      [Math.floor(Math.random() * 4) + 7, Math.floor(Math.random() * 6) + 1],
-      [Math.floor(Math.random() * 4) + 7, Math.floor(Math.random() * 6) + 1],
-      [Math.floor(Math.random() * 4) + 7, Math.floor(Math.random() * 6) + 1],
-      [Math.floor(Math.random() * 4) + 7, Math.floor(Math.random() * 6) + 1],
-      [Math.floor(Math.random() * 4) + 7, Math.floor(Math.random() * 6) + 1],
-    ];
+    return Array(5)
+      .fill(0)
+      .map(() => [
+        Math.floor(Math.random() * 4) + 7,
+        Math.floor(Math.random() * 6) + 1,
+      ]);
   });
 
-  React.useMemo(() => setP(pattern ?? p), [pattern, p]);
+  React.useMemo(() => {
+    if (pattern) setP(pattern);
+  }, [pattern]);
 
   return (
     <div className="pointer-events-none absolute left-1/2 top-0 -ml-20 -mt-2 h-full w-full [mask-image:linear-gradient(white,transparent)]">
@@ -94,7 +108,14 @@ interface GridPatternProps extends React.SVGProps<SVGSVGElement> {
   squares: number[][];
 }
 
-export function GridPattern({ width, height, x, y, squares, ...props }: GridPatternProps) {
+export function GridPattern({
+  width,
+  height,
+  x,
+  y,
+  squares,
+  ...props
+}: GridPatternProps) {
   const patternId = useId();
 
   return (
@@ -117,20 +138,18 @@ export function GridPattern({ width, height, x, y, squares, ...props }: GridPatt
         strokeWidth={0}
         fill={`url(#${patternId})`}
       />
-      {squares && (
-        <svg x={x} y={y} className="overflow-visible">
-          {squares.map(([x, y], i) => (
-            <rect
-              strokeWidth="0"
-              key={i}
-              width={width + 1}
-              height={height + 1}
-              x={x * width}
-              y={y * height}
-            />
-          ))}
-        </svg>
-      )}
+      <svg x={x} y={y} className="overflow-visible">
+        {squares.map(([xVal, yVal], i) => (
+          <rect
+            key={i}
+            width={width + 1}
+            height={height + 1}
+            x={xVal * width}
+            y={yVal * height}
+            strokeWidth="0"
+          />
+        ))}
+      </svg>
     </svg>
   );
 }

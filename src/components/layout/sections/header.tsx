@@ -6,7 +6,7 @@ export default function Header() {
       <section className="overflow-hidden m-4 min-w-10 dark:min-w-14 dark:m-4 lg:pt-[16px] dark:lg:pt-[16px] lg:pb-[0px]">
         <div className="container mx-auto">
           <div className="flex flex-wrap items-center justify-between -mx-4">
-            <div className="w-full px-4 lg:w-6/12">
+            <div className="w-full px-4 lg:w-7/12">
               <div className="flex items-center -mx-3 sm:-mx-4 dark:sm:-mx-4 dark:-mx-3">
                 <div className="w-full px-3 sm:px-4 xl:w-1/2">
                   <div className="py-3 sm:py-4">
@@ -54,20 +54,20 @@ export default function Header() {
             <div className="w-full px-4 lg:w-1/2 xl:w-5/12 pb-3 " >
               <div className="mt-10 lg:mt-0">
                 <span className="block mb-4 text-lg font-semibold text-primary dark:text-gray-300">
-                  The future of education is personalized.
+                  Tomorrow&apos;s education is personalize!
                 </span>
                 <h2 className="mb-5 text-3xl font-bold dark:text-gray-400 sm:text-[40px]/[48px]">
-                  What if every student could become?
+                  Will you join us in shaping the future of education?
                 </h2>
                 <p className="mb-5 text-base text-body-color dark:text-gray-500">
-                  Learners loose their dreams because of a one-for-all instruction model.
+                  Are you an expert STEM educator, curriculum designer, or learning scientist 
+                  with a unique approach to teaching? Mark AI invites you to share your wisdom and be an architect of tomorrow&apos;s education.
                 </p>
                 <p className="mb-8 text-base text-body-color dark:text-gray-500">
-                  Using AI, we help teachers understand each learner and tailor support to them.
-                  We&#39;re building a new way of instruction and learning backed by the decades of
-                  research in the science of learning creating unique experiences for both the
-                  the teachers and students. We&#39;re looking for principals or headteachers, students
-                  and parents who want to build this new future of education, will you answer?
+                   We&#39;re working towards a shared vision of putting an intelligent personalized
+                   teacher in every learner&#39;s pocket beginning with STEM subjects. 
+                   This will bridge the teacher:student gap, address poor performances, and the misalignments between industry requirements
+                   and curricula creating a new generation of people ready to transform the world.
                 </p>
                 <a
                   href="mailto:info@xrefracted.com ?subject=How%20Can%20We%20Collaborate?"

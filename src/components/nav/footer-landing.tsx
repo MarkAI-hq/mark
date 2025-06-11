@@ -14,7 +14,7 @@ export const FooterSection = () => {
   const { theme } = useTheme();
   const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
-  const logoSrc = theme === "light" ? "/assets/images/markWhiteBg.png" : "/assets/images/markBlackBg.png";
+  const logoSrc = theme === "dark" ? "/assets/images/markBlackBg.png" : "/assets/images/markWhiteBg.png";
 
   return (
     <footer id="footer" className="container py-24 sm:py-32 center p-10 mx-auto">
@@ -36,19 +36,18 @@ export const FooterSection = () => {
             <h3 className="font-bold text-lg">Contact</h3>
             <div>
               <Link href="#" className="opacity-60 hover:opacity-100">
-                Github
+                info@xrefracted.com
               </Link>
             </div>
 
             <div>
               <Link href="#" className="opacity-60 hover:opacity-100">
-                Twitter
+                +256-776-289-124
               </Link>
             </div>
-
             <div>
               <Link href="#" className="opacity-60 hover:opacity-100">
-                Instagram
+                Get a Demo
               </Link>
             </div>
           </div>
@@ -89,8 +88,8 @@ export const FooterSection = () => {
             </div>
 
             <div>
-              <Link href="#" className="opacity-60 hover:opacity-100">
-                Feedback
+              <Link href="/assets/MarkPP.pdf" className="opacity-60 hover:opacity-100" target="_blank">
+                Privacy Policy
               </Link>
             </div>
           </div>
@@ -110,7 +109,7 @@ export const FooterSection = () => {
             </div>
 
             <div>
-              <Link href="#" className="opacity-60 hover:opacity-100">
+              <Link href="www.linkedin.com/company/xrmark" className="opacity-60 hover:opacity-100" target="_blank">
                 Linkedin
               </Link>
             </div>

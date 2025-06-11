@@ -17,7 +17,7 @@ const sponsors: Sponsor[] = [
 
 export default function SponsorMarquee() {
   return (
-    <div className="w-2/3 flex justify-center py-12 pb-15 mx-auto">
+    <div className="w-3/3 flex justify-center py-12 pb-15 mx-auto px-20">
       <div className="overflow-hidden bg-background text-center">
         <h3 className="mb-6 text-center text-3xl font-semibold">Featured on</h3>
         <Marquee className="gap-[4rem] [--duration:25s]">
