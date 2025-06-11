@@ -201,11 +201,10 @@ export async function verifyEmail(
     token: string
 ): Promise<{ data?: ApiResponse<VerifyEmailSuccessPayload>; error?: { message: string; status?: number } }> {
     try {
-        // The fetcher utility is expected to handle the API response wrapping in ApiResponse<T>
         const { data, error } = await fetcher<ApiResponse<VerifyEmailSuccessPayload>>(
-            '/auth/verify-email', // <-- IMPORTANT: Confirm this is your backend's exact endpoint
+            '/auth/verify-email', 
             {
-                method: 'POST', // POST is recommended for sending data and changing state on the server
+                method: 'POST', 
                 headers: {
                     'Content-Type': 'application/json',
                 },
@@ -218,7 +217,7 @@ export async function verifyEmail(
 
     } catch (err: unknown) { // Use unknown for caught errors
         let errorMessage = 'An unexpected error occurred during email verification.';
-        let errorStatus: number | undefined = 500; // Initialize with 'let' if it might be reassigned
+        let errorStatus: number | undefined = 500; 
 
         if (err instanceof Error) {
             errorMessage = err.message;
@@ -239,5 +238,18 @@ export async function verifyEmail(
     }
 }
 
+export async function fetchNewTokens(refreshToken: string) {
+  const { data, error } = await fetcher<ApiResponse<RefreshTokenResponse>>(
+    '/auth/refresh',
+    {
+      method: 'POST',
+      body: JSON.stringify({ refreshToken }),
+      headers: { 'Content-Type': 'application/json' },
+    }
+  );
+
+  if (error) return { error };
+  return { tokens: data };
+}
 
 

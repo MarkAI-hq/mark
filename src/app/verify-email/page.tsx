@@ -1,12 +1,11 @@
-// src/app/verify-email/page.tsx
 'use client';
 
 import { useEffect, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { verifyEmail } from '@/lib/actions/auth'; // Import the new verifyEmail action
+import { verifyEmail } from '@/lib/actions/auth'; 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2 } from 'lucide-react'; // Example icon for loading state, install if you don't have it: npm install lucide-react
+import { Loader2 } from 'lucide-react'; 
 
 export default function VerifyEmailPage() {
     const searchParams = useSearchParams();
@@ -34,15 +33,13 @@ export default function VerifyEmailPage() {
                 setStatusMessage('Email verified successfully! Redirecting to login...');
                 setVerificationStatus('success');
                 toast.success('Email Verified', { description: data.message || 'Your email has been successfully verified.' });
-                // Redirect to login page after a short delay
                 setTimeout(() => {
-                    router.push('/login');
+                    router.push('/dashboard/subjects');
                 }, 2000);
             } else {
                 setStatusMessage(`Verification failed: ${error?.message || 'An unknown error occurred.'}`);
                 setVerificationStatus('error');
-                toast.error('Verification Failed', { description: error?.message || 'An error occurred during verification.' });
-                // Optionally redirect to a page explaining the error or back to signup
+                toast.error('Verification Failed', { description: error?.message || 'An error occurred during verification. You are being redirected to the signup page' });
                 setTimeout(() => {
                      router.push('/signup'); // Or a specific error page
                 }, 3000);
@@ -50,7 +47,7 @@ export default function VerifyEmailPage() {
         };
 
         handleVerification();
-    }, [searchParams, router]); // Re-run effect if searchParams or router change
+    }, [searchParams, router]); 
 
     return (
         <div className="flex items-center justify-center min-h-screen bg-gray-50 dark:bg-gray-900">

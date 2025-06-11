@@ -10,15 +10,11 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
-   // Allow static files
-   if (pathname.startsWith('/assets/images/')) {
-    return NextResponse.next();
+  // Allow static files and public auth pages
+  const allowedPaths = ['/assets/images/', '/signup', '/forgotpassword', '/reset-password', "/assets/MarkPP.pdf"]
+  if (allowedPaths.some(path => pathname.startsWith(path))) {
+    return NextResponse.next()
   }
-//Allow sign up
-   if (pathname.startsWith('/signup')) {
-    return NextResponse.next();
-  }
-
 
   // Handle the login page
   if (pathname.startsWith('/login')) {
