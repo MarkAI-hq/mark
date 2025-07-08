@@ -1,6 +1,18 @@
 export type ApiResponse<T> = {
 	data?: T
+	message: string; 
 	error?: { message: string; status: number }
+}
+
+export type SignUpResponse = {
+	message: string
+	user: {
+		id: string
+		name: string
+		email: string
+		role: string
+		isVerified: boolean
+	}
 }
 
 export type LoginResponse = {
@@ -137,4 +149,10 @@ export type QuestionStat = {
 	averageScore: number
 	percentageScore: number
 	attemptsCount: number
+}
+
+export interface VerifyEmailSuccessPayload {
+    message: string; // The specific message returned by the verify email endpoint
+    // Add any other specific data your backend returns after successful verification (e.g., user details)
+    // For example: user?: { id: string; email: string; isVerified: boolean; };
 }

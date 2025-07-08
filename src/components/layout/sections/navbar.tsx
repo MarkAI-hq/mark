@@ -36,14 +36,18 @@ interface FeatureProps {
 
 const routeList: RouteProps[] = [
   {
-    href: "login",
+    href: "mailto:info@xrefracted.com ?subject=Mark%20AI",
     label: "Demo",
   },
   {
-    href: "mailto:info@xrefracted.com ?subject=Mark%20AI",
-    label: "Contact Us",
+    href: "/signup",
+    label: "Start for free",
   },
   {
+    href: "/login",
+    label: "Login",
+  },
+   {
     href: "#faq",
     label: "FAQ",
   },
@@ -154,7 +158,6 @@ export const Navbar = () => {
           </NavigationMenuItem>
         </NavigationMenuList>
       </NavigationMenu>
-
       <div className="hidden lg:flex">
         <ThemeToggle />
       </div>

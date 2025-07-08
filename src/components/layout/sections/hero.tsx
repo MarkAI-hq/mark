@@ -12,6 +12,7 @@ import { ArrowRight } from "lucide-react";
 export const HeroSection = () => {
   const { theme } = useTheme();
   const [isMobile, setIsMobile] = useState(false);
+  const defaultImageUrl = "/assets/images/dashWhite.jpg";
 
   useEffect(() => {
     const handleResize = () => {
@@ -29,37 +30,38 @@ export const HeroSection = () => {
   const imageUrl =
     theme === "light"
       ? "/assets/images/dashWhite.jpg"
-      : "/assets/images/dashDark.jpg";
-
+      : theme === "dark"
+      ? "/assets/images/dashDark.jpg"
+      : defaultImageUrl; // Use default if theme is neither light nor dark
+      
   const placeholderSrc = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII="; // Tiny transparent placeholder
 
   return (
     <section className="container w-full mx-auto">
       <div className="grid place-items-center lg:max-w-screen-xl gap-8 mx-auto py-20 md:py-32">
-        <div className="text-center space-y-8">
-          <Badge variant="outline" className="text-sm py-2">
+        <div className="text-center space-y-8 px-3">
+          <Badge variant="outline" className="text-sm py-2 px-3">
             <span className="mr-2 text-primary">
-              <Badge>New</Badge>
+              <Badge>Mark AI</Badge>
             </span>
-            <span> The Teachers' evaluation companion! </span>
+            <span> The future of learning is here! </span>
           </Badge>
-
-          <div className="max-w-screen-sm mx-auto text-center text-3xl md:text-5xl font-bold">
+          <div className="max-w-4xl mx-auto text-center text-2xl md:text-5xl sm:text-4xl font-bold px-2">
             <h1>
-              Accelerated Assessments.
+              Unlock teaching potential with
               <span className="text-transparent px-2 bg-gradient-to-r from-[#D247BF] to-primary bg-clip-text">
-                Personalized Learning
+                the world’s most complete AI platform
               </span>
-              In Minutes.
+              for personalized learning.
             </h1>
           </div>
-          <p className="max-w-screen-sm mx-auto text-base sm:text-lg md:text-xl text-muted-foreground px-6">
-            Mark AI helps teachers create and grade assignments in minutes and provide personalized feedback helping student's perform at their best.
+          <p className="max-w-4xl mx-auto text-base sm:text-lg md:text-2xl text-muted-foreground px-4 leading-tight text-balance">
+            Mark AI is the only platform that combines advanced AI with a high-precision proprietary knowledge graph that turns educational wisdom into dynamic, adaptive learning experiences for every student at scale.
           </p>
           <div className="space-y-4 md:space-y-0 md:space-x-4">
             <Button className="font-bold group/arrow">
-              <Link href="/login">
-                Start Grading Now
+              <Link href="/signup">
+                Start for free
               </Link>
               <ArrowRight className="size-5 ml-2 group-hover/arrow:translate-x-1 transition-transform" />
             </Button>
@@ -67,19 +69,19 @@ export const HeroSection = () => {
             <Button
               asChild
               variant="secondary"
-              className="w-5/6 md:w-1/4 font-bold"
+              className="w-4/6 md:w-1/4 font-bold"
             >
               <Link
                 href="mailto:info@xrefracted.com?subject=Mark AI"
                 target="_blank"
               >
-                Talk to Us
+                Get a demo
               </Link>
             </Button>
           </div>
         </div>
 
-        <div className="relative group mt-14">
+        <div className="relative group mt-14 px-2">
           <div className="absolute top-2 lg:-top-8 left-1/2 transform -translate-x-1/2 w-[90%] mx-auto h-24 lg:h-80 bg-primary/50 rounded-full blur-3xl"></div>
 
           <Image

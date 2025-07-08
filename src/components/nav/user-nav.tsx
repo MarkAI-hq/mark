@@ -31,7 +31,7 @@ export function UserNav() {
 			}
 
 			// Redirect to login
-			router.push('/login')
+			router.push('/')
 		} catch (err) {
 			toast.error('Error', {
 				description: err instanceof Error ? err.message : 'Failed to logout'
@@ -69,7 +69,7 @@ export function UserNav() {
 					<DropdownMenuSeparator />
 					<DropdownMenuItem
 						className='cursor-pointer'
-						onClick={() => router.push('/dashboard/profile')}
+						onClick={() => router.push('#')}
 					>
 						Profile
 					</DropdownMenuItem>
