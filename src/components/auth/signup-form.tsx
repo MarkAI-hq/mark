@@ -6,10 +6,8 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { toast } from 'sonner'
 import Link from 'next/link'
-
-// --- IMPORTS FOR zod-phone-number ---
 import { ZodPhoneNumber, RETURNING_FORMAT } from 'zod-phone-number'
-// ----------------------------------------
+
 
 import {
   Card,
@@ -28,11 +26,8 @@ import {
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import { signUp } from '@/lib/actions/auth' // Make sure this signature is (name, email, pass, phone: string, photo?: File)
+import { signUp } from '@/lib/actions/auth'
 
-//
-// ─── SCHEMA DEFINITION ────────────────────────────────────────────────────────────────
-//
 const formSchema = z
   .object({
     name: z.string().min(1, { message: 'Name is required.' }),
@@ -40,7 +35,6 @@ const formSchema = z
     password: z.string().min(8, { message: 'Password must be at least 8 characters.' }),
     confirmPassword: z.string().min(8, { message: 'Confirm Password must be at least 8 characters.' }),
 
-    // ─── PHONE FIELD: transform the ZodPhoneNumber output into a plain string ───
     phone: ZodPhoneNumber.phoneNumber({
       returningFormat: RETURNING_FORMAT['E.164'],
       // defaultRegion: 'UG',
@@ -53,16 +47,12 @@ const formSchema = z
       return val.formattedNumber
     }),
 
-    // ─── OPTIONAL PHOTO FIELD ───────────────────────────────────────────────────────
     photo: z.instanceof(File).optional(),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: 'Passwords do not match.',
     path: ['confirmPassword'],
   })
-//
-// ──────────────────────────────────────────────────────────────────────────────────────
-//
 
 export function SignUpForm() {
   const router = useRouter()
@@ -74,28 +64,41 @@ export function SignUpForm() {
       email: '',
       password: '',
       confirmPassword: '',
-      phone: '',      
-      photo: undefined,
+      phone: '',
     },
   })
 
-  async function onSubmit(values: z.infer<typeof formSchema>) {
-    const { name, email, password, phone, photo } = values
+  async function onSubmit({
+		name,
+		email,
+		password,
+		phone,
+		photo
+	}: z.infer<typeof formSchema>) {
+    const formData = new FormData()
+		formData.append('name', name)
+		formData.append('email', email)
+		formData.append('password', password)
+		formData.append('phone', phone)
+		// Only append the photo if it exists
+		if (photo && photo instanceof File) {
+			formData.append('photo', photo)
+		}
 
-    const { data, error } = await signUp(name, email, password, phone, photo)
+		const { data, error } = await signUp(formData)
 
-    if (data) {
-      toast.success('Success', {
-        description: `Registration successful. Please check your email to verify your account.`,
-      })
-      router.push('/dashboard')
-    }
-    if (error) {
-      toast.error('Sign up failed', {
-        description: error.message || 'An error occurred during sign up',
-      })
-    }
-  }
+		if (data) {
+			toast.success('Success', {
+				description: `Registration successful. Please check your email to verify your account.`
+			})
+			router.push('/login')
+		}
+		if (error) {
+			toast.error('Sign up failed', {
+				description: error.message || 'An error occurred during sign up'
+			})
+		}
+	}
 
   return (
     <Card className="w-full max-w-sm mx-auto my-8 p-4 md:p-6 shadow-lg rounded-lg">

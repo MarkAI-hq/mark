@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
-import { refreshAccessToken } from './lib/actions/auth'
+import { refreshTokens } from './lib/actions/auth'
 
 export async function middleware(request: NextRequest) {
   const { pathname, search } = request.nextUrl
@@ -11,7 +11,13 @@ export async function middleware(request: NextRequest) {
   }
 
   // Allow static files and public auth pages
-  const allowedPaths = ['/assets/images/', '/signup', '/forgotpassword', '/reset-password', "/assets/MarkPP.pdf"]
+  const allowedPaths = [
+		'/assets/',
+		'/signup',
+		'/verify-email',
+		'/forgot-password',
+		'/reset-password',
+	]
   if (allowedPaths.some(path => pathname.startsWith(path))) {
     return NextResponse.next()
   }
@@ -23,7 +29,7 @@ export async function middleware(request: NextRequest) {
 
     // If the user is already authenticated, redirect to the root (default page)
     if (token && user) {
-      return NextResponse.redirect(new URL('/', request.url))
+      return NextResponse.redirect(new URL('/dashboard', request.url))
     }
     return NextResponse.next()
   }
@@ -36,7 +42,7 @@ export async function middleware(request: NextRequest) {
   if (!token || !user) {
     if (refreshToken) {
       // Attempt to refresh the access token
-      const { data: tokens } = await refreshAccessToken()
+      const { data: tokens } = await refreshTokens()
       if (tokens) {
         // Token refreshed successfully, proceed to the requested page
         return NextResponse.next()

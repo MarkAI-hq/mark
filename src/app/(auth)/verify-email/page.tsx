@@ -3,9 +3,10 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { verifyEmail } from '@/lib/actions/auth'; 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { verifyEmail } from '@/lib/actions/auth';
 import { Loader2 } from 'lucide-react'; 
+
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 export default function VerifyEmailPage() {
     const searchParams = useSearchParams();

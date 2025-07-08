@@ -117,7 +117,7 @@ export function LoginForm() {
                             {form.formState.isSubmitting ? 'Signing in...' : 'Sign in'}
                         </Button>
                         <div className="flex justify-between mt-2">
-                            <Link href="/forgotpassword" className="text-sm hover:underline">
+                            <Link href="/forgot-password" className="text-sm hover:underline">
                                 Forgot password?
                             </Link>
                             <Link href="/signup" className="text-sm hover:underline ">

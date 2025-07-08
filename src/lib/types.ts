@@ -4,6 +4,17 @@ export type ApiResponse<T> = {
 	error?: { message: string; status: number }
 }
 
+export type SignUpResponse = {
+	message: string
+	user: {
+		id: string
+		name: string
+		email: string
+		role: string
+		isVerified: boolean
+	}
+}
+
 export type LoginResponse = {
 	accessToken: string
 	refreshToken: string
