@@ -1,10 +1,10 @@
 'use server'
 
 import { fetcher } from '@/lib/fetch'
-import { ApiResponse, DashboardStats } from '../types'
+import { ServerActionResponse, DashboardStats } from '../types'
 
 export async function getStats() {
-	const { data, error } = await fetcher<ApiResponse<DashboardStats>>('/stats')
+	const { data, error } = await fetcher<ServerActionResponse<DashboardStats>>('/stats')
 
 	if (data) return data
 

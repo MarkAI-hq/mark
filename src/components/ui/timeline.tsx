@@ -37,12 +37,14 @@ export const Timeline = ({ data }: { data: TimelineEntry[] }) => {
       ref={containerRef} 
     >
       <div className="max-w-7xl mx-auto py-15 px-4 md:px-4 lg:px-10">
-        <h1 className="text-lg md:text-5xl mb-4 text-black font-medium dark:text-white max-w-4xl">
-          A personalized teacher in every student&apos;s pocket anywhere!
+        <h1 className="text-lg md:text-5xl mb-4 font-medium max-w-4xl bg-gradient-to-r from-[#926C15] to-primary bg-clip-text text-transparent dark:text-transparent">
+          A genius assistant in every teacher&apos;s pocket anywhere!
         </h1>
         <h3 className="text-neutral-600 dark:text-neutral-400 text-sm md:text-xl max-w-xl">
-          We&apos;re working on Mark AI&apos;s education intelligence platform for the future. Here&apos;s
-          a view of our approach.
+          Teachers know every student learns differently, but lack the time to personalize instruction. Instead, they spend countless hours grading papers and analyzing student work. Understanding how each student thinks and learns requires insights into educational psychology and data analysis that most teachers don't have time to develop. MarkAI reveals exactly how teachers should support every learner best with every assessment.
+        </h3>
+        <h3 className="text-[#926C15] dark:text-neutral-400 font-bold text-sm md:text-xl max-w-xl pt-4  bg-gradient-to-r from-[#926C15] to-primary bg-clip-text text-transparent dark:text-transparent">
+           Schools using MarkAI improve test scores by 10% annually.
         </h3>
       </div>
 
@@ -56,13 +58,13 @@ export const Timeline = ({ data }: { data: TimelineEntry[] }) => {
               <div className="h-10 absolute left-3 md:left-3 w-10 rounded-full bg-white dark:bg-black flex items-center justify-center">
                 <div className="h-4 w-4 rounded-full bg-neutral-200 dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 p-2" />
               </div>
-              <h3 className="hidden md:block text-xl md:pl-20 md:text-4xl font-bold text-neutral-500 dark:text-neutral-500 ">
+              <h3 className="hidden md:block text-xl md:pl-20 md:text-4xl font-bold text-transparent px-2 bg-gradient-to-r from-[#926C15] to-primary bg-clip-text">
                 {item.title}
               </h3>
             </div>
 
             <div className="relative pl-20 pr-4 md:pl-4 w-full">
-              <h3 className="md:hidden block text-2xl mb-4 text-left font-bold text-neutral-500 dark:text-neutral-500">
+              <h3 className="md:hidden block text-2xl mb-4 text-left font-bold text-transparent px-2 bg-gradient-to-r from-[#926C15] to-primary bg-clip-text">
                 {item.title}
               </h3>
               {item.content}{" "}
@@ -80,7 +82,7 @@ export const Timeline = ({ data }: { data: TimelineEntry[] }) => {
               height: heightTransform,
               opacity: opacityTransform,
             }}
-            className="absolute inset-x-0 top-0  w-[2px] bg-gradient-to-t from-purple-500 via-blue-500 to-transparent from-[0%] via-[10%] rounded-full"
+            className="absolute inset-x-0 top-0 w-[2px] bg-gradient-to-t from-[#926C15] via-black to-white from-[0%] via-[10%] rounded-full"
           />
         </div>
       </div>

@@ -10,6 +10,7 @@ interface Sponsor {
 }
 
 const sponsors: Sponsor[] = [
+  // { logo: "/assets/images/fsbadge.png", name: "FS6" },
   { logo: "/assets/images/unacuall.jpg", name: "UNACU" },
   { logo: "/assets/images/pctechall.jpg", name: "PCTech Magazine" },
   { logo: "/assets/images/hopechannelall.png", name: "Hope Channel" },

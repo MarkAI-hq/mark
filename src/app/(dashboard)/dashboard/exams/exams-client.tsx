@@ -1,112 +1,124 @@
+//src/app/(dashboard)/dashboard/exams/exams-client.tsx
 'use client'
 
-import { useState } from 'react'
-import { toast } from 'sonner'
-import { Plus } from 'lucide-react'
-import { useHotkeys } from 'react-hotkeys-hook'
+import { useState, useTransition } from 'react';
+import { toast } from 'sonner'; // toast is already imported
+import { Plus } from 'lucide-react';
+import { useHotkeys } from 'react-hotkeys-hook';
 
-import { Button } from '@/components/ui/button'
-import { ExamsTable } from '@/components/exams/exams-table'
-import { DeleteSubjectDialog } from '@/components/subjects/delete-subject-dialog'
-import { Exam, Subject } from '@/lib/types'
-import { deleteExam } from '@/lib/actions/exams'
-import { ExamDialog } from '@/components/exams/exam-dialog'
-import { AnswerDialog } from '@/components/exams/answer-dialog'
+import { Button } from '@/components/ui/button';
+import { ExamsTable } from '@/components/exams/exams-table';
+import { ConfirmDialog } from '@/components/common/confirm-dialog';
+import { Assessment, deleteAssessment } from '@/lib/actions/assessments';
+import { Subject } from '@/lib/types';
+import { ExamDialog } from '@/components/exams/exam-dialog';
 
 interface ExamsClientProps {
-	exams: Exam[]
-	subjects: Subject[]
+  assessments: Assessment[];
+  subjects: Subject[];
 }
 
-export function ExamsClient({ exams, subjects }: ExamsClientProps) {
-	const [selectedExam, setSelectedExam] = useState<Exam>()
-	const [dialogOpen, setDialogOpen] = useState(false)
-	const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
-	const [uploadDialogOpen, setUploadDialogOpen] = useState(false)
+export function ExamsClient({ assessments, subjects }: ExamsClientProps) {
+  const [assessmentList, setAssessmentList] = useState<Assessment[]>(assessments);
+  const [selectedAssessment, setSelectedAssessment] = useState<Assessment | undefined>();
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [isPending, startTransition] = useTransition();
 
-	const resetState = () => {
-		setSelectedExam(undefined)
-		setDialogOpen(false)
-		setDeleteDialogOpen(false)
-		setUploadDialogOpen(false)
-	}
+  const resetState = () => {
+    setSelectedAssessment(undefined);
+    setDialogOpen(false);
+    setDeleteDialogOpen(false);
+  };
 
-	useHotkeys('n', () => setDialogOpen(true), {
-		preventDefault: true,
-		description: 'Create new exam'
-	})
+  const handleOpenNewDialog = () => {
+    setSelectedAssessment(undefined);
+    setDialogOpen(true);
+  };
 
-	useHotkeys('escape', resetState, {
-		preventDefault: true,
-		description: 'Close dialogs'
-	})
+  useHotkeys('n', handleOpenNewDialog, {
+    preventDefault: true,
+    description: 'Create new assessment',
+  });
 
-	const handleDelete = async () => {
-		if (!selectedExam) return
+  useHotkeys('escape', resetState, {
+    preventDefault: true,
+    description: 'Close dialogs',
+  });
 
-		const { data, error } = await deleteExam(selectedExam.id)
-		if (data) {
-			resetState()
-			toast.success('Exam deleted successfully')
-		}
+  const handleDelete = () => {
+    if (!selectedAssessment) return;
 
-		if (error) {
-			toast.error('Error', { description: error.message })
-		}
-	}
+    // Move toast.promise OUTSIDE of startTransition
+    toast.promise(
+      deleteAssessment(selectedAssessment.assessment_id),
+      {
+        loading: 'Deleting assessment...',
+        success: (res) => {
+          if (res.error) {
+            throw new Error(res.error.message);
+          }
+          // Use startTransition only for the state update
+          startTransition(() => {
+            setAssessmentList((prevList) =>
+              prevList.filter((item) => item.assessment_id !== selectedAssessment.assessment_id),
+            );
+          });
+          resetState();
+          return res.data?.message || 'Assessment deleted successfully.';
+        },
+        error: (err) => {
+          return err.message || 'Failed to delete assessment.';
+        },
+      }
+    );
+  };
 
-	return (
-		<>
-			<ExamsTable
-				data={exams}
-				onEdit={(exam) => {
-					setSelectedExam(exam)
-					setDialogOpen(true)
-				}}
-				onDelete={(exam) => {
-					setSelectedExam(exam)
-					setDeleteDialogOpen(true)
-				}}
-				onUpload={(exam) => {
-					setSelectedExam(exam)
-					setUploadDialogOpen(true)
-				}}
-				headerSlot={
-					<Button onClick={() => setDialogOpen(true)} id="create-exam">
-						<Plus className='mr-2 h-4 w-4' />
-						New Exam
-					</Button>
-				}
-			/>
+  return (
+    <>
+      <div className="flex items-center justify-between mb-4">
+        <div />
+        <Button onClick={handleOpenNewDialog} id="create-assessment">
+          <Plus className="mr-2 h-4 w-4" />
+          New Assessment
+        </Button>
+      </div>
 
-			<DeleteSubjectDialog
-				open={deleteDialogOpen}
-				onOpenChange={setDeleteDialogOpen}
-				onConfirm={handleDelete}
-				subjectTitle={selectedExam?.title || ''}
-			/>
+      <ExamsTable
+        data={assessmentList}
+        onEdit={(assessment) => {
+          setSelectedAssessment(assessment);
+          setDialogOpen(true);
+        }}
+        onDelete={(assessment) => {
+          setSelectedAssessment(assessment);
+          setDeleteDialogOpen(true);
+        }}
+      />
 
-			<ExamDialog
-				key={selectedExam?.id || 'new'}
-				open={dialogOpen}
-				subjects={subjects}
-				exam={selectedExam}
-				onOpenChange={(open) => {
-					setDialogOpen(open)
-					if (!open) setSelectedExam(undefined)
-				}}
-			/>
+      <ConfirmDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        onConfirm={handleDelete}
+        title="Are you sure?"
+        description={`This will permanently delete the "${selectedAssessment?.title || 'assessment'}" and all of its associated data. This action cannot be undone.`}
+        confirmText={isPending ? 'Deleting...' : 'Yes, Delete Assessment'}
+        isDestructive
+      />
 
-			{selectedExam && (
-				<AnswerDialog
-					open={uploadDialogOpen}
-					examId={selectedExam.id}
-					onOpenChange={(open) => {
-						setUploadDialogOpen(open)
-						if (!open) setSelectedExam(undefined)
-					}}
-				/>
-			)}
-		</>
-	)
+      <ExamDialog
+        key={selectedAssessment?.assessment_id || 'new'}
+        open={dialogOpen}
+        subjects={subjects}
+        assessment={selectedAssessment}
+        onOpenChange={(open) => {
+          if (!open) {
+            resetState();
+          } else {
+            setDialogOpen(true);
+          }
+        }}
+      />
+    </>
+  );
 }

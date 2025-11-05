@@ -1,11 +1,5 @@
-import { Metadata } from 'next'
-import { SignUpForm } from '@/components/auth/signup-form'
-
-export const metadata: Metadata = {
-    title: 'Sign Up - Mark',
-    description: ' Create your account'
-}
+import { MultiStepSignupForm } from "@/components/auth/multi-step-signup-form"
 
 export default function SignUpPage() {
-    return <SignUpForm />
+    return <MultiStepSignupForm />
 } 

@@ -6,7 +6,7 @@ import React from "react";
 export function FeaturesSection() {
   return (
     <div className="py-15 px-5 lg:py-30">
-      <h2 className="text-4xl md:text-5xl text-center font-bold mb-4 py-10">
+      <h2 className="text-4xl md:text-5xl text-center font-bold mb-4 py-10 text-transparent px-2 bg-gradient-to-r from-[#926C15] to-primary bg-clip-text">
         Transformative Benefits
       </h2>
       <p className="text-xl text-center text-neutral-700 dark:text-neutral-300 mb-12 max-w-3xl mx-auto">
@@ -47,7 +47,7 @@ const grid = [
       "Mark AI handles both digital and handwritten assignments at all levels of learning in minutes.",
     applications: [
                   " Truly Personalized Learning: Experience education tailored precisely to their unique needs, learning styles, and pace.", 
-                  " Deeper Understanding: Overcome misconceptions with adaptive explanations and varied teaching methods.", 
+                  " Deeper Understanding: Get personalized learning methods based on our proprietary technology on diagnosing student cognitive abilities and thinking errors.", 
                   " Enhanced Engagement: Stay motivated with relevant, challenging, and supportive learning paths.",
                   "Achieve More: Measurably improve outcomes and build lasting knowledge."
                   ],
@@ -58,7 +58,7 @@ const grid = [
       "Drastically reduce the burden of differentiation. Provide expert pedagogy and student insights.",
     applications: [
       "Scale True Personalization: Implement individualized learning across your school or district, moving beyond generic content delivery.",
-      "Empower Your Teachers: Drastically reduce the burden of differentiation. Provide powerful, data-driven insights into student needs and access to a wealth of expert pedagogical strategies.",
+      "Empower Your Teachers: Automate assessments in seconds so teachers have more time for the classroom. MarkAI provides powerful, data-driven insights into student needs, addressing critical learning gaps affecting the way of learning.",
       "Integrate Best Practices: Seamlessly incorporate cutting-edge teaching methodologies and research-backed approaches into your curriculum.",
       "Data-Driven Pedagogical Insights: Gain unprecedented analytics on what pedagogical strategies work best for which learners, driving continuous improvement."
     ],

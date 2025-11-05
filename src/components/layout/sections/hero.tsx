@@ -44,19 +44,19 @@ export const HeroSection = () => {
             <span className="mr-2 text-primary">
               <Badge>Mark AI</Badge>
             </span>
-            <span> The future of learning is here! </span>
+            <span className="text-transparent px-2 bg-gradient-to-r from-[#926C15] to-primary bg-clip-text"> The future of learning is here! </span>
           </Badge>
           <div className="max-w-4xl mx-auto text-center text-2xl md:text-5xl sm:text-4xl font-bold px-2">
             <h1>
               Unlock teaching potential with
-              <span className="text-transparent px-2 bg-gradient-to-r from-[#D247BF] to-primary bg-clip-text">
-                the world’s most complete AI platform
+              <span className="text-transparent px-2 bg-gradient-to-r from-[#926C15] to-primary bg-clip-text">
+                the world&apos;s most complete AI platform
               </span>
               for personalized learning.
             </h1>
           </div>
           <p className="max-w-4xl mx-auto text-base sm:text-lg md:text-2xl text-muted-foreground px-4 leading-tight text-balance">
-            Mark AI is the only platform that combines advanced AI with a high-precision proprietary knowledge graph that turns educational wisdom into dynamic, adaptive learning experiences for every student at scale.
+            MarkAI uniquely combines advanced AI with educational psychology and teacher expertise to deliver instant personalized learning intelligence for students and real-time actionable teaching insights helping schools improve test scores by 10% annually at scale.
           </p>
           <div className="space-y-4 md:space-y-0 md:space-x-4">
             <Button className="font-bold group/arrow">
@@ -69,7 +69,7 @@ export const HeroSection = () => {
             <Button
               asChild
               variant="secondary"
-              className="w-4/6 md:w-1/4 font-bold"
+              className="w-4/6 md:w-1/4 font-bold hover:bg-[#926C15] hover:text-white"
             >
               <Link
                 href="mailto:info@xrefracted.com?subject=Mark AI"
@@ -82,14 +82,14 @@ export const HeroSection = () => {
         </div>
 
         <div className="relative group mt-14 px-2">
-          <div className="absolute top-2 lg:-top-8 left-1/2 transform -translate-x-1/2 w-[90%] mx-auto h-24 lg:h-80 bg-primary/50 rounded-full blur-3xl"></div>
+          <div className="absolute top-2 lg:-top-8 left-1/2 transform -translate-x-1/2 w-[90%] mx-auto h-24 lg:h-80 bg-[#926C15]/50 rounded-full blur-3xl"></div>
 
           <Image
             src={imageUrl}
             alt="dashboard"
             width={isMobile ? 383 : 767}
             height={isMobile ? 600 : 1200}
-            className="w-full md:w-[1000px] mx-auto rounded-lg relative rouded-lg leading-none flex items-center border border-t-2 border-secondary border-t-primary/30"
+            className="w-full md:w-[1000px] mx-auto rounded-lg relative rounded-lg leading-none flex items-center border border-t-2 border-secondary border-t-[#926C15]/30"
             placeholder={placeholderSrc}
           />
 

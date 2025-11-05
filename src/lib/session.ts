@@ -1,47 +1,24 @@
-import { jwtDecode } from 'jwt-decode'
-import { cookies } from 'next/headers'
+// src/lib/session.ts
+import { cookies } from 'next/headers';
+import type { User } from './types';
 
-interface JwtPayload {
-  exp: number
-  iat: number
-  sub: string
-}
+/**
+ * @returns The parsed User object or null if the user is not logged in or the cookie is invalid.
+ */
+export async function getSession(): Promise<User | null> {
+  const cookieStore = await cookies();
+  const userCookie = cookieStore.get('user')?.value;
 
-export async function getSession() {
+  if (!userCookie) {
+    return null;
+  }
+
   try {
-    const cookieStore = await cookies()
-    const token = cookieStore.get('token')
-
-    if (!token?.value) {
-      return null
-    }
-
-    const decoded = jwtDecode<JwtPayload>(token.value)
-    const currentTime = Math.floor(Date.now() / 1000)
-
-    // Check if token is expired or will expire in the next 5 minutes
-    if (decoded.exp <= currentTime + 300) {
-      return null
-    }
-
-    return {
-      user: {
-        id: decoded.sub,
-      },
-      expires: new Date(decoded.exp * 1000),
-    }
-  } catch {
-    return null
+    // Safely parse the user data from the cookie.
+    const user: User = JSON.parse(userCookie);
+    return user;
+  } catch (error) {
+    console.error('Failed to parse user cookie:', error);
+    return null;
   }
 }
-
-export function isTokenExpired(token: string) {
-  try {
-    const decoded = jwtDecode<JwtPayload>(token)
-    const currentTime = Math.floor(Date.now() / 1000)
-
-    return decoded.exp <= currentTime
-  } catch {
-    return true
-  }
-} 

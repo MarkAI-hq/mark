@@ -1,7 +1,7 @@
 'use server'
 
 import { fetcher } from '../fetch'
-import { ApiResponse } from '../types'
+import { ServerActionResponse } from '../types'
 
 interface User {
 	id: string
@@ -9,7 +9,7 @@ interface User {
 }
 
 export async function getUsers() {
-	return await fetcher<ApiResponse<User[]>>('/users', {
+	return await fetcher<ServerActionResponse<User[]>>('/users', {
 		cache: 'no-store'
 	})
 }

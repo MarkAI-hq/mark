@@ -32,7 +32,7 @@ function Card({ card }: { card: CardData }) {
       <div className="absolute bottom-0 w-full h-2/2 bg-white bg-opacity-60 backdrop-blur-md p-6 dark:bg-neutral-900 dark:bg-opacity-60">
         <p className="text-sm text-neutral-900 dark:text-neutral-200">{card.description}</p>
         <a href={card.buttonLink} target="_blank" rel="noopener noreferrer">
-          <Button variant="default" className="mt-4 flex items-center gap-2">
+          <Button variant="default" className="mt-4 flex items-center gap-2 hover:bg-[#926C15] hover:text-white">
             {card.buttonText}
             <svg
               xmlns="http://www.w3.org/2000/svg"
