@@ -3,7 +3,6 @@
 import { cookies } from 'next/headers'
 import { fetcher } from '../fetch'
 import type {
-  ApiResponse,
   LoginResponse,
   RegisterResponse,
   RefreshTokenResponse,
