@@ -1,4 +1,3 @@
-// src/components/auth/login-form.tsx
 'use client'
 
 import { useRouter, useSearchParams } from 'next/navigation'
@@ -7,7 +6,6 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import Link from 'next/link'
 
-// FIX: Import the correct toast function
 import { toast } from '@/hooks/use-toast'
 import {
   Card,
@@ -41,8 +39,7 @@ const formSchema = z.object({
 export function LoginForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const returnUrl =
-    searchParams.get('return_url') || '/dashboard/classes'
+  const returnUrl = searchParams.get('return_url') || '/dashboard/classes'
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -60,7 +57,6 @@ export function LoginForm() {
     const { data, error } = result
 
     if (data?.user) {
-      // FIX: Use the correct toast syntax
       toast({
         title: 'Success',
         description: `Welcome, ${data.user.first_name} ${data.user.last_name}`,
@@ -72,7 +68,6 @@ export function LoginForm() {
 
     if (error) {
       const message = error.message ?? 'Invalid email or password'
-      // FIX: Use the correct toast syntax with the 'destructive' variant for errors
       toast({
         title: 'Login failed',
         description: message,
@@ -141,7 +136,7 @@ export function LoginForm() {
               {form.formState.isSubmitting ? 'Signing in...' : 'Sign in'}
             </Button>
             <div className="flex justify-between mt-4 text-sm">
-              <Link href="/forgotpassword" className="hover:underline">
+              <Link href="/forgot-password" className="hover:underline">
                 Forgot password?
               </Link>
               <Link href="/signup" className="hover:underline">
@@ -154,3 +149,4 @@ export function LoginForm() {
     </Card>
   )
 }
+

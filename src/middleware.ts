@@ -1,12 +1,12 @@
-// src/middleware.ts
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
+import { refreshAccessToken } from './lib/actions/auth'  // use your updated function name
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
   const token = request.cookies.get('token')?.value
 
-  // Define paths that are considered public and do not require authentication
+  // Public or allowed paths that don't require authentication
   const publicPaths = [
     '/',
     '/login',
@@ -16,29 +16,38 @@ export async function middleware(request: NextRequest) {
     '/verify-email',
   ]
 
-  // Check if the current path is a public one (or an asset)
-  const isPublicPath =
-    publicPaths.includes(pathname) || pathname.startsWith('/assets')
+  const isPublicPath = publicPaths.includes(pathname) || pathname.startsWith('/assets')
 
-  if (token) {
-    // If the user is logged in and tries to access the login or signup page,
-    // redirect them to the main dashboard entry point.
-    if (pathname === '/login' || pathname === '/signup') {
+  // Allow public paths immediately
+  if (isPublicPath) {
+    // If user is logged in and tries to access login or signup, redirect to dashboard
+    if (token && (pathname === '/login' || pathname === '/signup')) {
       return NextResponse.redirect(new URL('/dashboard/classes', request.url))
     }
-    // Otherwise, allow them to proceed.
     return NextResponse.next()
   }
 
-  if (!token && !isPublicPath) {
-    // If the user is not logged in and trying to access a protected path,
-    // redirect them to the login page with a return URL.
+  // For protected routes, check tokens and user cookie
+  const refreshToken = request.cookies.get('refreshToken')?.value
+  const user = request.cookies.get('user')
+
+  if (!token || !user) {
+    if (refreshToken) {
+      // Try to refresh token via your server action
+      const { data: tokens } = await refreshAccessToken()
+      if (tokens) {
+        // Token refreshed, continue request
+        return NextResponse.next()
+      }
+    }
+
+    // Not authenticated: redirect to login with return_url
     const loginUrl = new URL('/login', request.url)
     loginUrl.searchParams.set('return_url', pathname)
     return NextResponse.redirect(loginUrl)
   }
 
-  // If none of the above, allow the request to proceed (for public pages).
+  // Authenticated, allow request to proceed
   return NextResponse.next()
 }
 

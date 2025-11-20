@@ -1,10 +1,9 @@
-// src/lib/actions/auth.ts
 'use server'
 
 import { cookies } from 'next/headers'
 import { fetcher } from '../fetch'
-// FIX: All these types now exist and are correctly defined in types.ts
 import type {
+  ApiResponse,
   LoginResponse,
   RegisterResponse,
   RefreshTokenResponse,
@@ -59,7 +58,6 @@ export async function login(email: string, password: string) {
       maxAge: 60 * 60 * 24 * 7,
     })
 
-    // This now works because data.user is correctly typed as BackendUser
     const frontendUser = transformUser(data.user)
     cookieStore.set('user', JSON.stringify(frontendUser), {
       secure: process.env.NODE_ENV === 'production',
@@ -107,9 +105,7 @@ export async function signUp(
     return { data: response.data, error: null }
   } catch (err) {
     const message =
-      err instanceof Error
-        ? err.message
-        : 'Registration failed due to an API error.'
+      err instanceof Error ? err.message : 'Registration failed due to an API error.'
     return { data: null, error: { message } }
   }
 }
@@ -204,14 +200,11 @@ export async function verifyEmail(token: string) {
 
 export async function resendVerificationEmail(email: string) {
   try {
-    const response = await fetcher<{ message: string }>(
-      '/auth/resend-verification',
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
-      },
-    )
+    const response = await fetcher<{ message: string }>('/auth/resend-verification', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    })
 
     if (response.error) {
       throw new Error(response.error.message)
@@ -220,9 +213,7 @@ export async function resendVerificationEmail(email: string) {
     return { data: response.data, error: null }
   } catch (err) {
     const message =
-      err instanceof Error
-        ? err.message
-        : 'Failed to resend verification email.'
+      err instanceof Error ? err.message : 'Failed to resend verification email.'
     return { data: null, error: { message, status: 500 } }
   }
 }

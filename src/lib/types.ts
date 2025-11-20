@@ -59,6 +59,17 @@ export interface BackendUser {
   roles: string[];
 }
 
+export type SignUpResponse = {
+	message: string
+	user: {
+		id: string
+		name: string
+		email: string
+		role: string
+		isVerified: boolean
+	}
+}
+
 export type LoginResponse = {
   accessToken: string;
   refreshToken: string;
