@@ -51,7 +51,7 @@ export function SubjectsClient({ subjects }: { subjects: Subject[] }) {
     const { data: subject, error } = await createSubject(data);
     if (subject) {
       setSubjectList(prev => [subject, ...prev]);
-      toast.success(`Subject "${subject.title}" created successfully`);
+      toast.success(`Subject "${subject.name}" created successfully`);
       setLastCreatedSubject(subject);
       setIsCreatingSubject(false);
     }
@@ -137,14 +137,14 @@ export function SubjectsClient({ subjects }: { subjects: Subject[] }) {
         open={!!subjectToDelete}
         onOpenChange={(open) => !open && setSubjectToDelete(undefined)}
         onConfirm={handleDelete}
-        subjectTitle={subjectToDelete?.title ?? ''}
+        subjectTitle={subjectToDelete?.name ?? ''}
       />
 
       {shouldShowCreateExam && (
         <div className="fixed inset-0 flex items-center justify-center z-50 bg-black/50">
           <div className="bg-background text-foreground border border-border p-6 rounded-xl shadow-xl w-full max-w-md">
             <p className="mb-4">
-              Subject &quot;{lastCreatedSubject?.title}&quot; created successfully. Would you like to create an exam for this subject now?
+              Subject &quot;{lastCreatedSubject?.name}&quot; created successfully. Would you like to create an exam for this subject now?
             </p>
             <div className="flex justify-end gap-4">
               <Button 
@@ -177,7 +177,6 @@ export function SubjectsClient({ subjects }: { subjects: Subject[] }) {
             setLastCreatedSubject(null);
           }
         }}
-        exam={undefined}
         subjects={lastCreatedSubject ? [lastCreatedSubject] : subjectList}
         initialCourseId={lastCreatedSubject?.id}
         disableCourseSelect={Boolean(lastCreatedSubject)}

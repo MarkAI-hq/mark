@@ -59,7 +59,7 @@ export const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <header className="shadow-inner bg-opacity-15 w-[90%] md:w-[70%] lg:w-[75%] lg:max-w-screen-xl top-5 mx-auto sticky border border-secondary z-40 rounded-2xl flex justify-between items-center p-2 bg-card mx-auto">
+    <header className="shadow-inner bg-opacity-15  w-[90%] md:w-[70%] lg:w-[75%] lg:max-w-screen-xl top-5 mx-auto sticky border border-secondary z-40 rounded-2xl flex justify-between items-center p-2 bg-card mx-auto">
       <Link href="/" className="font-bold text-lg flex items-center">
         <Image
           src="/assets/images/markWhiteBg.png"
@@ -83,7 +83,7 @@ export const Navbar = () => {
 
           <SheetContent
             side="left"
-            className="flex flex-col justify-between rounded-tr-2xl rounded-br-2xl bg-card border-secondary"
+            className="flex flex-col justify-between rounded-tr-2xl rounded-br-2xl bg-card border-secondary "
           >
             <div>
               <SheetHeader className="mb-4 ml-4">
@@ -106,7 +106,7 @@ export const Navbar = () => {
                     onClick={() => setIsOpen(false)}
                     asChild
                     variant="ghost"
-                    className="justify-start text-base"
+                    className="justify-start text-base hover:bg-[#926C15] hover:text-white"
                   >
                     <Link href={href}>{label}</Link>
                   </Button>
@@ -150,7 +150,7 @@ export const Navbar = () => {
           <NavigationMenuItem>
             {routeList.map(({ href, label }) => (
               <NavigationMenuLink key={href} asChild>
-                <Link href={href} className="text-base px-2">
+                <Link href={href} className="text-base px-2 hover:bg-[#926C15] hover:text-white hover:rounded-md py-1">
                   {label}
                 </Link>
               </NavigationMenuLink>

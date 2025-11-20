@@ -1,11 +1,11 @@
 import { Metadata } from 'next'
-import { SignUpForm } from '@/components/auth/signup-form'
+import { MultiStepSignupForm } from "@/components/auth/multi-step-signup-form"
 
 export const metadata: Metadata = {
-    title: 'Register - Mark',
-    description: ' Create your account'
+  title: 'Register - Mark',
+  description: 'Create your account'
 }
 
 export default function SignUpPage() {
-    return <SignUpForm />
-} 
+  return <MultiStepSignupForm />
+}

@@ -22,7 +22,7 @@ export function Footer() {
 				</div>
 				<div className='mt-8 md:order-1 md:mt-0'>
 					<p className='text-center text-sm text-muted-foreground'>
-						&copy; {getYear(new TZDate(new Date(), tz))} xRefracted.
+						&copy; {getYear(new TZDate(new Date(), tz))} Mark-AI Labs, Inc.
 					</p>
 				</div>
 			</div>

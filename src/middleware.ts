@@ -1,73 +1,58 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
-import { refreshTokens } from './lib/actions/auth'
+import { refreshAccessToken } from './lib/actions/auth'  // use your updated function name
 
 export async function middleware(request: NextRequest) {
-  const { pathname, search } = request.nextUrl
+  const { pathname } = request.nextUrl
+  const token = request.cookies.get('token')?.value
 
-  // Always allow the domain root ("/")
-  if (pathname === '/') {
-    return NextResponse.next()
-  }
+  // Public or allowed paths that don't require authentication
+  const publicPaths = [
+    '/',
+    '/login',
+    '/signup',
+    '/forgot-password',
+    '/reset-password',
+    '/verify-email',
+  ]
 
-  // Allow static files and public auth pages
-  const allowedPaths = [
-		'/assets/',
-		'/signup',
-		'/verify-email',
-		'/forgot-password',
-		'/reset-password',
-	]
-  if (allowedPaths.some(path => pathname.startsWith(path))) {
-    return NextResponse.next()
-  }
+  const isPublicPath = publicPaths.includes(pathname) || pathname.startsWith('/assets')
 
-  // Handle the login page
-  if (pathname.startsWith('/login')) {
-    const token = request.cookies.get('token')
-    const user = request.cookies.get('user')
-
-    // If the user is already authenticated, redirect to the root (default page)
-    if (token && user) {
-      return NextResponse.redirect(new URL('/dashboard', request.url))
+  // Allow public paths immediately
+  if (isPublicPath) {
+    // If user is logged in and tries to access login or signup, redirect to dashboard
+    if (token && (pathname === '/login' || pathname === '/signup')) {
+      return NextResponse.redirect(new URL('/dashboard/classes', request.url))
     }
     return NextResponse.next()
   }
 
-  // For all other routes, enforce authentication
-  const token = request.cookies.get('token')
-  const refreshToken = request.cookies.get('refreshToken')
+  // For protected routes, check tokens and user cookie
+  const refreshToken = request.cookies.get('refreshToken')?.value
   const user = request.cookies.get('user')
 
   if (!token || !user) {
     if (refreshToken) {
-      // Attempt to refresh the access token
-      const { data: tokens } = await refreshTokens()
+      // Try to refresh token via your server action
+      const { data: tokens } = await refreshAccessToken()
       if (tokens) {
-        // Token refreshed successfully, proceed to the requested page
+        // Token refreshed, continue request
         return NextResponse.next()
       }
     }
 
-    // Not authenticated, so redirect to /login with the original URL as a return URL
+    // Not authenticated: redirect to login with return_url
     const loginUrl = new URL('/login', request.url)
-    loginUrl.searchParams.set('return_url', pathname + search)
+    loginUrl.searchParams.set('return_url', pathname)
     return NextResponse.redirect(loginUrl)
   }
 
+  // Authenticated, allow request to proceed
   return NextResponse.next()
 }
 
 export const config = {
   matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - api (API routes)
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * - public folder
-     */
-    '/((?!api|_next/static|_next/image|favicon.ico|public).*)'
-  ]
+    '/((?!api|_next/static|_next/image|favicon.ico).*)',
+  ],
 }

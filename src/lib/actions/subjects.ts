@@ -1,54 +1,85 @@
+// src/lib/actions/subjects.ts
 'use server'
 
 import { revalidatePath } from 'next/cache'
-
 import { fetcher } from '@/lib/fetch'
-import { ApiResponse, Subject } from '@/lib/types'
+import type { Subject, ServerActionResponse } from '@/lib/types'
+
+function handleMutationResponse<T>(response: ServerActionResponse<T>): T {
+  if (response.error) {
+    throw new Error(response.error.message);
+  }
+  if (response.data === null || response.data === undefined) {
+    throw new Error('API returned success but no data was received.');
+  }
+  return response.data;
+}
 
 export async function createSubject(data: {
-	code: string
-	title: string
-	description?: string
-}) {
-	const result = await fetcher<ApiResponse<Subject>>('/courses', {
-		method: 'POST',
-		body: JSON.stringify(data)
-	})
+  name: string;
+  code?: string;
+  description?: string;
+}): Promise<ServerActionResponse<Subject>> {
+  try {
+    const response = await fetcher<Subject>('/academics/subjects', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
 
-	revalidatePath('/dashboard/subjects')
-	return result
+    const createdSubject = handleMutationResponse(response);
+    revalidatePath('/dashboard/subjects');
+    return { data: createdSubject, error: null };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'An unknown error occurred';
+    return { data: null, error: { message } };
+  }
 }
 
-export async function getSubjects() {
-	return await fetcher<ApiResponse<Subject[]>>('/courses', {
-		cache: 'no-store'
-	})
+export async function getSubjects(): Promise<ServerActionResponse<Subject[]>> {
+  return await fetcher<Subject[]>('/academics/subjects', {
+    cache: 'no-store'
+  });
 }
 
-export async function getSubject(id: string) {
-	return await fetcher<ApiResponse<Subject>>(`/courses/${id}`, {
-		cache: 'no-store'
-	})
+export async function getSubject(id: string): Promise<ServerActionResponse<Subject>> {
+  return await fetcher<Subject>(`/academics/subjects/${id}`, {
+    cache: 'no-store'
+  });
 }
 
-export async function updateSubject(id: string, data: Partial<Subject>) {
-	const result = await fetcher<ApiResponse<Subject>>(`/courses/${id}`, {
-		method: 'PATCH',
-		body: JSON.stringify(data)
-	})
+export async function updateSubject(
+  id: string,
+  data: Partial<Omit<Subject, 'id'>>
+): Promise<ServerActionResponse<Subject>> {
+  try {
+    const response = await fetcher<Subject>(`/academics/subjects/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data)
+    });
 
-	revalidatePath('/dashboard/subjects')
-	return result
+    const updatedSubject = handleMutationResponse(response);
+    revalidatePath('/dashboard/subjects');
+    return { data: updatedSubject, error: null };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'An unknown error occurred';
+    return { data: null, error: { message } };
+  }
 }
 
-export async function deleteSubject(id: string) {
-	const result = await fetcher<ApiResponse<{ message: string }>>(
-		`/courses/${id}`,
-		{
-			method: 'DELETE'
-		}
-	)
+export async function deleteSubject(id: string): Promise<ServerActionResponse<{ message: string }>> {
+  try {
+    const response = await fetcher<{ message: string }>(
+      `/academics/subjects/${id}`,
+      {
+        method: 'DELETE'
+      }
+    );
 
-	revalidatePath('/dashboard/subjects')
-	return result
+    const deleteMessage = handleMutationResponse(response);
+    revalidatePath('/dashboard/subjects');
+    return { data: deleteMessage, error: null };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'An unknown error occurred';
+    return { data: null, error: { message } };
+  }
 }

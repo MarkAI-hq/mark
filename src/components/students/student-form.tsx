@@ -1,166 +1,174 @@
+// src/components/students/student-form.tsx
 'use client'
 
-import { Dispatch, SetStateAction, useEffect } from 'react'
+import { useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { toast } from 'sonner'
 
 import {
-	Dialog,
-	DialogContent,
-	DialogHeader,
-	DialogTitle
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogDescription,
 } from '@/components/ui/dialog'
 import {
-	Form,
-	FormControl,
-	FormField,
-	FormItem,
-	FormLabel,
-	FormMessage
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Student } from '@/lib/types'
-import { createStudent, updateStudent } from '@/lib/actions/students'
+import { CreateStudentData } from '@/lib/actions/students'
 
 const formSchema = z.object({
-	name: z.string().min(2, {
-		message: 'Name must be at least 2 characters.'
-	}),
-	class: z.string().min(1, {
-		message: 'Class is required.'
-	}),
-	stream: z.string().optional()
+  name: z.string().min(2, {
+    message: 'Full name must be at least 2 characters.',
+  }),
+  student_school_id: z.string().optional(),
+  date_of_birth: z.string().optional(),
+  gender: z.string().optional(),
 })
 
-type FormData = z.infer<typeof formSchema>
+export type StudentFormData = CreateStudentData;
 
 interface StudentFormProps {
-	open: boolean
-	onOpenChange: (open: boolean) => void
-	student?: Student
-	setFormOpen: Dispatch<SetStateAction<boolean>>
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  onSubmit: (data: StudentFormData) => void
+  isSubmitting: boolean
+  student?: Student
 }
 
 export function StudentForm({
-	open,
-	onOpenChange,
-	student,
-	setFormOpen
+  open,
+  onOpenChange,
+  onSubmit,
+  isSubmitting,
+  student,
 }: StudentFormProps) {
-	
-	const form = useForm<FormData>({
-		resolver: zodResolver(formSchema),
-		defaultValues: {
-			name: student?.name || '',
-			class: student?.class || '',
-			stream: student?.stream || ''
-		}
-	})
+  const form = useForm<StudentFormData>({
+    resolver: zodResolver(formSchema),
+    // FIXED: This now correctly accesses first_name and last_name from the
+    // updated Student type, resolving the previous type error.
+    defaultValues: {
+      name: student ? `${student.first_name} ${student.last_name || ''}`.trim() : '',
+      student_school_id: student?.student_school_id || '',
+      date_of_birth: student?.date_of_birth || '',
+      gender: student?.gender || '',
+    },
+  })
 
-	// Reset form when student prop changes
-	useEffect(() => {
-		if (student) {
-			form.reset({
-				name: student.name,
-				class: student.class,
-				stream: student.stream
-			})
-		}
-	}, [form, student])
+  useEffect(() => {
+    if (open) {
+      // FIXED: The form reset logic is also now type-safe.
+      form.reset(
+        student
+          ? {
+              name: `${student.first_name} ${student.last_name || ''}`.trim(),
+              student_school_id: student.student_school_id || '',
+              date_of_birth: student.date_of_birth || '',
+              gender: student.gender || '',
+            }
+          : {
+              name: '',
+              student_school_id: '',
+              date_of_birth: '',
+              gender: '',
+            },
+      )
+    }
+  }, [form, student, open])
 
-	const onSubmit = async (data: {
-		name: string
-		class: string
-		stream?: string
-	}) => {
-		const { data: result, error } = student
-			? await updateStudent(student.id, data)
-			: await createStudent(data)
-
-		if (error) {
-			toast.error('Error', {
-				description: error.message
-			})
-		}
-
-		if (result) {
-			toast.success('Success', {
-				description: student
-					? 'Student updated successfully'
-					: 'Student created successfully'
-			})
-			form.reset()
-			setFormOpen(false)
-		}
-	}
-
-	return (
-		<Dialog open={open} onOpenChange={onOpenChange}>
-			<DialogContent className='sm:max-w-[425px]'>
-				<DialogHeader>
-					<DialogTitle>
-						{student ? 'Edit Student' : 'Add Student'}
-					</DialogTitle>
-				</DialogHeader>
-				<Form {...form}>
-					<form onSubmit={form.handleSubmit(onSubmit)} className='space-y-4'>
-						<FormField
-							control={form.control}
-							name='name'
-							render={({ field }) => (
-								<FormItem>
-									<FormLabel>Name</FormLabel>
-									<FormControl>
-										<Input placeholder='John Doe' {...field} />
-									</FormControl>
-									<FormMessage />
-								</FormItem>
-							)}
-						/>
-						<FormField
-							control={form.control}
-							name='class'
-							render={({ field }) => (
-								<FormItem>
-									<FormLabel>Class</FormLabel>
-									<FormControl>
-										<Input placeholder='Form 4' {...field} />
-									</FormControl>
-									<FormMessage />
-								</FormItem>
-							)}
-						/>
-						<FormField
-							control={form.control}
-							name='stream'
-							render={({ field }) => (
-								<FormItem>
-									<FormLabel>Stream (Optional)</FormLabel>
-									<FormControl>
-										<Input placeholder='East' {...field} />
-									</FormControl>
-									<FormMessage />
-								</FormItem>
-							)}
-						/>
-						<div className='flex justify-end space-x-2'>
-							<Button
-								type='button'
-								variant='outline'
-								onClick={() => onOpenChange(false)}
-							>
-								Cancel
-							</Button>
-							<Button type='submit' disabled={form.formState.isSubmitting}>
-								{form.formState.isSubmitting ? 'Saving...' : 'Save'}
-							</Button>
-						</div>
-					</form>
-				</Form>
-			</DialogContent>
-		</Dialog>
-	)
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>
+            {student ? 'Edit Student Profile' : 'Add New Student'}
+          </DialogTitle>
+          <DialogDescription>
+            Enter the student&apos;s details. This will create a new user account for them.
+          </DialogDescription>
+        </DialogHeader>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 pt-4">
+            <FormField
+              control={form.control}
+              name="name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Full Name</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Jane Doe" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="student_school_id"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Student ID (Optional)</FormLabel>
+                  <FormControl>
+                    <Input placeholder="School-specific ID" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="date_of_birth"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Date of Birth (Optional)</FormLabel>
+                    <FormControl>
+                      <Input type="date" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="gender"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Gender (Optional)</FormLabel>
+                    <FormControl>
+                      <Input placeholder="e.g., Female" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+            <DialogFooter className="pt-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => onOpenChange(false)}
+                disabled={isSubmitting}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? 'Saving...' : 'Save Student'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </Form>
+      </DialogContent>
+    </Dialog>
+  )
 }

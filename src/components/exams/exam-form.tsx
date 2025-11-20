@@ -132,7 +132,7 @@ export function ExamForm({
 													key={subject.id}
 													value={subject.id}
 												>
-													{subject.title}
+													{subject.name}
 												</SelectItem>
 											))}
 										</SelectContent>

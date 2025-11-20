@@ -54,9 +54,9 @@ export default function Header() {
             <div className="w-full px-4 lg:w-1/2 xl:w-5/12 pb-3 " >
               <div className="mt-10 lg:mt-0">
                 <span className="block mb-4 text-lg font-semibold text-primary dark:text-gray-300">
-                  Tomorrow&apos;s education is personalize!
+                  Tomorrow&apos;s Education is Personalized!
                 </span>
-                <h2 className="mb-5 text-3xl font-bold dark:text-gray-400 sm:text-[40px]/[48px]">
+                <h2 className="mb-5 text-3xl font-bold sm:text-[40px]/[48px] text-transparent px-2 bg-gradient-to-r from-[#926C15] to-primary bg-clip-text">
                   Will you join us in shaping the future of education?
                 </h2>
                 <p className="mb-5 text-base text-body-color dark:text-gray-500">
@@ -73,7 +73,7 @@ export default function Header() {
                   href="mailto:info@xrefracted.com ?subject=How%20Can%20We%20Collaborate?"
                   target="_blank"
                   rel="noopener"
-                  className="px-8 py-4 text-lg font-medium text-center text-white bg-purple-600 rounded-md ">
+                  className="px-6 py-3 text-lg font-medium text-center text-white bg-black dark:bg-white dark:hover:bg-[#926C15] dark:text-black dark:hover:text-white hover:bg-[#926C15] rounded-md ">
                   Join Us
                 </a>
               </div>

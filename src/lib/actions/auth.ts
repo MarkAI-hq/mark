@@ -1,189 +1,218 @@
 'use server'
 
 import { cookies } from 'next/headers'
-
 import { fetcher } from '../fetch'
-import {
-	ApiResponse,
-	LoginResponse,
-	RefreshTokenResponse,
-	SignUpResponse,
-	VerifyEmailSuccessPayload
+import type {
+  LoginResponse,
+  RegisterResponse,
+  RefreshTokenResponse,
+  VerifyEmailResponse,
+  BackendUser,
 } from '../types'
 
-export async function signUp(formData: FormData) {
-	const cookieStore = await cookies()
-
-	const { data, error } = await fetcher<ApiResponse<SignUpResponse>>(
-		'/auth/register',
-		{
-			method: 'POST',
-			body: formData
-		}
-	)
-
-	// Set cookies
-	if (data) {
-		// Store user data in a regular cookie
-		cookieStore.set(
-			'user',
-			JSON.stringify({
-				id: data.user.id,
-				name: data.user.name,
-				email: data.user.email,
-				role: data.user.role,
-				isVerified: data.user.isVerified
-			}),
-			{
-				secure: process.env.NODE_ENV === 'production',
-				sameSite: 'lax',
-				path: '/'
-			}
-		)
-	}
-
-	return {
-		data,
-		error
-	}
+function transformUser(backendUser: BackendUser) {
+  return {
+    id: backendUser.user_id,
+    name: `${backendUser.first_name} ${backendUser.last_name}`.trim(),
+    email: backendUser.email,
+    role: backendUser.roles?.[0] || 'Teacher',
+    isVerified: backendUser.email_verified,
+    photoUrl: backendUser.profile_image_url,
+    organizationId: backendUser.organization_id,
+  }
 }
 
 export async function login(email: string, password: string) {
-	const cookieStore = await cookies()
+  const cookieStore = await cookies()
 
-	const { data, error } = await fetcher<ApiResponse<LoginResponse>>(
-		'/auth/login',
-		{
-			method: 'POST',
-			body: JSON.stringify({ email, password })
-		}
-	)
+  try {
+    const response = await fetcher<LoginResponse>('/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    })
 
-	// Set cookies
-	if (data) {
-		cookieStore.set('token', data.accessToken, {
-			httpOnly: true,
-			secure: process.env.NODE_ENV === 'production',
-			sameSite: 'lax',
-			path: '/'
-		})
+    if (response.error) {
+      throw new Error(response.error.message)
+    }
+    if (!response.data) {
+      throw new Error('Login failed: No data returned from API.')
+    }
 
-		cookieStore.set('refreshToken', data.refreshToken, {
-			httpOnly: true,
-			secure: process.env.NODE_ENV === 'production',
-			sameSite: 'lax',
-			path: '/'
-		})
+    const { data } = response
 
-		// Store user data in a regular cookie
-		cookieStore.set(
-			'user',
-			JSON.stringify({
-				id: data.user.id,
-				name: data.user.name,
-				email: data.user.email,
-				role: data.user.role,
-				isVerified: data.user.isVerified
-			}),
-			{
-				secure: process.env.NODE_ENV === 'production',
-				sameSite: 'lax',
-				path: '/'
-			}
-		)
-	}
+    cookieStore.set('token', data.accessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 60 * 15,
+    })
 
-	return {
-		data,
-		error
-	}
+    cookieStore.set('refreshToken', data.refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 60 * 60 * 24 * 7,
+    })
+
+    const frontendUser = transformUser(data.user)
+    cookieStore.set('user', JSON.stringify(frontendUser), {
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 60 * 60 * 24 * 7,
+    })
+
+    return { data, error: null }
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'An unknown error occurred'
+    return { data: null, error: { message } }
+  }
+}
+
+export async function signUp(
+  firstName: string,
+  lastName: string,
+  email: string,
+  password: string,
+  phone?: string,
+  photo?: File,
+  acceptTerms?: boolean,
+) {
+  const formData = new FormData()
+  formData.append('firstName', firstName)
+  formData.append('lastName', lastName)
+  formData.append('email', email)
+  formData.append('password', password)
+  formData.append('acceptTerms', acceptTerms ? 'true' : 'false')
+
+  if (phone) formData.append('phone', phone)
+  if (photo) formData.append('photo', photo)
+
+  try {
+    const response = await fetcher<RegisterResponse>('/auth/register', {
+      method: 'POST',
+      body: formData,
+    })
+
+    if (response.error) {
+      throw new Error(response.error.message)
+    }
+
+    return { data: response.data, error: null }
+  } catch (err) {
+    const message =
+      err instanceof Error ? err.message : 'Registration failed due to an API error.'
+    return { data: null, error: { message } }
+  }
 }
 
 export async function logout() {
-	// await fetcher('/auth/logout', { method: 'POST' })
-	try {
-		const cookieStore = await cookies()
-		cookieStore.delete('token')
-		cookieStore.delete('refreshToken')
-		cookieStore.delete('user')
+  try {
+    const cookieStore = await cookies()
+    cookieStore.delete('token')
+    cookieStore.delete('refreshToken')
+    cookieStore.delete('user')
 
-		return { success: true }
-	} catch (error) {
-		return {
-			success: false,
-			error: error instanceof Error ? error.message : 'Logout failed'
-		}
-	}
+    return { success: true }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Logout failed',
+    }
+  }
 }
 
-export async function refreshTokens() {
-	const cookieStore = await cookies()
-	const refreshToken = cookieStore.get('refreshToken')?.value
+export async function refreshAccessToken() {
+  const cookieStore = await cookies()
+  const refreshToken = cookieStore.get('refreshToken')?.value
 
-	if (!refreshToken) {
-		return {
-			error: { message: 'No refresh token found', status: 401 }
-		}
-	}
+  if (!refreshToken) {
+    return {
+      data: null,
+      error: { message: 'No refresh token found', status: 401 },
+    }
+  }
 
-	const { data: tokens, error } = await fetcher<
-		ApiResponse<RefreshTokenResponse>
-	>('/auth/refresh', {
-		method: 'POST',
-		body: JSON.stringify({
-			refreshToken
-		}),
-		headers: {
-			// Explicitly set Content-Type for JSON body
-			'Content-Type': 'application/json'
-		}
-	})
+  try {
+    const response = await fetcher<RefreshTokenResponse>('/auth/refresh', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refreshToken }),
+    })
 
-	if (tokens) {
-		// Update tokens in cookies
-		cookieStore.set('token', tokens.accessToken, {
-			httpOnly: true,
-			secure: process.env.NODE_ENV === 'production',
-			sameSite: 'lax',
-			path: '/'
-		})
+    if (response.error) {
+      throw new Error(response.error.message)
+    }
+    if (!response.data) {
+      throw new Error('Refresh token failed: No data returned from API.')
+    }
 
-		cookieStore.set('refreshToken', tokens.refreshToken, {
-			httpOnly: true,
-			secure: process.env.NODE_ENV === 'production',
-			sameSite: 'lax',
-			path: '/'
-		})
-	}
+    const { data } = response
 
-	return {
-		data: tokens,
-		error
-	}
+    cookieStore.set('token', data.accessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 60 * 15,
+    })
+
+    cookieStore.set('refreshToken', data.refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 60 * 60 * 24 * 7,
+    })
+
+    return { data, error: null }
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'An unknown error occurred'
+    return { data: null, error: { message } }
+  }
 }
 
-/**
- * Sends the verification token to the backend to verify the user's email.
- * This is a server action, called from the client-side verification page.
- * @param token The verification token extracted from the URL query parameters.
- */
+export async function verifyEmail(token: string) {
+  try {
+    const response = await fetcher<VerifyEmailResponse>('/auth/verify-email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token }),
+    })
 
-export async function verifyEmail(
-	token: string
-): Promise<{
-	data?: ApiResponse<VerifyEmailSuccessPayload>
-	error?: { message: string; status?: number }
-}> {
-	const { data, error } = await fetcher<ApiResponse<VerifyEmailSuccessPayload>>(
-		'/auth/verify-email',
-		{
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json'
-			},
-			body: JSON.stringify({ token })
-		}
-	)
+    if (response.error) {
+      throw new Error(response.error.message)
+    }
 
-	return { data, error }
+    return { data: response.data, error: null }
+  } catch (err) {
+    const message =
+      err instanceof Error
+        ? err.message
+        : 'An unexpected error occurred during email verification.'
+    return { data: null, error: { message, status: 500 } }
+  }
+}
+
+export async function resendVerificationEmail(email: string) {
+  try {
+    const response = await fetcher<{ message: string }>('/auth/resend-verification', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    })
+
+    if (response.error) {
+      throw new Error(response.error.message)
+    }
+
+    return { data: response.data, error: null }
+  } catch (err) {
+    const message =
+      err instanceof Error ? err.message : 'Failed to resend verification email.'
+    return { data: null, error: { message, status: 500 } }
+  }
 }

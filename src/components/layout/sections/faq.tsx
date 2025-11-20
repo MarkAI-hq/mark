@@ -52,7 +52,7 @@ export const FAQSection = () => {
           FAQS
         </h2>
 
-        <h2 className="text-4xl md:text-5xl text-center font-bold mb-4">
+        <h2 className="text-4xl md:text-5xl text-center font-bold mb-4 text-transparent px-2 bg-gradient-to-r from-[#926C15] to-primary bg-clip-text">
           Common Questions
         </h2>
         <p className="text-base text-muted-foreground">

@@ -117,7 +117,7 @@ export const FooterSection = () => {
         </div>
 
         <Separator className="my-6" />
-        <h3 className="text-center">&copy; {getYear(new TZDate(new Date(), tz))} xRefracted</h3>
+        <h3 className="text-center">&copy; {getYear(new TZDate(new Date(), tz))} MarkAI Labs, Inc.</h3>
       </div>
     </footer>
   );

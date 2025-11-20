@@ -1,47 +1,80 @@
-import { cookies } from 'next/headers'
+import { cookies } from 'next/headers';
+import type { ServerActionResponse } from './types';
 
-export async function fetcher<T>(url: string, init?: RequestInit): Promise<T> {
-	const token = (await cookies()).get('token')?.value
-	const isFormData = init?.body instanceof FormData
+// This is the raw response shape from your NestJS backend
+interface BackendResponse<T> {
+  data?: T;
+  message?: string | string[];
+  error?: string;
+}
 
-	const headers: HeadersInit = {
-		// Only set Content-Type for non-FormData requests
-		...(!isFormData && { 'Content-Type': 'application/json' }),
-		...(token && { Authorization: `Bearer ${token}` }),
-		...init?.headers
-	}
+export async function fetcher<T>(
+  url: string,
+  init?: RequestInit,
+): Promise<ServerActionResponse<T>> {
+  const token = (await cookies()).get('token')?.value;
+  const isFormData = init?.body instanceof FormData;
 
-	try {
-		const response = await fetch(process.env.NEXT_PUBLIC_API_URL + url, {
-			...init,
-			headers
-		})
+  const headers: HeadersInit = {
+    ...(!isFormData && { 'Content-Type': 'application/json' }),
+    ...(token && { Authorization: `Bearer ${token}` }),
+    ...init?.headers,
+  };
 
-		const data = await response.json()
+  try {
+    const response = await fetch(
+      `${process.env.NEXT_PUBLIC_API_URL}${url}`,
+      {
+        ...init,
+        headers,
+      },
+    );
 
-		if (!response.ok) {
-			return {
-				error: {
-					message: Array.isArray(data.message)
-						? data.message[0]
-						: data.message || data.error || 'An error occurred',
-					status: response.status
-				}
-			} as T
-		}
+    const text = await response.text();
+    let data: BackendResponse<T> = {};
 
-		// NestJS typically returns { data: T } or { data: T, message: string }
-		return { data: data.data || data } as T
-	} catch (err: unknown) {
-		let status = 500
-		if (err && typeof err === 'object' && 'status' in err) {
-			status = (err as { status: number }).status
-		}
-		return {
-			error: {
-				message: err instanceof Error ? err.message : 'Failed to fetch data',
-				status
-			}
-		} as T
-	}
+    if (text) {
+      try {
+        data = JSON.parse(text) as BackendResponse<T>;
+      } catch {
+        return {
+          data: null,
+          error: {
+            message: 'Invalid JSON response from API',
+            status: response.status,
+          },
+        };
+      }
+    }
+
+    if (!response.ok) {
+      const errorMessage =
+        Array.isArray(data.message)
+          ? data.message[0]
+          : data.message || data.error || 'An unknown API error occurred';
+
+      return {
+        data: null,
+        error: {
+          message: errorMessage,
+          status: response.status,
+        },
+      };
+    }
+
+    // Safely unwrap the data: if backend sends { data: {...} } or just {...}
+    const unwrapped: T | null =
+      data.data && typeof data.data === 'object' ? data.data : (data as unknown as T);
+
+    return { data: unwrapped, error: null };
+  } catch (err: unknown) {
+    return {
+      data: null,
+      error: {
+        message:
+          err instanceof Error ? err.message : 'Failed to connect to the API',
+        status: 500,
+      },
+    };
+  }
 }
