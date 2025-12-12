@@ -1,4 +1,3 @@
-// src/components/nav/main-nav.tsx
 'use client'
 
 import Link from 'next/link'
@@ -28,9 +27,11 @@ export function MainNav({ className, organizationName, ...props }: MainNavProps)
   )
 
   return (
-    <aside
+    <nav
       className={cn(
-        'fixed top-0 left-0 h-screen w-64 flex flex-col bg-background border-r border-muted-200 p-4 overflow-y-auto scroll-smooth',
+        // FIX: Removed 'fixed', 'h-screen', 'w-64', 'border-r', etc.
+        // We now just let it fill the parent container provided by DashboardShell.
+        'flex flex-col gap-4', 
         className
       )}
       {...props}
@@ -55,7 +56,7 @@ export function MainNav({ className, organizationName, ...props }: MainNavProps)
       </Collapsible>
 
       {/* --- Navigation Links --- */}
-      <nav className="mt-4 flex-1 space-y-1">
+      <div className="flex flex-col space-y-1">
         {accessibleNavItems.map((item) => {
           // Determine active item based on pathname
           const isActive =
@@ -68,7 +69,7 @@ export function MainNav({ className, organizationName, ...props }: MainNavProps)
               href={item.href}
               className={cn(
                 'relative flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary hover:bg-muted/10',
-                isActive && 'text-primary font-semibold'
+                isActive && 'text-primary font-semibold bg-muted/10' // Added bg highlight for active state
               )}
             >
               {/* Active link side indicator */}
@@ -79,8 +80,7 @@ export function MainNav({ className, organizationName, ...props }: MainNavProps)
             </Link>
           )
         })}
-      </nav>
-    </aside>
+      </div>
+    </nav>
   )
 }
-
