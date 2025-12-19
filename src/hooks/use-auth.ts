@@ -1,12 +1,17 @@
 // src/hooks/use-auth.ts
 'use client'
 
-import { userSignal } from '@/signals/auth';
+import { useSyncExternalStore } from 'react'
+import { userSignal } from '@/signals/auth'
 
-/**
- * @returns 
- */
 export function useAuth() {
-  const user = userSignal.value;
-  return { user };
+  const user = useSyncExternalStore(
+    (callback) => {
+      const unsub = userSignal.subscribe(callback)
+      return unsub
+    },
+    () => userSignal.value
+  )
+
+  return { user }
 }

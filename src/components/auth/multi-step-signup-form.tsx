@@ -11,13 +11,17 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Loader2, CheckCircle2, User, FileText, Shield } from 'lucide-react'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Calendar } from '@/components/ui/calendar'
+import { Loader2, CheckCircle2, User, FileText, Shield, Eye, EyeOff, CalendarIcon } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { signUp } from '@/lib/actions/auth'
+import { format } from 'date-fns'
+import { cn } from '@/lib/utils'
 
 /* -----------------------
     Validation schema
-    ----------------------- */
+   ----------------------- */
 const signupSchema = z
   .object({
     email: z.string().email('Invalid email address'),
@@ -61,6 +65,10 @@ const LANGUAGES = [
 export function MultiStepSignupForm() {
   const [currentStep, setCurrentStep] = useState<number>(1)
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false)
+  const [showPassword, setShowPassword] = useState<boolean>(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState<boolean>(false)
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined)
+  const [serverError, setServerError] = useState<string | null>(null)
   const router = useRouter()
   const { toast } = useToast()
 
@@ -99,9 +107,18 @@ export function MultiStepSignupForm() {
 
   const handleNext = async () => {
     const ok = await validateStep(currentStep)
-    // Only proceed to the next step if validation passes AND it's not the final step (3)
     if (ok && currentStep < 3) {
-        setCurrentStep((p) => Math.min(p + 1, 3))
+      toast({
+        title: 'Step Completed ✓',
+        description: `${STEPS[currentStep - 1].title} information saved successfully.`,
+      })
+      setCurrentStep((p) => Math.min(p + 1, 3))
+    } else if (!ok) {
+      toast({
+        title: 'Validation Error',
+        description: 'Please fill in all required fields correctly.',
+        variant: 'destructive',
+      })
     }
   }
 
@@ -109,93 +126,95 @@ export function MultiStepSignupForm() {
     setCurrentStep((p) => Math.max(p - 1, 1))
   }
 
-  // New handler for the linked login button
   const handleLoginRedirect = () => {
-    router.push('/verify-email');
+    router.push('/login')
   }
 
   async function onSubmit(data: SignupFormData) {
-    // Run final validation before submission
-    const finalCheckOk = await validateStep(3);
-    if (!finalCheckOk) return;
-
-    setIsSubmitting(true)
-
-    // 1. Sanitize Data
-    const sanitizedData = {
-        ...data,
-        date_of_birth: data.date_of_birth || undefined,
-        gender: data.gender || undefined,
-        emergency_contact: data.emergency_contact || undefined,
+    const finalCheckOk = await validateStep(3)
+    if (!finalCheckOk) {
+      toast({
+        title: 'Validation Error',
+        description: 'Please complete all required fields before submitting.',
+        variant: 'destructive',
+      })
+      return
     }
 
-    // Logging for server-side debugging
+    setIsSubmitting(true)
+    setServerError(null)
+
+    toast({
+      title: 'Processing...',
+      description: 'Creating your account. Please wait.',
+    })
+
+    const sanitizedData = {
+      ...data,
+      date_of_birth: data.date_of_birth || undefined,
+      gender: data.gender || undefined,
+      emergency_contact: data.emergency_contact || undefined,
+    }
+
     console.log('--- Attempting Signup with Data (for backend action) ---')
-    const { password, confirmPassword, ...dataToLog } = sanitizedData;
+    const { password, confirmPassword, ...dataToLog } = sanitizedData
     console.log(dataToLog)
     console.log('---------------------------------------------------------')
 
     try {
-      // Execute the signUp action
-      const { data: error } = await signUp(
+      const { data: signUpData, error } = await signUp(
         sanitizedData.first_name,
         sanitizedData.last_name,
         sanitizedData.email,
         sanitizedData.password,
         sanitizedData.phone_number || undefined,
         undefined,
-        sanitizedData.accept_terms
+        sanitizedData.accept_terms,
       )
 
       if (error) {
-        // 2. Log API/Server Error explicitly and defensively check for the 'message' property
-        console.error('SERVER ACTION ERROR during signup:', error);
-
-        // Safely access 'message' property, providing a fallback
+        console.error('SERVER ACTION ERROR during signup:', error)
         const errorMessage =
-            (typeof error === 'object' && error !== null && 'message' in error && typeof error.message === 'string')
+          typeof error === 'object' && error !== null && 'message' in error && typeof error.message === 'string'
             ? error.message
-            : 'Registration failed due to an unknown server error.';
+            : 'Registration failed due to an unknown server error.'
 
+        setServerError(errorMessage)
         toast({
           title: 'Registration Failed',
           description: errorMessage,
           variant: 'destructive',
         })
-        return // IMPORTANT: Do not redirect on error
+        setIsSubmitting(false)
+        return
       }
 
-      // -----------------------------------------------------------------
-      // ✅ SUCCESS ALERT AND REDIRECT (Code from previous request)
-      // -----------------------------------------------------------------
+      // Success
       toast({
         title: 'Success! 🎉',
-        description: 'Registration successful. Please check your email to verify your account.',
+        description: 'Registration successful! Redirecting to login...',
       })
 
-      // Redirect to login ONLY on success
-      router.push('/login')
-
+      setTimeout(() => {
+        router.push('/login')
+      }, 2000)
     } catch (err: any) {
-      // 4. Log Unexpected Client/Network Error
-      console.error('UNEXPECTED CLIENT/NETWORK ERROR:', err);
-
+      console.error('UNEXPECTED CLIENT/NETWORK ERROR:', err)
+      const message = err instanceof Error ? err.message : 'A client-side connection error occurred. Check your network.'
+      setServerError(message)
       toast({
         title: 'Network Error',
-        description: err instanceof Error ? err.message : 'A client-side connection error occurred. Check your network.',
+        description: message,
         variant: 'destructive',
       })
-    } finally {
       setIsSubmitting(false)
     }
   }
 
-  /* Helper for allowed-color styling: */
-  const COLOR_PRIMARY = '#926C15' // Golden
-  const COLOR_TEXT = '#555' // Light Gray text for light mode
+  const COLOR_PRIMARY = '#926C15'
+  const COLOR_TEXT = '#555'
   const WHITE = '#ffffff'
 
-  // Refactoring styles outside JSX for clarity
   const getCircleStyle = (isCompleted: boolean, isActive: boolean): React.CSSProperties =>
     isCompleted
       ? { backgroundColor: COLOR_PRIMARY, borderColor: COLOR_PRIMARY, color: WHITE }
@@ -214,12 +233,20 @@ export function MultiStepSignupForm() {
     <>
       <Card className="w-full max-w-2xl shadow-xl">
         <CardHeader>
-          <CardTitle className="text-3xl font-bold text-center" style={{ color: COLOR_PRIMARY }}>Create Account</CardTitle>
+          <CardTitle className="text-3xl font-bold text-center" style={{ color: COLOR_PRIMARY }}>
+            Create Account
+          </CardTitle>
           <CardDescription className="text-center">Complete all steps to create your account</CardDescription>
         </CardHeader>
 
         <CardContent>
-          {/* Progress Indicator (unchanged) */}
+          {/* Inline Server Error Message */}
+          {serverError && (
+            <div className="mb-4 rounded border border-red-400 bg-red-50 p-3 text-red-700 font-medium text-center">
+              {serverError}
+            </div>
+          )}
+
           <div className="mb-8 px-4">
             <div className="flex items-center justify-between">
               {STEPS.map((step, index) => {
@@ -263,7 +290,6 @@ export function MultiStepSignupForm() {
             </div>
           </div>
 
-          {/* Form */}
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
             {/* STEP 1 */}
             {currentStep === 1 && (
@@ -289,13 +315,43 @@ export function MultiStepSignupForm() {
 
                 <div>
                   <Label htmlFor="password">Password</Label>
-                  <Input id="password" type="password" placeholder="••••••••" {...register('password')} />
+                  <div className="relative">
+                    <Input
+                      id="password"
+                      type={showPassword ? 'text' : 'password'}
+                      placeholder="••••••••"
+                      {...register('password')}
+                      className="pr-10"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
                   {errors.password && <p className="text-sm text-red-500 mt-1">{errors.password.message}</p>}
                 </div>
 
                 <div>
                   <Label htmlFor="confirmPassword">Confirm Password</Label>
-                  <Input id="confirmPassword" type="password" placeholder="••••••••" {...register('confirmPassword')} />
+                  <div className="relative">
+                    <Input
+                      id="confirmPassword"
+                      type={showConfirmPassword ? 'text' : 'password'}
+                      placeholder="••••••••"
+                      {...register('confirmPassword')}
+                      className="pr-10"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                    >
+                      {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
                   {errors.confirmPassword && <p className="text-sm text-red-500 mt-1">{errors.confirmPassword.message}</p>}
                 </div>
               </div>
@@ -304,53 +360,80 @@ export function MultiStepSignupForm() {
             {/* STEP 2 */}
             {currentStep === 2 && (
               <div className="space-y-4">
-                  <div>
-                      <Label htmlFor="phone_number">Phone Number</Label>
-                      <Input id="phone_number" type="tel" placeholder="+1 234 567 8900" {...register('phone_number')} />
-                      {errors.phone_number && <p className="text-sm text-red-500 mt-1">{errors.phone_number.message}</p>}
-                  </div>
+                <div>
+                  <Label htmlFor="phone_number">Phone Number</Label>
+                  <Input id="phone_number" type="tel" placeholder="+1 234 567 8900" {...register('phone_number')} />
+                  {errors.phone_number && <p className="text-sm text-red-500 mt-1">{errors.phone_number.message}</p>}
+                </div>
 
-                  <div className="grid grid-cols-2 gap-4">
-                      <div>
-                          <Label htmlFor="date_of_birth">Date of Birth</Label>
-                          <Input id="date_of_birth" type="date" {...register('date_of_birth')} />
-                      </div>
-                      <div>
-                          <Label htmlFor="gender">Gender</Label>
-                          <Select value={gender} onValueChange={(val) => setValue('gender', val as any)}>
-                              <SelectTrigger>
-                                  <SelectValue placeholder="Select gender" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                  <SelectItem value="male">Male</SelectItem>
-                                  <SelectItem value="female">Female</SelectItem>
-                                  <SelectItem value="other">Other</SelectItem>
-                                  <SelectItem value="prefer_not_to_say">Prefer not to say</SelectItem>
-                              </SelectContent>
-                          </Select>
-                      </div>
-                  </div>
-
+                <div className="grid grid-cols-2 gap-4">
                   <div>
-                      <Label htmlFor="emergency_contact">Emergency Contact</Label>
-                      <Input id="emergency_contact" placeholder="+1 234 567 8900" {...register('emergency_contact')} />
+                    <Label htmlFor="date_of_birth">Date of Birth</Label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className={cn('w-full justify-start text-left font-normal', !selectedDate && 'text-muted-foreground')}
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {selectedDate ? format(selectedDate, 'PPP') : <span>Pick a date</span>}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={selectedDate}
+                          onSelect={(date) => {
+                            setSelectedDate(date)
+                            if (date) {
+                              setValue('date_of_birth', format(date, 'yyyy-MM-dd'))
+                            }
+                          }}
+                          defaultMonth={new Date(2000, 0)}
+                          captionLayout="dropdown-years"
+                          fromYear={1900}
+                          toYear={new Date().getFullYear()}
+                          disabled={(date) => date > new Date() || date < new Date('1900-01-01')}
+                        />
+                      </PopoverContent>
+                    </Popover>
                   </div>
-
                   <div>
-                      <Label htmlFor="preferred_language">Preferred Language</Label>
-                      <Select value={preferredLanguage} onValueChange={(val) => setValue('preferred_language', val)}>
+                    <Label htmlFor="gender">Gender</Label>
+                    <Select value={gender} onValueChange={(val) => setValue('gender', val as any)}>
                       <SelectTrigger>
-                          <SelectValue />
+                        <SelectValue placeholder="Select gender" />
                       </SelectTrigger>
                       <SelectContent>
-                          {LANGUAGES.map((lang) => (
-                          <SelectItem key={lang.value} value={lang.value}>
-                              {lang.label}
-                          </SelectItem>
-                          ))}
+                        <SelectItem value="male">Male</SelectItem>
+                        <SelectItem value="female">Female</SelectItem>
+                        <SelectItem value="other">Other</SelectItem>
+                        <SelectItem value="prefer_not_to_say">Prefer not to say</SelectItem>
                       </SelectContent>
-                      </Select>
+                    </Select>
                   </div>
+                </div>
+
+                <div>
+                  <Label htmlFor="emergency_contact">Emergency Contact</Label>
+                  <Input id="emergency_contact" placeholder="+1 234 567 8900" {...register('emergency_contact')} />
+                </div>
+
+                <div>
+                  <Label htmlFor="preferred_language">Preferred Language</Label>
+                  <Select value={preferredLanguage} onValueChange={(val) => setValue('preferred_language', val)}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {LANGUAGES.map((lang) => (
+                        <SelectItem key={lang.value} value={lang.value}>
+                          {lang.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             )}
 
@@ -366,7 +449,9 @@ export function MultiStepSignupForm() {
                         type="button"
                         onClick={() => setValue('roles', role)}
                         className={`p-3 rounded-lg border-2 text-left transition-all
-                                        dark:text-white dark:border-gray-700 dark:hover:border-gray-500 ${selectedRole === role ? 'ring-2 ring-offset-2' : ''}`}
+                                        dark:text-white dark:border-gray-700 dark:hover:border-gray-500 ${
+                                          selectedRole === role ? 'ring-2 ring-offset-2' : ''
+                                        }`}
                         style={{
                           borderColor: selectedRole === role ? COLOR_PRIMARY : '#ddd',
                           backgroundColor: selectedRole === role ? `${COLOR_PRIMARY}10` : WHITE,
@@ -387,77 +472,77 @@ export function MultiStepSignupForm() {
                     id="accept_terms"
                     checked={acceptTerms}
                     onCheckedChange={(checked) => setValue('accept_terms', checked as boolean)}
-                    style={{ borderColor: acceptTerms ? COLOR_PRIMARY : COLOR_TEXT, backgroundColor: acceptTerms ? COLOR_PRIMARY : WHITE }}
+                    style={{
+                      borderColor: acceptTerms ? COLOR_PRIMARY : COLOR_TEXT,
+                      backgroundColor: acceptTerms ? COLOR_PRIMARY : 'transparent',
+                    }}
                   />
-                  <Label htmlFor="accept_terms" className="cursor-pointer">
-                    I accept the{' '}
-                    <a href="/terms" className="underline" style={{ color: COLOR_PRIMARY }}>
-                      Terms
-                    </a>{' '}
-                    and{' '}
-                    <a href="/privacy" className="underline" style={{ color: COLOR_PRIMARY }}>
-                      Privacy Policy
-                    </a>
-                    .
-                  </Label>
+                  <div>
+                    <Label htmlFor="accept_terms" className="cursor-pointer">
+                      I agree to the{' '}
+                      <a
+                        href="/terms"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="underline underline-offset-2 hover:text-primary"
+                      >
+                        terms and conditions
+                      </a>
+                      .
+                    </Label>
+                    {errors.accept_terms && <p className="text-sm text-red-500 mt-1">{errors.accept_terms.message}</p>}
+                  </div>
                 </div>
-
-                {errors.accept_terms && <p className="text-sm text-red-500 mt-1">{errors.accept_terms.message}</p>}
               </div>
             )}
 
-            {/* Buttons */}
-            <div className="flex justify-between pt-4">
+            <div className="flex justify-between pt-6">
               <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handlePrevious}
-                  disabled={currentStep === 1 || isSubmitting}
+                type="button"
+                variant="outline"
+                disabled={currentStep === 1}
+                onClick={handlePrevious}
+                className="w-28"
               >
                 Previous
               </Button>
 
-              {currentStep < 3 ? (
-                <Button type="button" onClick={handleNext} style={{ backgroundColor: COLOR_PRIMARY }} className="text-white hover:opacity-90">
+              {currentStep < 3 && (
+                <Button
+                  type="button"
+                  className="w-28"
+                  onClick={handleNext}
+                  disabled={isSubmitting}
+                >
                   Next
                 </Button>
-              ) : (
+              )}
+
+              {currentStep === 3 && (
                 <Button
                   type="submit"
-                  disabled={isSubmitting}
-                  style={{ backgroundColor: COLOR_PRIMARY }}
-                  className="text-white hover:opacity-90 dark:bg-yellow-700"
+                  disabled={isSubmitting || !acceptTerms}
+                  className="w-28"
                 >
-                  {isSubmitting ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Creating Account...
-                    </>
-                  ) : (
-                    'Create Account'
-                  )}
+                  {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                  Create
                 </Button>
               )}
             </div>
+
+            <p className="mt-4 text-center text-sm text-gray-500">
+              Already have an account?{' '}
+              <button
+                type="button"
+                onClick={handleLoginRedirect}
+                className="text-primary underline"
+              >
+                Log in here
+              </button>
+            </p>
           </form>
         </CardContent>
       </Card>
-
-      {/* ---------------------------------------------------- */}
-      {/* 🚀 Linked Login Button (Industry Standard) 🚀   */}
-      {/* ---------------------------------------------------- */}
-      <div className="mt-4 text-center">
-        <p className="text-sm dark:text-gray-400">
-          Already have an account?{' '}
-          <Button
-            variant="link"
-            onClick={handleLoginRedirect}
-            className="p-0 h-auto font-medium"
-            style={{ color: COLOR_PRIMARY }}
-          >
-            Log In
-          </Button>
-        </p>
-      </div>
     </>
   )
 }

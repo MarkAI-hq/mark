@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -49,7 +50,11 @@ export function LoginForm() {
     },
   })
 
+  const [formError, setFormError] = useState<string | null>(null)
+
   async function onSubmit(values: z.infer<typeof formSchema>) {
+    setFormError(null) // reset error on new submit
+
     const result: ServerActionResponse<LoginResponse> = await login(
       values.email,
       values.password,
@@ -68,6 +73,8 @@ export function LoginForm() {
 
     if (error) {
       const message = error.message ?? 'Invalid email or password'
+      setFormError(message) // Set inline form error
+
       toast({
         title: 'Login failed',
         description: message,
@@ -76,6 +83,7 @@ export function LoginForm() {
       return
     }
 
+    setFormError('An unknown error occurred')
     toast({
       title: 'Login failed',
       description: 'An unknown error occurred',
@@ -92,6 +100,11 @@ export function LoginForm() {
         </CardDescription>
       </CardHeader>
       <CardContent>
+        {formError && (
+          <div className="mb-4 rounded border border-red-400 bg-red-50 p-3 text-center text-red-700 font-semibold">
+            {formError}
+          </div>
+        )}
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <FormField
@@ -149,4 +162,3 @@ export function LoginForm() {
     </Card>
   )
 }
-
