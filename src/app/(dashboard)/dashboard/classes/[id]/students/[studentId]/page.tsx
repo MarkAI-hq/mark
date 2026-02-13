@@ -18,9 +18,6 @@ import { StudentAssessmentsTab } from '@/components/students/student-assessments
 import { StudentCognitiveProfileTab } from '@/components/students/student-cognitive-profile-tab';
 import { StudentProfileHeader } from '@/components/students/student-profile-header';
 
-/**
- * FIX: The 'params' type is updated to satisfy the Next.js 15 build-time type checker.
- */
 interface StudentDetailPageProps {
   params: Promise<{
     id: string; // classId
@@ -31,7 +28,6 @@ interface StudentDetailPageProps {
 export default async function StudentDetailPage({
   params,
 }: StudentDetailPageProps) {
-  // FIX: Await the params object before accessing its properties.
   const resolvedParams = await params;
 
   const [studentRes, classRes, submissionsRes, profilesRes] = await Promise.all([
@@ -40,6 +36,16 @@ export default async function StudentDetailPage({
     getStudentSubmissions(resolvedParams.studentId),
     getStudentCognitiveProfiles(resolvedParams.studentId),
   ]);
+
+  // --- DEBUG SECTION ---
+  // This will log to your server terminal (stdout)
+  console.log(`[Debug] StudentId: ${resolvedParams.studentId}`);
+  console.log(`[Debug] Profiles Response:`, JSON.stringify(profilesRes, null, 2));
+  
+  if (profilesRes.error) {
+    console.error(`[Error] Failed to fetch profiles: ${profilesRes.error}`);
+  }
+  // ---------------------
 
   if (
     studentRes.error ||
@@ -70,6 +76,14 @@ export default async function StudentDetailPage({
 
   return (
     <div className="space-y-6">
+      {/* Visual Debug Alert (Visible only in development) */}
+      {process.env.NODE_ENV === 'development' && !hasCognitiveProfile && (
+        <div className="p-4 bg-amber-50 border-l-4 border-amber-400 text-amber-700 text-sm">
+          <strong>Debug Note:</strong> getStudentCognitiveProfiles returned 0 records for student <code>{resolvedParams.studentId}</code>. 
+          Check if the DB table <code>cognitive_profiles</code> has an entry for this UUID.
+        </div>
+      )}
+
       <StudentProfileHeader
         studentName={studentName}
         studentId={student.user_id}
@@ -83,7 +97,13 @@ export default async function StudentDetailPage({
         <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="assessments">Assessments</TabsTrigger>
-          <TabsTrigger value="cognitive-profile">Cognitive Profile</TabsTrigger>
+          {/* We keep the trigger visible but can style it or disable it if no data */}
+          <TabsTrigger 
+            value="cognitive-profile" 
+            className={!hasCognitiveProfile ? "opacity-50" : ""}
+          >
+            Cognitive Profile {!hasCognitiveProfile && " (Empty)"}
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="mt-4">
@@ -95,7 +115,13 @@ export default async function StudentDetailPage({
         </TabsContent>
 
         <TabsContent value="cognitive-profile" className="mt-4">
-          <StudentCognitiveProfileTab profiles={cognitiveProfiles} />
+          {hasCognitiveProfile ? (
+            <StudentCognitiveProfileTab profiles={cognitiveProfiles} />
+          ) : (
+            <div className="flex flex-col items-center justify-center p-12 border-2 border-dashed rounded-lg">
+               <p className="text-muted-foreground">No cognitive profile data found for this student.</p>
+            </div>
+          )}
         </TabsContent>
       </Tabs>
     </div>

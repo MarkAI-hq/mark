@@ -38,6 +38,7 @@ export interface SubmissionResult {
   total_score: number | null;
   max_score: number | null;
   graded_at: string | null;
+  cognitive_profile: string | null;
   
   // AI Grading specific fields
   grading_status: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED' | null;

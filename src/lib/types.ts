@@ -286,3 +286,25 @@ export interface BloomLevel {
   createdAt: string;
   updatedAt: string;
 }
+
+// src/lib/types.ts (or wherever your types live)
+
+export interface CognitiveProfile {
+  profile_id: string;
+  profile_name: string;
+  description: string | null;
+  focus: string | null;
+}
+
+export interface StudentCognitiveProfile {
+  student_profile_id: string;
+  student_id: string;
+  assessment_id: string;
+  primary_profile_id: string;
+  mental_energy_score: number | null;
+  learning_strategy_score: number | null;
+  is_current: boolean;
+  profile_name?: string;        // Joined from profiles table
+  profile_description?: string; // Joined from profiles table
+  profile_focus?: string;       // Joined from profiles table
+}

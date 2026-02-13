@@ -1,4 +1,3 @@
-// src/components/students/assign-assessment-dialog.tsx
 'use client'
 
 import { useEffect, useState } from 'react';
@@ -27,7 +26,8 @@ interface AssignAssessmentDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   studentName: string;
-  classId: string; // We need the classId to filter relevant assessments
+  classId: string;
+  studentId: string;
 }
 
 export function AssignAssessmentDialog({
@@ -37,26 +37,27 @@ export function AssignAssessmentDialog({
   classId,
 }: AssignAssessmentDialogProps) {
   const [assessments, setAssessments] = useState<Assessment[]>([]);
-  const [selectedAssessmentId, setSelectedAssessmentId] = useState<string | null>(null);
+  const [selectedAssessmentId, setSelectedAssessmentId] = useState<string | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    if (open) {
-      setIsLoading(true);
-      getAssessments()
-        .then(({ data, error }) => {
-          if (error) {
-            toast.error('Failed to fetch assessments', { description: error.message });
-            setAssessments([]);
-          } else {
-            // [Business Logic] Filter assessments to show only those for the current class
-            const relevantAssessments = (data || []).filter(a => a.classId === classId);
-            setAssessments(relevantAssessments);
-          }
-        })
-        .finally(() => setIsLoading(false));
-    }
+    if (!open) return;
+
+    setIsLoading(true);
+    getAssessments()
+      .then(({ data, error }) => {
+        if (error) {
+          toast.error('Failed to fetch assessments', { description: error.message });
+          setAssessments([]);
+          setSelectedAssessmentId(undefined);
+        } else {
+          const relevantAssessments = (data || []).filter(a => a.classId === classId);
+          setAssessments(relevantAssessments);
+          setSelectedAssessmentId(undefined);
+        }
+      })
+      .finally(() => setIsLoading(false));
   }, [open, classId]);
 
   const handleSubmit = () => {
@@ -64,10 +65,11 @@ export function AssignAssessmentDialog({
       toast.warning('Please select an assessment to assign.');
       return;
     }
+
     setIsSubmitting(true);
     toast.info(`Assigning assessment to ${studentName}...`);
-    // [TODO] Here you would call a Server Action to create the assignment record.
-    // For now, we'll simulate it.
+
+    // Simulate server action
     setTimeout(() => {
       toast.success('Assessment assigned successfully!');
       setIsSubmitting(false);
@@ -77,25 +79,33 @@ export function AssignAssessmentDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="w-full max-w-md">
         <DialogHeader>
           <DialogTitle>Assign Assessment to {studentName}</DialogTitle>
           <DialogDescription>
             Select an assessment from the list to assign to this student.
           </DialogDescription>
         </DialogHeader>
-        <div className="py-4 space-y-2">
+
+        <div className="py-4 space-y-4 w-full">
           <Label htmlFor="assessment-select">Assessment</Label>
+
           {isLoading ? (
             <p>Loading assessments...</p>
           ) : assessments.length > 0 ? (
-            <Select onValueChange={setSelectedAssessmentId}>
-              <SelectTrigger id="assessment-select">
+            <Select
+              value={selectedAssessmentId}
+              onValueChange={setSelectedAssessmentId}
+            >
+              <SelectTrigger id="assessment-select" className="w-full">
                 <SelectValue placeholder="Select an assessment" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="w-full max-h-60 overflow-auto">
                 {assessments.map((assessment) => (
-                  <SelectItem key={assessment.id} value={assessment.id}>
+                  <SelectItem
+                    key={assessment.assessment_id}
+                    value={assessment.assessment_id}
+                  >
                     {assessment.title}
                   </SelectItem>
                 ))}
@@ -107,11 +117,19 @@ export function AssignAssessmentDialog({
             </p>
           )}
         </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
+
+        <DialogFooter className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            disabled={isSubmitting}
+          >
             Cancel
           </Button>
-          <Button onClick={handleSubmit} disabled={isSubmitting || isLoading || assessments.length === 0}>
+          <Button
+            onClick={handleSubmit}
+            disabled={isSubmitting || isLoading || assessments.length === 0}
+          >
             {isSubmitting ? 'Assigning...' : 'Assign'}
           </Button>
         </DialogFooter>

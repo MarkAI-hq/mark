@@ -50,10 +50,14 @@ export function ExamsTable({
       accessorKey: 'createdAt',
       header: 'Created',
       cell: ({ row }) => {
-        return format(
-          new TZDate(parseISO(row.original.createdAt), tz),
-          'MMM d, yyyy',
-        )
+        const dateStr = row.original.createdAt
+        if (!dateStr) return '—' // fallback for missing createdAt
+        try {
+          const parsedDate = parseISO(dateStr)
+          return format(new TZDate(parsedDate, tz), 'MMM d, yyyy')
+        } catch {
+          return 'Invalid date'
+        }
       },
     },
     {
@@ -78,7 +82,9 @@ export function ExamsTable({
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
-                <Link href={`/dashboard/assessments/${assessment.assessment_id}/results`}>
+                <Link
+                  href={`/dashboard/assessments/${assessment.assessment_id}/results`}
+                >
                   <ChartBarIcon className="w-4 h-4 mr-2" />
                   View Results
                 </Link>

@@ -10,7 +10,8 @@ export function useAuth() {
       const unsub = userSignal.subscribe(callback)
       return unsub
     },
-    () => userSignal.value
+    () => userSignal.value,
+    () => null
   )
 
   return { user }

@@ -1,4 +1,3 @@
-// src/lib/actions/cognitive.ts
 'use server'
 
 import { revalidatePath } from 'next/cache'
@@ -13,6 +12,7 @@ export interface AssessmentQuestion {
   options: { a: string; b: string; c: string; d: string; };
   points: { a: number; b: number; c: number; d: number; };
 }
+
 export interface AssessmentSection {
   id: string;
   assessment_id: string;
@@ -21,31 +21,20 @@ export interface AssessmentSection {
   order: number;
   questions: AssessmentQuestion[];
 }
+
+export interface LearningTool {
+  id: string;
+  name: string;
+  description: string;
+  how_to: string | null; 
+}
+
+// FIX: Explicitly exported to resolve TS2305 error in the frontend component
 export interface CognitiveProfile {
   profile_id: string;
   profile_name: string;
   description: string | null;
   focus: string | null;
-}
-export interface LearningTool {
-  id: string;
-  name: string;
-  description: string;
-  how_to: string | null;
-}
-export interface ProfileToolLink {
-  profile_id: string;
-  tool_id: string;
-}
-export interface CognitiveAssessmentStructure {
-  assessment: {
-    id: string;
-    title: string;
-    sections: AssessmentSection[];
-  };
-  profiles: CognitiveProfile[];
-  tools: LearningTool[];
-  profileToolLinks: ProfileToolLink[];
 }
 
 export interface StudentCognitiveProfile {
@@ -53,13 +42,37 @@ export interface StudentCognitiveProfile {
   student_id: string;
   assessment_id: string;
   primary_profile_id: string;
+  mental_energy_score: number;
+  learning_strategy_score: number;
+  assessment_date: string;
+  is_current: boolean;
+  notes: string | null;
+  // Metadata from JOIN
+  profile_name: string;
+  profile_description: string;
+  profile_focus: string;
+  // Nested tools from the "Deep Fetch"
+  tools: LearningTool[]; 
 }
+
+export interface CognitiveAssessmentStructure {
+  assessment: {
+    id: string;
+    title: string;
+    sections: AssessmentSection[];
+  };
+  profiles: CognitiveProfile[]; 
+  tools: LearningTool[];
+  profileToolLinks: { profile_id: string; tool_id: string }[];
+}
+
 export interface CognitiveAssessmentPayload {
   student_id: string;
   assessment_id: string;
   profile_scores: Record<number, 'a' | 'b' | 'c' | 'd'>;
   mental_energy_score: number;
   learning_strategy_score: number;
+  notes?: string;
 }
 
 function handleMutationResponse<T>(response: ServerActionResponse<T>): T {
@@ -74,6 +87,10 @@ export async function getCognitiveAssessment(): Promise<ServerActionResponse<Cog
   });
 }
 
+/**
+ * Saves the assessment and revalidates the specific student class path
+ * FIX: Ensure this signature matches the call in your components
+ */
 export async function saveCognitiveAssessment(
   payload: CognitiveAssessmentPayload,
   classId: string, 
@@ -85,9 +102,19 @@ export async function saveCognitiveAssessment(
 
   const savedProfile = handleMutationResponse(response);
   
-  revalidatePath(`/dashboard/classes/${classId}/${payload.student_id}`);
+  // Revalidate the student's dashboard to reflect the new profile immediately
+  revalidatePath(`/dashboard/classes/${classId}/students/${payload.student_id}`);
   
   return savedProfile;
+}
+
+export async function getStudentCognitiveProfile(
+  studentId: string
+): Promise<ServerActionResponse<StudentCognitiveProfile[]>> {
+  return await fetcher<StudentCognitiveProfile[]>(
+    `/cognitive/students/${studentId}/cognitive-profile`,
+    { cache: 'no-store' },
+  )
 }
 
 export async function getBloomsTaxonomy(): Promise<ServerActionResponse<BloomLevel[]>> {

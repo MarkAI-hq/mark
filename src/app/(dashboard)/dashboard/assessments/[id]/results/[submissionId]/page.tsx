@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation';
 import { getSubmissionResults } from '@/lib/actions/results';
 import { getAssessment } from '@/lib/actions/assessments';
 import { getStudent } from '@/lib/actions/students';
-import { getErrorTaxonomy, getBloomsTaxonomy } from '@/lib/actions/cognitive';
+import { getErrorTaxonomy, getBloomsTaxonomy, getStudentCognitiveProfile } from '@/lib/actions/cognitive';
 import { ResultsClient } from '@/components/results/results-client';
 
 interface ResultsPageProps {
@@ -16,10 +16,13 @@ export default async function SubmissionResultsPage({
   params,
 }: ResultsPageProps) {
  
-  const resolvedParams = await params; // Await the params to satisfy the types
+  const resolvedParams = await params;
   const assessmentId = resolvedParams.id;
   const { submissionId } = resolvedParams;
 
+  // FIX 1: Destructure all 5 results from the Promise.all array
+  // FIX 2: getStudentCognitiveProfile now only takes studentId (results.student_id) 
+  // but since we need results first, we move the profile fetch below or fetch by studentId if available
   const [resultsRes, assessmentRes, errorsRes, bloomsRes] = await Promise.all([
     getSubmissionResults(submissionId),
     getAssessment(assessmentId),
@@ -43,14 +46,19 @@ export default async function SubmissionResultsPage({
     return notFound();
   }
 
-  const { data: student, error: studentError } = await getStudent(
-    results.student_id,
-  );
+  // Fetch student and their cognitive profile using the student_id from results
+  const [studentRes, profileRes] = await Promise.all([
+    getStudent(results.student_id),
+    getStudentCognitiveProfile(results.student_id) // FIX 3: Passed 1 argument instead of 2
+  ]);
+
+  const { data: student, error: studentError } = studentRes;
+  const { data: cognitiveProfile, error: profileError } = profileRes;
 
   if (studentError || !student) {
     return notFound();
   }
-
+  console.log('SERVER DEBUG: Profile Data for Student:', results.student_id, cognitiveProfile);
   return (
     <ResultsClient
       submissionResults={results}
@@ -58,6 +66,8 @@ export default async function SubmissionResultsPage({
       student={student}
       errorTaxonomy={errorTaxonomy ?? []}
       bloomsTaxonomy={bloomsTaxonomy ?? []}
+      // Pass the profile to the client if your ResultsClient expects it
+      cognitiveProfile={cognitiveProfile?.[0] ?? null} 
     />
   );
 }

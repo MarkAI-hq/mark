@@ -2,9 +2,9 @@
 import { getStudent } from '@/lib/actions/students';
 import { getCognitiveAssessment } from '@/lib/actions/cognitive';
 import LearningCompassAssessment from './learning-compass-assessment';
+import { getStudentEnrollments, getStudentCognitiveProfiles, StudentCognitiveProfile } from '@/lib/actions/student-details';
 import { Metadata } from 'next';
 import { Card, CardContent } from '@/components/ui/card';
-import { getStudentEnrollments } from '@/lib/actions/student-details';
 
 interface AssessPageProps {
   params: Promise<{
@@ -27,17 +27,19 @@ export default async function AssessPage({ params }: AssessPageProps) {
   const { id: studentId } = await params;
 
   // Fetch all necessary data in parallel
-  const [studentResponse, assessmentResponse, enrollmentsResponse] = await Promise.all([
+  const [studentResponse, assessmentResponse, enrollmentsResponse, profileHistoryResponse] = await Promise.all([
     getStudent(studentId),
     getCognitiveAssessment(),
-    getStudentEnrollments(studentId), // Fetch the student's classes
+    getStudentEnrollments(studentId),
+    getStudentCognitiveProfiles(studentId),
   ]);
 
   const { data: student, error: studentError } = studentResponse;
   const { data: assessmentData, error: assessmentError } = assessmentResponse;
   const { data: enrollments, error: enrollmentsError } = enrollmentsResponse;
+  const { data: profileHistory, error: profileHistoryError } = profileHistoryResponse;
 
-  if (studentError || assessmentError || enrollmentsError || !student || !assessmentData) {
+  if (studentError || assessmentError || enrollmentsError || profileHistoryError || !student || !assessmentData) {
     return (
       <div className="container mx-auto py-8">
         <Card className="max-w-4xl mx-auto">
@@ -72,13 +74,34 @@ export default async function AssessPage({ params }: AssessPageProps) {
   const studentName = `${student.first_name} ${student.last_name || ''}`.trim();
 
   return (
-    <div className="container mx-auto py-8">
+    <div className="container mx-auto py-8 space-y-8">
+      {/* Past Cognitive Profiles */}
+      {profileHistory && profileHistory.length > 0 && (
+        <div>
+          <h2 className="text-2xl font-bold mb-4">Past Cognitive Profiles</h2>
+          <div className="space-y-4">
+            {profileHistory.map((profile: StudentCognitiveProfile) => (
+              <Card key={profile.student_profile_id}>
+                <CardContent>
+                  <p><strong>Date:</strong> {profile.assessment_date ? new Date(profile.assessment_date).toLocaleDateString() : 'N/A'}</p>
+                  <p><strong>Profile:</strong> {profile.profile_name || 'N/A'}</p>
+                  <p><strong>Focus:</strong> {profile.profile_focus || 'N/A'}</p>
+                  <p><strong>Mental Energy Score:</strong> {profile.mental_energy_score ?? 'N/A'}</p>
+                  <p><strong>Learning Strategy Score:</strong> {profile.learning_strategy_score ?? 'N/A'}</p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Current Cognitive Assessment */}
       <LearningCompassAssessment
-        className={activeEnrollment.class_name} // Pass the real class name
+        className={activeEnrollment.class_name}
         studentId={student.user_id}
         studentName={studentName}
         assessmentData={assessmentData}
-        classId={activeEnrollment.class_id}   // FIX: Pass the required classId prop
+        classId={activeEnrollment.class_id}
       />
     </div>
   );

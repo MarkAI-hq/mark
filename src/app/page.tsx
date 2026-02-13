@@ -7,6 +7,7 @@ import { FAQSection } from '@/components/layout/sections/faq'
 import { FeaturesSection } from '@/components/layout/sections/features'
 import Header from '@/components/layout/sections/header'
 import {OurStory} from '@/components/layout/sections/ourstory'
+import { PricingSection } from '@/components/pricing/pricing-section'
 
 export const metadata: Metadata = {
   title: 'Home - Mark',
@@ -21,6 +22,7 @@ export default function HomePage() {
       <OurStory/>
       <SponsorsSection />
       <FeaturesSection />
+      {/* <PricingSection /> */}
       <Header />
       <FAQSection />
       <FooterSection/>

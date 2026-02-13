@@ -84,6 +84,9 @@ const columns: ColumnDef<StudentSubmission>[] = [
     id: 'actions',
     cell: ({ row }) => {
       const submission = row.original
+      // Change this line to match your existing route structure
+      const resultsUrl = `/dashboard/assessments/${submission.assessment_id}/results/${submission.submission_id}`
+      
       return (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -94,7 +97,7 @@ const columns: ColumnDef<StudentSubmission>[] = [
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuItem asChild>
-              <Link href={`/dashboard/submissions/${submission.submission_id}`}>
+              <Link href={resultsUrl}>
                 View Submission
               </Link>
             </DropdownMenuItem>
