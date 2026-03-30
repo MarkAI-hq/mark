@@ -1,15 +1,17 @@
 // src/app/(dashboard)/dashboard/classes/page.tsx
-import { Metadata } from 'next';
-import { getClasses } from '@/lib/actions/classes';
-import { ClassesClient } from './_components/classes-client';
+
+import { Suspense }      from 'react'
+import { Metadata }      from 'next'
+import { getClasses }    from '@/lib/actions/classes'
+import { ClassesClient } from './_components/classes-client'
 
 export const metadata: Metadata = {
   title: 'Classes - Mark',
   description: 'Manage your classes and student enrollments.',
-};
+}
 
 export default async function ClassesPage() {
-  const { data: classes, error } = await getClasses();
+  const { data: classes, error } = await getClasses()
 
   if (error) {
     return (
@@ -19,7 +21,7 @@ export default async function ClassesPage() {
           Failed to load classes: {error.message}
         </p>
       </div>
-    );
+    )
   }
 
   return (
@@ -32,7 +34,9 @@ export default async function ClassesPage() {
           </h4>
         </div>
       </div>
-      <ClassesClient initialClasses={classes ?? []} />
+      <Suspense fallback={null}>
+        <ClassesClient initialClasses={classes ?? []} />
+      </Suspense>
     </>
-  );
+  )
 }

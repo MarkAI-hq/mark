@@ -1,10 +1,11 @@
 'use client'
 
-import { useState, useTransition } from 'react';
+// src/app/(dashboard)/dashboard/classes/_components/classes-client.tsx
+
+import { useState, useTransition, useEffect } from 'react';
+import { useRouter, useSearchParams }          from 'next/navigation';
 import { Plus } from 'lucide-react';
-// Using sonner for consistency with other recent components
 import { toast } from 'sonner';
-import { useRouter } from 'next/navigation';
 
 import { Button } from '@/components/ui/button';
 import { Class } from '@/lib/types';
@@ -18,26 +19,32 @@ interface ClassesClientProps {
 }
 
 export function ClassesClient({ initialClasses }: ClassesClientProps) {
-  const router = useRouter();
-  const [classes, setClasses] = useState<Class[]>(initialClasses);
+  const router       = useRouter();
+  const searchParams = useSearchParams();
+
+  const [classes,       setClasses]       = useState<Class[]>(initialClasses);
   const [selectedClass, setSelectedClass] = useState<Class | undefined>(undefined);
-  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [isFormOpen,    setIsFormOpen]    = useState(false);
   const [classToDelete, setClassToDelete] = useState<Class | undefined>(undefined);
-  const [isPending, startTransition] = useTransition();
+  const [isPending,     startTransition]  = useTransition();
+
+  // Auto-open create form when arriving from ?new=true
+  useEffect(() => {
+    if (searchParams.get('new') === 'true') {
+      setSelectedClass(undefined)
+      setIsFormOpen(true)
+      router.replace('/dashboard/classes')
+    }
+  }, [searchParams, router])
 
   const handleCreate = (data: ClassData) => {
     startTransition(async () => {
       try {
-        // FIXED: Transform `undefined` description to `null` to match the server action's type.
-        const payload = {
-          ...data,
-          description: data.description || null,
-        };
+        const payload = { ...data, description: data.description || null };
         const newClass = await createClass(payload);
         setClasses((prev) => [newClass, ...prev]);
         toast.success(`Class "${newClass.name}" created.`);
         setIsFormOpen(false);
-        // Redirect to the new class detail page to add students, as per our plan
         router.push(`/dashboard/classes/${newClass.class_id}`);
       } catch (err) {
         toast.error(err instanceof Error ? err.message : 'Failed to create class.');
@@ -49,10 +56,7 @@ export function ClassesClient({ initialClasses }: ClassesClientProps) {
     if (!selectedClass) return;
     startTransition(async () => {
       try {
-        const payload = {
-          ...data,
-          description: data.description || null,
-        };
+        const payload = { ...data, description: data.description || null };
         const updatedClass = await updateClass(selectedClass.class_id, payload);
         setClasses((prev) =>
           prev.map((c) => (c.class_id === updatedClass.class_id ? updatedClass : c)),
