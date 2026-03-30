@@ -36,11 +36,11 @@ interface FeatureProps {
 
 const routeList: RouteProps[] = [
   {
-    href: "mailto:info@xrefracted.com ?subject=Mark%20AI",
+    href: "mailto:founding@mirror.education ?subject=Mark%20AI",
     label: "Demo",
   },
   {
-    href: "/signup",
+    href: "/register",
     label: "Start for free",
   },
   {
