@@ -58,7 +58,6 @@ export default async function SubmissionResultsPage({
   if (studentError || !student) {
     return notFound();
   }
-  console.log('SERVER DEBUG: Profile Data for Student:', results.student_id, cognitiveProfile);
   return (
     <ResultsClient
       submissionResults={results}

@@ -1,3 +1,5 @@
+//src/app/dashboard/dashboard/exams/[slug]/results/page.tsx
+
 import { Metadata } from 'next'
 import { ExamResultsClient } from './results-client'
 import { getExam } from '@/lib/actions/exams'

@@ -89,7 +89,7 @@ export function LearningProcessAnalysis({
           </p>
         </AnalysisSection>
 
-        {/* Strategy Recommendations */}
+        {/* Strategy Recommendations
         <AnalysisSection
           icon={<Target className="h-5 w-5 text-green-600" />}
           title="Personalized Strategy Recommendation"
@@ -98,7 +98,7 @@ export function LearningProcessAnalysis({
             {results.responses?.[0]?.cognitive_feedback ||
               'Follow the specific guidance in your student toolkit for active recall.'}
           </p>
-        </AnalysisSection>
+        </AnalysisSection> */}
 
         {/* Follow-up Tasks */}
         {results.follow_up_assignments && results.follow_up_assignments.length > 0 && (
