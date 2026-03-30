@@ -9,26 +9,22 @@ interface DashboardShellProps {
   organizationName?: string | null
 }
 
-export function DashboardShell({
-  children,
-  organizationName,
-}: DashboardShellProps) {
+export function DashboardShell({ children, organizationName }: DashboardShellProps) {
   return (
-    <div className="min-h-screen">
-      {/* --- SIDEBAR (desktop + mobile handled inside MainNav) --- */}
+    <div className="min-h-screen bg-background">
       <MainNav organizationName={organizationName} />
 
-      {/* --- MAIN CONTENT --- */}
-      <div className="ml-0 lg:ml-64 flex min-h-screen flex-col">
-        {/* Header */}
-        <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-muted/40 px-4 lg:h-[60px] lg:px-6">
-          <div className="flex-1" />
+      <div className="lg:ml-64 flex min-h-screen flex-col">
+        {/* Top bar */}
+        <header className="sticky top-0 z-30 flex h-14 items-center justify-end border-b border-border/50 bg-background/95 backdrop-blur-sm px-6">
           <UserNav />
         </header>
 
-        {/* Page content scrolls */}
-        <main className="flex-1 overflow-y-auto">
-          <div className="space-y-4 p-4 lg:p-8 lg:pt-6">{children}</div>
+        {/* Page content */}
+        <main className="flex-1">
+          <div className="mx-auto max-w-7xl px-4 py-6 lg:px-8 lg:py-8 space-y-6">
+            {children}
+          </div>
           <Footer />
         </main>
       </div>
