@@ -1,317 +1,598 @@
 'use client'
 
-import { useState, useEffect, useCallback, useTransition } from 'react'
+import { useState, useEffect, useCallback, useTransition, useRef } from 'react'
 import { useDropzone } from 'react-dropzone'
-import { toast } from 'sonner'
-import { Upload, X, FileText, User, CheckCircle2 } from 'lucide-react'
+import { useRouter }   from 'next/navigation'
+import { toast }       from 'sonner'
+import {
+  Upload, X, FileText, CheckCircle2, XCircle, Loader2,
+  Brain, FileSearch, MessageSquare, Save, Pencil, Zap,
+  Users, UserPlus, AlertTriangle, Wrench, ShieldAlert, BookOpen, Lightbulb
+} from 'lucide-react'
 import Image from 'next/image'
+import { InlineEnrollDialog } from '@/components/grading/inline-enroll-dialog'
 
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
+  Dialog, DialogContent, DialogHeader,
+  DialogTitle, DialogDescription, DialogFooter,
 } from '@/components/ui/dialog'
-import { Button } from '@/components/ui/button'
+import { Button }     from '@/components/ui/button'
+import { Progress }   from '@/components/ui/progress'
+import { Badge }      from '@/components/ui/badge'
+import { Skeleton }   from '@/components/ui/skeleton'
+import { Textarea }   from '@/components/ui/textarea'
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Select, SelectContent, SelectItem,
+  SelectTrigger, SelectValue,
 } from '@/components/ui/select'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { cn } from '@/lib/utils'
+import { cn }         from '@/lib/utils'
 import { getEnrolledStudents, EnrolledStudent } from '@/lib/actions/enrollments'
-import { startBatchGrading } from '@/lib/actions/grading'
+import {
+  startBatchGrading,
+  getBatchGradingStatus,
+  BatchStatusResult,
+} from '@/lib/actions/grading'
+
+import { getLatestAudit, overrideAudit, getRedesignSuggestions } from '@/lib/actions/audit'
+
+// ── Types ──────────────────────────────────────────────────────────────────
+
+type DialogView = 'upload' | 'audit_flagged' | 'redesign_suggestions' | 'progress' | 'complete'
 
 interface BatchGradingDialogProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  assessmentId: string
-  classId: string
+  open:              boolean
+  onOpenChange:      (open: boolean) => void
+  assessmentId:      string
+  classId:           string
+  initialStudentId?: string
+  initialView?:      DialogView
 }
 
 interface FileWithPreview {
-  file: File
-  preview?: string
+  file:               File
+  preview?:           string
   assignedStudentId?: string
 }
+
+interface LiveSubmissionState {
+  submissionId: string
+  studentId:    string
+  progress:     number
+  step:         string
+  done:         boolean
+  error?:       string
+  score?:       number | null
+  maxScore?:    number | null
+}
+
+// ── Step config ────────────────────────────────────────────────────────────
+
+const STEP_CONFIG: Record<string, { icon: React.ReactNode; label: string; color: string }> = {
+  'Queued':            { icon: <Loader2 className="w-4 h-4 animate-spin" />,        label: 'Queued',             color: 'text-muted-foreground' },
+  'Starting':          { icon: <Zap className="w-4 h-4" />,                         label: 'Starting',           color: 'text-blue-500'         },
+  'Loading files':     { icon: <FileSearch className="w-4 h-4" />,                  label: 'Loading files',      color: 'text-blue-500'         },
+  'Reading assessment':{ icon: <FileText className="w-4 h-4" />,                    label: 'Reading assessment', color: 'text-blue-500'         },
+  'AI analysis':       { icon: <Brain className="w-4 h-4 animate-pulse" />,         label: 'AI grading',         color: 'text-purple-500'       },
+  'Writing feedback':  { icon: <MessageSquare className="w-4 h-4 animate-pulse" />, label: 'Writing feedback',   color: 'text-purple-500'       },
+  'Saving results':    { icon: <Save className="w-4 h-4" />,                        label: 'Saving results',     color: 'text-blue-500'         },
+  'Grading complete':  { icon: <CheckCircle2 className="w-4 h-4" />,                label: 'Grading complete',   color: 'text-green-600'        },
+  'Annotating script': { icon: <Pencil className="w-4 h-4" />,                      label: 'Annotating script',  color: 'text-green-600'        },
+  'Complete':          { icon: <CheckCircle2 className="w-4 h-4" />,                label: 'Complete',           color: 'text-green-600'        },
+  'Failed':            { icon: <XCircle className="w-4 h-4" />,                     label: 'Failed',             color: 'text-destructive'      },
+}
+
+const POLL_INTERVAL_MS  = 5000
+const MAX_POLL_ATTEMPTS = 120
+
+// ── Audit Score Circle ─────────────────────────────────────────────────────
+
+const AuditScoreCircle = ({ score }: { score: number }) => {
+  const color = score >= 85 ? 'text-green-500' : score >= 65 ? 'text-amber-500' : 'text-red-500'
+  const circumference = 301.6
+  return (
+    <div className="relative w-28 h-28 mx-auto mb-4">
+      <svg viewBox="0 0 112 112" className="w-full h-full -rotate-90">
+        <circle
+          cx="56" cy="56" r="48"
+          stroke="currentColor" strokeWidth="10" fill="transparent"
+          className="text-muted opacity-20"
+        />
+        <circle
+          cx="56" cy="56" r="48"
+          stroke="currentColor" strokeWidth="10" fill="transparent"
+          strokeLinecap="round"
+          strokeDasharray={`${(score / 100) * circumference} ${circumference}`}
+          className={color}
+        />
+      </svg>
+      <span className="absolute inset-0 flex items-center justify-center text-3xl font-bold">
+        {score}
+      </span>
+    </div>
+  )
+}
+
+// ── Component ──────────────────────────────────────────────────────────────
 
 export function BatchGradingDialog({
   open,
   onOpenChange,
   assessmentId,
   classId,
+  initialStudentId,
+  initialView = 'upload',
 }: BatchGradingDialogProps) {
-  const [files, setFiles] = useState<FileWithPreview[]>([])
-  const [students, setStudents] = useState<EnrolledStudent[]>([])
-  const [isPending, startTransition] = useTransition()
+  const router = useRouter()
 
-  // --- DEBUGGING CHECKPOINT 1: Data Fetching ---
+  const [files,           setFiles]           = useState<FileWithPreview[]>([])
+  const [students,        setStudents]        = useState<EnrolledStudent[]>([])
+  const [studentsLoading, setStudentsLoading] = useState(true)
+  const [isPending,       startTransition]    = useTransition()
+  const [view,            setView]            = useState<DialogView>(initialView)
+  const [liveStates,      setLiveStates]      = useState<LiveSubmissionState[]>([])
+  const [batchStatus,     setBatchStatus]     = useState<BatchStatusResult | null>(null)
+  const [showUnassigned,  setShowUnassigned]  = useState(false)
+  const [enrollOpen,      setEnrollOpen]      = useState(false)
+
+  const [auditResult,          setAuditResult]          = useState<any>(null)
+  const [showOverrideInput,    setShowOverrideInput]    = useState(false)
+  const [overrideReason,       setOverrideReason]       = useState('')
+  const [isOverriding,         setIsOverriding]         = useState(false)
+
+  const [redesignData,         setRedesignData]         = useState<any>(null)
+  const [isRequestingRedesign, setIsRequestingRedesign] = useState(false)
+
+  const abortRefs   = useRef<Map<string, AbortController>>(new Map())
+  const pollRef     = useRef<ReturnType<typeof setInterval> | null>(null)
+  const attemptsRef = useRef(0)
+  const hasInitializedView = useRef(false)
+
+  const resultsHref = `/dashboard/assessments/${assessmentId}/results`
+
+  // ── Sync view and fetch audit data ───────────────────────────────────
   useEffect(() => {
-    if (open && classId) {
-      console.log('[DEBUG] Dialog opened. Fetching students for classId:', classId);
-      getEnrolledStudents(classId).then((response) => {
-        console.log('[DEBUG] Received response from getEnrolledStudents:', response);
-        const { data, error } = response;
-        if (error) {
-          toast.error('Failed to fetch student list.', { description: error.message })
-          return
-        }
-        const activeStudents = data?.filter(s => s.status === 'active') || [];
-        console.log(`[DEBUG] Found ${activeStudents.length} active students.`);
-        setStudents(activeStudents)
-      })
+    if (open && !hasInitializedView.current) {
+      setView(initialView)
+      if (initialView === 'audit_flagged') {
+        getLatestAudit(assessmentId).then(({ data }) => setAuditResult(data))
+      }
+      hasInitializedView.current = true
     }
+    if (!open) {
+      hasInitializedView.current = false
+    }
+  }, [open, initialView, assessmentId])
+
+  const handleEnrolled = useCallback(async () => {
+    setStudentsLoading(true)
+    const { data } = await getEnrolledStudents(classId)
+    setStudents(data?.filter(s => s.status === 'active') ?? [])
+    setStudentsLoading(false)
+    setEnrollOpen(false)
+    toast.success('Students enrolled — you can now upload submissions.')
+  }, [classId])
+
+  useEffect(() => {
+    if (!open || !classId) return
+    setStudentsLoading(true)
+    getEnrolledStudents(classId).then(({ data }) => {
+      setStudents(data?.filter(s => s.status === 'active') ?? [])
+      setStudentsLoading(false)
+    })
   }, [open, classId])
 
-  // --- DEBUGGING CHECKPOINT 2: File Handling ---
-  const onDrop = useCallback((acceptedFiles: File[]) => {
-    console.log('[DEBUG] onDrop triggered. Accepted files:', acceptedFiles);
-    const newFiles = acceptedFiles.map((file) => ({
-      file,
-      preview: file.type.startsWith('image/') ? URL.createObjectURL(file) : undefined,
-    }))
-    setFiles((prev) => [...prev, ...newFiles])
+  useEffect(() => () => { cleanupAll() }, [])
+
+  const cleanupAll = () => {
+    abortRefs.current.forEach(ctrl => ctrl.abort())
+    abortRefs.current.clear()
+    if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null }
+    attemptsRef.current = 0
+  }
+
+  const checkAllDone = useCallback(() => {
+    setLiveStates(prev => {
+      const allDone = prev.length > 0 && prev.every(s => s.done)
+      if (allDone) { cleanupAll(); setView('complete') }
+      return prev
+    })
   }, [])
+
+  const openSSE = useCallback((submissionId: string) => {
+    const ctrl    = new AbortController()
+    abortRefs.current.set(submissionId, ctrl)
+    const apiBase = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'
+    const url     = `${apiBase}/grading/submissions/${submissionId}/progress`
+
+    fetch(url, { credentials: 'include', headers: { Accept: 'text/event-stream' }, signal: ctrl.signal })
+      .then(async res => {
+        if (!res.ok || !res.body) return
+        const reader  = res.body.getReader()
+        const decoder = new TextDecoder()
+        let   buffer  = ''
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+          buffer += decoder.decode(value, { stream: true })
+          const lines = buffer.split('\n')
+          buffer      = lines.pop() ?? ''
+          for (const line of lines) {
+            if (!line.startsWith('data:')) continue
+            try {
+              const data = JSON.parse(line.slice(5).trim())
+              setLiveStates(prev => prev.map(s =>
+                s.submissionId === submissionId
+                  ? { ...s, progress: data.progress, step: data.step, done: data.done ?? false, error: data.error }
+                  : s,
+              ))
+              if (data.done) { ctrl.abort(); abortRefs.current.delete(submissionId); checkAllDone(); return }
+            } catch { }
+          }
+        }
+      })
+      .catch(err => { if (err?.name !== 'AbortError') abortRefs.current.delete(submissionId) })
+  }, [checkAllDone])
+
+  const startFallbackPoll = useCallback((id: string) => {
+    attemptsRef.current = 0
+    pollRef.current = setInterval(async () => {
+      attemptsRef.current += 1
+      if (attemptsRef.current > MAX_POLL_ATTEMPTS) {
+        clearInterval(pollRef.current!)
+        return
+      }
+      const { data } = await getBatchGradingStatus(id)
+      if (!data) return
+      setBatchStatus(data)
+      setLiveStates(prev => prev.map(ls => {
+        const row  = data.submissions.find(s => s.student_id === ls.studentId)
+        if (!row) return ls
+        const done = row.grading_status === 'COMPLETED' || row.grading_status === 'FAILED'
+        return {
+          ...ls,
+          step:     row.grading_status === 'COMPLETED' ? 'Complete' : row.grading_status === 'FAILED' ? 'Failed' : ls.step,
+          done,
+          score:    row.total_score,
+          maxScore: row.max_score,
+        }
+      }))
+      if (data.is_complete) { clearInterval(pollRef.current!); setView('complete') }
+    }, POLL_INTERVAL_MS)
+  }, [])
+
+  const onDrop = useCallback((acceptedFiles: File[]) => {
+    setFiles(prev => [
+      ...prev,
+      ...acceptedFiles.map(file => ({
+        file,
+        preview:           file.type.startsWith('image/') ? URL.createObjectURL(file) : undefined,
+        assignedStudentId: initialStudentId ?? undefined,
+      })),
+    ])
+  }, [initialStudentId])
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
-    accept: {
-      'image/jpeg': ['.jpg', '.jpeg'],
-      'image/png': ['.png'],
-      'application/pdf': ['.pdf'],
-    },
-    maxSize: 10 * 1024 * 1024,
+    disabled: studentsLoading || students.length === 0,
+    accept:   { 'image/jpeg': ['.jpg', '.jpeg'], 'image/png': ['.png'], 'application/pdf': ['.pdf'] },
+    maxSize:  10 * 1024 * 1024,
   })
 
-  const removeFile = (index: number) => {
-    setFiles((prev) => {
-      const newFiles = [...prev]
-      const file = newFiles[index]
-      if (file?.preview) {
-        URL.revokeObjectURL(file.preview)
-      }
-      newFiles.splice(index, 1)
-      return newFiles
-    })
-  }
+  const removeFile    = (index: number) => setFiles(prev => { const n = [...prev]; if (n[index]?.preview) URL.revokeObjectURL(n[index].preview!); n.splice(index, 1); return n })
+  const assignStudent = (index: number, studentId: string) => setFiles(prev => { const n = [...prev]; if (n[index]) n[index].assignedStudentId = studentId; return n })
 
-  const assignStudent = (index: number, studentId: string) => {
-    setFiles((prev) => {
-      const newFiles = [...prev]
-      const file = newFiles[index]
-      if (file) {
-        file.assignedStudentId = studentId
-      }
-      return newFiles
-    })
-  }
-
-  // --- DEBUGGING CHECKPOINT 3: Submission ---
-  const handleSubmit = () => {
-    console.log('[DEBUG] handleSubmit triggered.');
-    const unassignedFiles = files.filter((f) => !f.assignedStudentId)
-    if (unassignedFiles.length > 0) {
-      console.log('[DEBUG] Submission blocked: Unassigned files found.');
-      toast.warning('Please assign a student to every file before submitting.')
-      return
-    }
+  // ── Submit Logic ─────────────────────────────────────────────────────
+  const handleSubmit = (bypassAuditCheck = false) => {
+    if (files.length === 0) return
+    if (files.some(f => !f.assignedStudentId)) { setShowUnassigned(true); return }
+    setShowUnassigned(false)
 
     startTransition(async () => {
-      console.log('[DEBUG] Starting transition for submission...');
       const formData = new FormData()
-      
-      const submissionIds = files.map((f) => f.assignedStudentId!);
-      console.log('[DEBUG] Created submissionIds array:', submissionIds);
+      formData.append('submissions', JSON.stringify(files.map(f => f.assignedStudentId!)))
+      files.forEach(f => formData.append('files', f.file))
 
-      formData.append('submissions', JSON.stringify(submissionIds))
-      
-      files.forEach((f, index) => {
-        formData.append('files', f.file)
-        console.log(`[DEBUG] Appended file ${index}:`, f.file.name);
-      })
-      
-      console.log('[DEBUG] Calling startBatchGrading server action...');
-      const response = await startBatchGrading(assessmentId, formData)
-      console.log('[DEBUG] Received response from startBatchGrading:', response);
-
-      const { data, error } = response;
+      const { data, error } = await startBatchGrading(assessmentId, formData)
 
       if (error) {
+        if (!bypassAuditCheck && error.message.includes('audit flagged')) {
+          const { data: auditData } = await getLatestAudit(assessmentId)
+          if (auditData) {
+            setAuditResult(auditData)
+            setView('audit_flagged')
+          }
+          return
+        }
         toast.error('Submission Failed', { description: error.message })
         return
       }
 
       if (data) {
-        toast.success('Grading Started', {
-          description: `${data.submissionCount} submissions have been queued for AI grading.`,
-        })
-        handleClose()
+        const initial: LiveSubmissionState[] = data.submissionIds.map((sid: string, i: number) => ({
+          submissionId: sid,
+          studentId:    files[i].assignedStudentId!,
+          progress:     0,
+          step:         'Queued',
+          done:         false,
+        }))
+        setLiveStates(initial)
+        setView('progress')
+        data.submissionIds.forEach((sid: string) => openSSE(sid))
+        startFallbackPoll(assessmentId)
       }
     })
   }
 
-  const handleClose = () => {
-    setFiles([])
-    onOpenChange(false)
+  const handleOverride = async () => {
+    if (!overrideReason.trim()) return toast.warning('Please provide a reason to override.')
+    setIsOverriding(true)
+    const { error } = await overrideAudit(assessmentId, overrideReason)
+    setIsOverriding(false)
+    if (error) return toast.error(error.message)
+    
+    toast.success('Audit overridden successfully.')
+    setShowOverrideInput(false)
+    
+    if (files.length > 0) {
+      handleSubmit(true) // Continue to grade
+    } else {
+      setView('upload') // Return to upload screen
+      router.refresh()
+    }
   }
 
-  const assignedStudentIds = new Set(files.map(f => f.assignedStudentId).filter(Boolean));
-  const unassignedStudentCount = files.filter(f => !f.assignedStudentId).length;
+  const handleGetRedesign = async () => {
+    setIsRequestingRedesign(true)
+    const { data, error } = await getRedesignSuggestions(assessmentId)
+    setIsRequestingRedesign(false)
+    if (error) return toast.error(error.message)
+    if (data) { setRedesignData(data); setView('redesign_suggestions') }
+  }
+
+  const handleClose = (shouldRedirect = false) => {
+    if (shouldRedirect && view === 'complete') {
+      router.push(resultsHref)
+    }
+    cleanupAll(); setFiles([]); setLiveStates([]); setBatchStatus(null)
+    setShowUnassigned(false); setView('upload'); onOpenChange(false)
+    setStudentsLoading(true); setShowOverrideInput(false); setOverrideReason('')
+  }
+
+  // ── Derived Values ───────────────────────────────────────────────────
+  const completedCount  = liveStates.filter(s => s.step === 'Complete').length
+  const failedCount     = liveStates.filter(s => s.step === 'Failed').length
+  const totalCount      = liveStates.length
+  const unassignedCount = files.filter(f => !f.assignedStudentId).length
+  const overallPct      = totalCount > 0
+    ? Math.round(liveStates.reduce((sum, s) => sum + Math.max(0, s.progress), 0) / totalCount)
+    : 0
+
+  const noStudents = !studentsLoading && students.length === 0
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-4xl max-h-[85vh] flex flex-col p-0">
-        <DialogHeader className="px-6 pt-6 pb-4">
-          <DialogTitle>Upload and Grade Student Submissions</DialogTitle>
-          <DialogDescription>
-            Upload student answer sheets and assign each file to a student for AI grading.
-          </DialogDescription>
-        </DialogHeader>
+    <>
+      <Dialog open={open} onOpenChange={v => { if (!v) handleClose(view === 'complete') }}>
+        <DialogContent className={cn(
+          "max-h-[85vh] flex flex-col p-0 transition-all duration-300",
+          view === 'upload' ? 'sm:max-w-4xl' : 'sm:max-w-3xl'
+        )}>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 px-6 flex-1 min-h-0 overflow-hidden">
-          <div className="flex flex-col min-h-0">
-            <div
-              {...getRootProps()}
-              className={cn(
-                'border-2 border-dashed rounded-lg p-6 transition-colors cursor-pointer flex flex-col items-center justify-center text-center h-[200px]',
-                'hover:border-primary/50 hover:bg-muted/50',
-                isDragActive && 'border-primary bg-primary/5',
-              )}
-            >
-              <input {...getInputProps()} />
-              <Upload className="h-12 w-12 text-muted-foreground" />
-              <p className="mt-4 text-sm font-medium">
-                Drag & drop files here, or click to select
-              </p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                PDF, JPG, or PNG files, up to 10MB each.
-              </p>
-            </div>
-          </div>
+          {/* ── UPLOAD VIEW ───────────────────────────────────────────── */}
+          {view === 'upload' && (
+            <>
+              <DialogHeader className="px-6 pt-6 pb-4">
+                <DialogTitle>Upload and Grade Student Submissions</DialogTitle>
+                <DialogDescription>
+                  {initialStudentId ? 'Uploading submission for pre-selected student.' : 'Upload student answer sheets and assign each file to a student.'}
+                </DialogDescription>
+              </DialogHeader>
 
-          <div className="flex flex-col min-h-0">
-            <h3 className="text-sm font-semibold mb-3">Uploaded Files</h3>
-            <ScrollArea className="flex-1 pr-2 -mr-2">
-              {files.length === 0 ? (
-                <div className="flex items-center justify-center h-[200px] text-sm text-muted-foreground">
-                  No files uploaded yet.
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 px-6 flex-1 min-h-0 overflow-hidden">
+                <div className="flex flex-col min-h-0">
+                  {studentsLoading ? (
+                    <div className="border-2 border-dashed rounded-lg p-6 h-[200px] flex flex-col items-center justify-center gap-3">
+                      <Skeleton className="h-10 w-10 rounded-full" /><Skeleton className="h-3 w-40" /><Skeleton className="h-3 w-28" />
+                    </div>
+                  ) : noStudents ? (
+                    <div className="border-2 border-dashed border-amber-200 bg-amber-50 rounded-lg p-6 h-[200px] flex flex-col items-center justify-center gap-3 text-center">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-amber-100"><Users className="h-6 w-6 text-amber-600" /></div>
+                      <div><p className="text-sm font-semibold text-amber-900">No students in this class</p><p className="text-xs text-amber-700 mt-1 leading-relaxed">Enroll at least one student before uploading submissions.</p></div>
+                      <Button size="sm" variant="outline" className="mt-1 border-amber-300 text-amber-800 hover:bg-amber-100 gap-1.5" onClick={() => setEnrollOpen(true)}><UserPlus className="h-3.5 w-3.5" /> Enroll students</Button>
+                    </div>
+                  ) : (
+                    <div {...getRootProps()} className={cn('border-2 border-dashed rounded-lg p-6 transition-colors cursor-pointer flex flex-col items-center justify-center text-center h-[200px]', 'hover:border-primary/50 hover:bg-muted/50', isDragActive && 'border-primary bg-primary/5')}>
+                      <input {...getInputProps()} /><Upload className="h-12 w-12 text-muted-foreground" /><p className="mt-4 text-sm font-medium">Drag & drop files here</p><p className="mt-1 text-xs text-muted-foreground">PDF, JPG, PNG — max 10MB each</p>
+                    </div>
+                  )}
                 </div>
-              ) : (
-                <div className="space-y-2 pb-2">
-                  {files.map((fileWithPreview, index) => {
-                    const assignedStudent = students.find(
-                      s => s.student_id === fileWithPreview.assignedStudentId
-                    );
-                    
-                    return (
-                      <div
-                        key={index}
-                        className="flex flex-col gap-2 p-3 border rounded-lg bg-card"
-                      >
-                        <div className="flex items-start gap-2">
-                          {fileWithPreview.preview ? (
-                            <Image
-                              src={fileWithPreview.preview}
-                              alt="Preview"
-                              className="w-10 h-10 object-cover rounded flex-shrink-0"
-                              width={40}
-                              height={40}
-                            />
-                          ) : (
-                            <FileText className="w-10 h-10 text-muted-foreground flex-shrink-0" />
-                          )}
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium truncate">
-                              {fileWithPreview.file.name}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              {(fileWithPreview.file.size / 1024 / 1024).toFixed(2)} MB
-                            </p>
+
+                <div className="flex flex-col min-h-0">
+                  <h3 className="text-sm font-semibold mb-3">Uploaded Files</h3>
+                  <ScrollArea className="flex-1 pr-2">
+                    {files.length === 0 ? (
+                      <p className="text-sm text-muted-foreground py-4 text-center">{noStudents ? 'Enroll students first.' : 'No files uploaded yet.'}</p>
+                    ) : (
+                      files.map((fw, index) => (
+                        <div key={index} className={cn('flex flex-col gap-2 p-3 border rounded-lg bg-card mb-2 transition-colors', showUnassigned && !fw.assignedStudentId && 'border-destructive/50 bg-destructive/5')}>
+                          <div className="flex items-center gap-2">
+                            {fw.preview ? <Image src={fw.preview} alt="P" className="w-10 h-10 object-cover rounded" width={40} height={40} /> : <FileText className="w-10 h-10 text-muted-foreground" />}
+                            <div className="flex-1 min-w-0"><p className="text-sm font-medium truncate">{fw.file.name}</p>{showUnassigned && !fw.assignedStudentId && <p className="text-xs text-destructive mt-0.5">Assign a student</p>}</div>
+                            <Button variant="ghost" size="icon" onClick={() => removeFile(index)}><X className="w-4" /></Button>
                           </div>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 flex-shrink-0"
-                            onClick={() => removeFile(index)}
-                          >
-                            <X className="w-4 h-4" />
-                          </Button>
-                        </div>
-                        
-                        <div className="flex items-center gap-2">
-                          {assignedStudent && (
-                            <div className="flex items-center gap-1.5 px-2 py-1 bg-primary/10 text-primary rounded text-xs font-medium">
-                              <User className="h-3 w-3" />
-                              <span className="truncate">
-                                {assignedStudent.first_name} {assignedStudent.last_name}
-                              </span>
-                            </div>
-                          )}
-                          <Select
-                            onValueChange={(value) => assignStudent(index, value)}
-                            value={fileWithPreview.assignedStudentId}
-                          >
-                            <SelectTrigger className="h-8 text-xs flex-1">
-                              <SelectValue placeholder="Assign..." />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {students.map((student) => (
-                                <SelectItem
-                                  key={student.student_id}
-                                  value={student.student_id}
-                                  disabled={assignedStudentIds.has(student.student_id) && fileWithPreview.assignedStudentId !== student.student_id}
-                                >
-                                  {student.first_name} {student.last_name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
+                          <Select onValueChange={v => { assignStudent(index, v); setShowUnassigned(false) }} value={fw.assignedStudentId}>
+                            <SelectTrigger className={cn('h-8 text-xs', showUnassigned && !fw.assignedStudentId && 'border-destructive')}><SelectValue placeholder="Assign student..." /></SelectTrigger>
+                            <SelectContent>{students.map(s => <SelectItem key={s.student_id} value={s.student_id}>{s.first_name} {s.last_name}</SelectItem>)}</SelectContent>
                           </Select>
                         </div>
+                      ))
+                    )}
+                  </ScrollArea>
+                </div>
+              </div>
+
+              <DialogFooter className="px-6 py-4 border-t">
+                {showUnassigned && unassignedCount > 0 && <p className="text-xs text-destructive flex-1 self-center">{unassignedCount} file(s) need assignment.</p>}
+                <Button variant="outline" onClick={() => handleClose(false)}>Cancel</Button>
+                <Button onClick={() => handleSubmit()} disabled={isPending || files.length === 0 || noStudents || studentsLoading}>
+                  {isPending ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Auditing & Submitting…</> : `Submit ${files.length} file(s)`}
+                </Button>
+              </DialogFooter>
+            </>
+          )}
+
+          {/* ── AUDIT FLAGGED VIEW ────────────────────────────────────── */}
+          {view === 'audit_flagged' && (
+            <>
+              <DialogHeader className="px-6 pt-6 pb-4 border-b bg-muted/30 shrink-0">
+                <div className="flex items-center gap-2 text-amber-600 mb-1"><AlertTriangle className="h-5 w-5" /><DialogTitle>Assessment Quality Audit</DialogTitle></div>
+                <DialogDescription>This assessment deviates from the official curriculum schema.</DialogDescription>
+              </DialogHeader>
+
+              <div className="px-6 py-6 flex-1 flex flex-col min-h-0 overflow-hidden">
+                {!auditResult ? (
+                  <div className="flex flex-col items-center justify-center flex-1 gap-4"><Loader2 className="h-8 w-8 animate-spin text-primary" /><p className="text-sm text-muted-foreground">Loading audit findings...</p></div>
+                ) : (
+                  <div className="flex flex-col md:flex-row gap-8 flex-1 min-h-0">
+                    <div className="w-full md:w-1/3 flex flex-col items-center justify-center min-h-[160px] border-b md:border-b-0 md:border-r border-border pb-6 md:pb-0 pr-0 md:pr-6 shrink-0">
+                      <AuditScoreCircle score={auditResult.overall_score} />
+                      <h3 className="text-center font-semibold mt-2 text-foreground">Overall Alignment</h3>
+                    </div>
+                    <div className="w-full md:w-2/3 flex flex-col min-h-0">
+                      <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3 shrink-0">Audit Findings</h4>
+                      <ScrollArea className="flex-1 min-h-0 pr-4 -mr-4">
+                        <div className="space-y-3 pb-4">
+                          {auditResult.findings.map((finding: any, i: number) => (
+                            <div key={i} className={cn("p-3 rounded-lg border flex gap-3 items-start", finding.status === 'flagged' ? 'border-amber-200 bg-amber-50 dark:bg-amber-950/20' : 'border-green-200 bg-green-50 dark:bg-green-950/20')}>
+                              {finding.status === 'flagged' ? <XCircle className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" /> : <CheckCircle2 className="w-4 h-4 text-green-500 mt-0.5 shrink-0" />}
+                              <div className="flex-1 min-w-0">
+                                <p className={cn("text-sm font-semibold capitalize", finding.status === 'flagged' ? 'text-amber-900 dark:text-amber-200' : 'text-green-900 dark:text-green-200')}>{finding.dimension.replace('_', ' ')}</p>
+                                <p className="text-xs mt-1 text-muted-foreground leading-relaxed">{finding.description}</p>
+                                {finding.citation && <span className="mt-2 text-[10px] font-medium text-muted-foreground/80 flex items-center gap-1.5 bg-background/50 w-fit px-1.5 py-0.5 rounded"><BookOpen className="w-3 h-3 shrink-0" />{finding.citation}</span>}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </ScrollArea>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="px-6 py-4 border-t bg-muted/30 shrink-0">
+                {showOverrideInput ? (
+                  <div className="animate-in fade-in slide-in-from-bottom-2 duration-200">
+                    <div className="flex items-center gap-2 text-destructive mb-2"><ShieldAlert className="w-4 h-4 shrink-0" /><span className="text-sm font-semibold">Liability Override</span></div>
+                    <Textarea placeholder="Provide a reason for overriding the audit..." value={overrideReason} onChange={(e) => setOverrideReason(e.target.value)} className="text-sm bg-background mb-3 min-h-[72px] resize-none" autoFocus />
+                    <div className="flex justify-end gap-2">
+                      <Button variant="ghost" size="sm" onClick={() => { setShowOverrideInput(false); setOverrideReason('') }}>Cancel</Button>
+                      <Button variant="destructive" size="sm" onClick={handleOverride} disabled={isOverriding}>{isOverriding && <Loader2 className="w-4 h-4 animate-spin mr-2" />}Confirm & Grade</Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-end gap-3">
+                    <Button variant="ghost" className="text-muted-foreground hover:text-foreground" onClick={() => setShowOverrideInput(true)}>Grade Anyway</Button>
+                    <Button onClick={handleGetRedesign} disabled={isRequestingRedesign} className="gap-2">{isRequestingRedesign ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wrench className="w-4 h-4" />}Fix My Assessment</Button>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+
+          {/* ── REDESIGN SUGGESTIONS VIEW (BLUEPRINT THEME) ────────────────── */}
+          {view === 'redesign_suggestions' && redesignData && (
+            <>
+              <DialogHeader className="px-6 pt-6 pb-4 border-b bg-indigo-50/50 dark:bg-indigo-950/10 shrink-0">
+                <div className="flex items-center gap-2 text-indigo-600 mb-1"><Lightbulb className="h-5 w-5" /><DialogTitle>CBC Alignment Blueprint</DialogTitle></div>
+                <DialogDescription>These suggestions are mapped directly to your curriculum standards.</DialogDescription>
+              </DialogHeader>
+              <div className="px-6 py-6 flex-1 overflow-y-auto">
+                <div className="bg-indigo-600 text-white p-4 rounded-lg mb-6 text-sm font-medium shadow-sm">{redesignData.overall_advice}</div>
+                <div className="space-y-6">
+                  {redesignData.detailed_suggestions.map((sug: any, i: number) => (
+                    <div key={i} className="space-y-3">
+                      <h4 className="text-xs font-bold uppercase tracking-wider text-indigo-600 flex items-center gap-2"><BookOpen className="w-3.5 h-3.5" />{sug.issue_summary}</h4>
+                      <div className="grid gap-3 pl-4 border-l-2 border-indigo-100">
+                        {sug.suggestions.map((action: any, j: number) => (
+                          <div key={j} className="bg-card border border-indigo-50 rounded-md p-3 shadow-sm">
+                            <div className="flex items-center justify-between mb-1"><span className="font-bold text-sm text-slate-900">{action.title}</span><Badge className="bg-indigo-100 text-indigo-700 hover:bg-indigo-100 border-none text-[9px] uppercase tracking-tighter">{action.action_type.replace('_', ' ')}</Badge></div>
+                            <p className="text-xs text-slate-600 mb-3 leading-relaxed">{action.description}</p>
+                            {action.example_question_stem && <div className="bg-slate-50 border border-slate-100 p-2.5 rounded text-xs font-medium text-slate-700"><span className="text-indigo-600 font-bold mr-2">CBC ITEM STEM:</span>{action.example_question_stem}</div>}
+                          </div>
+                        ))}
                       </div>
-                    );
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <DialogFooter className="px-6 py-4 border-t flex justify-end gap-3 bg-slate-50/50">
+                <Button variant="outline" size="sm" onClick={() => setView('audit_flagged')}>Back to Audit</Button>
+                <Button size="sm" className="bg-indigo-600 hover:bg-indigo-700" onClick={() => handleClose(false)}>I&apos;ll fix it and return</Button>
+              </DialogFooter>
+            </>
+          )}
+
+          {/* ── PROGRESS VIEW ─────────────────────────────────────────── */}
+          {view === 'progress' && (
+            <>
+              <DialogHeader className="px-6 pt-6 pb-2"><DialogTitle>Grading in Progress</DialogTitle></DialogHeader>
+              <div className="px-6 py-4 flex-1 space-y-5 overflow-y-auto">
+                <div className="space-y-1.5"><div className="flex justify-between text-sm"><span className="text-muted-foreground">Overall</span><span className="font-medium tabular-nums">{overallPct}%</span></div><Progress value={overallPct} className="h-2" /></div>
+                <div className="space-y-3">
+                  {liveStates.map(ls => {
+                    const student = students.find(s => s.student_id === ls.studentId)
+                    const name    = student ? `${student.first_name} ${student.last_name}` : ls.studentId.slice(0, 8)
+                    const cfg     = STEP_CONFIG[ls.step] ?? STEP_CONFIG['Queued']
+                    const isDone  = ls.step === 'Complete'
+                    const isFail  = ls.step === 'Failed'
+                    return (
+                      <div key={ls.submissionId} className={cn('rounded-lg border p-4 transition-colors', isDone && 'border-green-200 bg-green-50', isFail && 'border-destructive/30 bg-destructive/5', !isDone && !isFail && 'bg-card')}>
+                        <div className="flex items-center justify-between mb-2"><span className="text-sm font-medium">{name}</span><div className={cn('flex items-center gap-1.5 text-xs font-medium', cfg.color)}>{cfg.icon}<span>{cfg.label}</span></div></div>
+                        <Progress value={Math.max(0, ls.progress)} className={cn('h-1.5', isDone && '[&>div]:bg-green-500', isFail && '[&>div]:bg-destructive')} />
+                        <div className="flex items-center justify-between mt-2">
+                          {[10, 30, 60, 75, 85, 100].map(milestone => (
+                            <div key={milestone} className={cn('h-1.5 w-1.5 rounded-full transition-colors', ls.progress >= milestone ? (isDone ? 'bg-green-500' : isFail ? 'bg-destructive' : 'bg-primary') : 'bg-muted')} />
+                          ))}
+                        </div>
+                        {isFail && ls.error && <p className="text-xs text-destructive mt-2 truncate">{ls.error}</p>}
+                      </div>
+                    )
                   })}
                 </div>
-              )}
-            </ScrollArea>
-          </div>
-        </div>
+              </div>
+              <DialogFooter className="px-6 py-4 border-t"><Button variant="outline" onClick={() => handleClose(true)}>Close — view results</Button></DialogFooter>
+            </>
+          )}
 
-        <DialogFooter className="px-6 py-4 border-t">
-          <div className="w-full flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-            <div className="text-sm">
-              {unassignedStudentCount > 0 ? (
-                <div className="flex items-center gap-2 text-amber-600">
-                  <User className="h-4 w-4" />
-                  <span>{unassignedStudentCount} file(s) need assignment</span>
-                </div>
-              ) : files.length > 0 ? (
-                <div className="flex items-center gap-2 text-green-600">
-                  <CheckCircle2 className="h-4 w-4" />
-                  <span>All files assigned. Ready to submit.</span>
-                </div>
-              ) : (
-                <span className="text-muted-foreground">Upload files to begin.</span>
-              )}
-            </div>
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={handleClose} disabled={isPending}>
-                Cancel
-              </Button>
-              <Button
-                onClick={handleSubmit}
-                disabled={isPending || files.length === 0 || unassignedStudentCount > 0}
-              >
-                {isPending ? 'Submitting...' : `Submit ${files.length} File(s)`}
-              </Button>
-            </div>
-          </div>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+          {/* ── COMPLETE VIEW ────────────────────────────────────────────── */}
+          {view === 'complete' && (
+            <>
+              <DialogHeader className="px-6 pt-6 pb-4"><DialogTitle>Grading Complete</DialogTitle></DialogHeader>
+              <div className="px-6 py-6 flex-1 space-y-5">
+                <div className="flex flex-wrap gap-3"><Badge variant="outline" className="gap-1.5 text-green-600 text-sm py-1.5 px-3"><CheckCircle2 className="w-4 h-4" />{completedCount} graded successfully</Badge></div>
+                <ScrollArea className="h-[260px] border rounded-lg p-3">
+                  {liveStates.map(ls => {
+                    const student = students.find(s => s.student_id === ls.studentId)
+                    const name    = student ? `${student.first_name} ${student.last_name}` : ls.studentId.slice(0, 8)
+                    return (
+                      <div key={ls.submissionId} className="flex items-center justify-between py-2.5 border-b last:border-b-0">
+                        <div className="flex items-center gap-2 text-sm">{ls.step === 'Complete' ? <CheckCircle2 className="w-4 h-4 text-green-600" /> : <XCircle className="w-4 h-4 text-destructive" />}<span>{name}</span></div>
+                        {ls.step === 'Complete' && <span className="text-sm font-semibold tabular-nums">{ls.score}/{ls.maxScore}</span>}
+                      </div>
+                    )
+                  })}
+                </ScrollArea>
+              </div>
+              <DialogFooter className="px-6 py-4 border-t"><Button onClick={() => handleClose(true)}>Done — view results</Button></DialogFooter>
+            </>
+          )}
+
+        </DialogContent>
+      </Dialog>
+
+      <InlineEnrollDialog open={enrollOpen} onOpenChange={setEnrollOpen} classId={classId} onEnrolled={handleEnrolled} />
+    </>
   )
 }
+
+//changed from 801 lines
