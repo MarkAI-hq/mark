@@ -1,106 +1,104 @@
 'use client'
 
-import React, { useCallback, useState } from 'react'
-import { Check } from 'lucide-react'
+import React, { useState, useEffect } from 'react'
+import { Check, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
-import {
-  EmbeddedCheckout,
-  EmbeddedCheckoutProvider
-} from '@stripe/react-stripe-js'
-import { loadStripe } from '@stripe/stripe-js'
-import { startCheckoutSession } from '@/app/actions/stripe'
-import { PRODUCTS } from '@/lib/products'
 
-const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!)
+// NEW: Import the subscription logic and regional detection
+import { initializePayment } from '@/lib/actions/subscriptions'
+import { detectRegion, REGIONAL_PRICES, type BillingRegion } from '@/lib/billing-utils'
 
-// Define the structure for our pricing plans
 interface PricingPlan {
-  id: string
+  id: 'free' | 'pro' | 'enterprise' // Match the backend types
   name: string
-  price: string
+  price: number
   description: string
   features: string[]
   isPopular?: boolean
 }
 
-const plans: PricingPlan[] = [
-  {
-    id: 'starter-plan',
-    name: 'Starter',
-    price: '99',
-    description: 'Recommended for people with at least 1 year experience in crypto markets.',
-    features: [
-      '1 user account',
-      '24 transactions per month',
-      '16 altcoin pairs',
-      'Basic AI analysis of markets',
-      'Build-in wallet API for your crypto',
-    ],
-  },
-  {
-    id: 'professional-plan',
-    name: 'Professional',
-    price: '199',
-    description: 'Best for large business owners, startups who need a landing page for their business.',
-    features: [
-      '1 user account',
-      'Unlimited transactions per month',
-      'Unlimited altcoin pairs',
-      'Advanced AI analysis of markets',
-      'Build-in wallet API for your crypto',
-    ],
-    isPopular: true,
-  },
-  {
-    id: 'enterprise-plan',
-    name: 'Enterprise',
-    price: '299',
-    description: 'Best for large business owners, startups who need a landing page for their business.',
-    features: [
-      'Unlimited users account',
-      'Unlimited transactions per month',
-      'Unlimited altcoin pairs',
-      'Advanced AI analysis of market by expert',
-      'Build-in wallet API for your crypto',
-    ],
-  },
-]
-
 export function PricingSection() {
-  const [selectedPlan, setSelectedPlan] = useState<string | null>(null)
+  const [loading, setLoading] = useState<string | null>(null)
+  const [region, setRegion] = useState<BillingRegion>('global')
 
-  const handleCheckout = useCallback((productId: string) => {
-    setSelectedPlan(productId)
+  // Automatically detect user region on mount
+  useEffect(() => {
+    setRegion(detectRegion())
   }, [])
 
-  // Show checkout modal if a plan is selected
-  if (selectedPlan) {
-    return (
-      <section className="py-24 px-6 bg-white dark:bg-neutral-950">
-        <div className="max-w-2xl mx-auto">
-          <Button 
-            onClick={() => setSelectedPlan(null)}
-            variant="outline"
-            className="mb-6"
-          >
-            ← Back to Plans
-          </Button>
-          <EmbeddedCheckoutProvider
-            stripe={stripePromise}
-            options={{ 
-              clientSecret: async () => {
-                const clientSecret = await startCheckoutSession(selectedPlan)
-                return clientSecret || ''
-              }
-            }}
-          >
-            <EmbeddedCheckout />
-          </EmbeddedCheckoutProvider>
-        </div>
-      </section>
-    )
+  const prices = REGIONAL_PRICES[region]
+
+  const plans: PricingPlan[] = [
+    {
+      id: 'free',
+      name: 'Starter',
+      price: 0,
+      description: 'Perfect for getting started and exploring the platform.',
+      features: [
+        '1 class support',
+        'Basic AI analysis',
+        'Standard reporting',
+        'Community support',
+      ],
+    },
+    {
+      id: 'pro',
+      name: 'Professional',
+      price: prices.monthly, // Dynamic based on region
+      description: 'Full access for teachers who want to maximize student impact.',
+      features: [
+        'Unlimited classes',
+        'Advanced AI diagnostic marking',
+        'Detailed cognitive profiling',
+        'No watermarks on reports',
+        'Priority support',
+      ],
+      isPopular: true,
+    },
+    {
+      id: 'enterprise',
+      name: 'Enterprise',
+      price: 199, // Custom or fixed high tier
+      description: 'Custom solutions for schools and educational organizations.',
+      features: [
+        'Everything in Professional',
+        'School-wide analytics',
+        'Custom curriculum integration',
+        'Dedicated account manager',
+        'SLA & custom contracts',
+      ],
+    },
+  ]
+
+  const handleCheckout = async (planId: 'free' | 'pro' | 'enterprise') => {
+    if (planId === 'free') return // Or redirect to dashboard
+
+    setLoading(planId)
+    
+    try {
+      // Initialize the Stripe redirect session
+      const res = await initializePayment(
+        planId as 'pro' | 'enterprise', 
+        'monthly', 
+        region
+      )
+
+      if (res.error) {
+        throw new Error(res.error.message)
+      }
+
+      if (res.data?.url) {
+        // Redirect to Stripe-hosted checkout page
+        window.location.href = res.data.url
+      }
+    } catch (error) {
+      console.error('Checkout error:', error)
+      alert('Failed to initialize checkout. Please try again.')
+    } finally {
+      setLoading(null)
+    }
   }
 
   return (
@@ -111,7 +109,9 @@ export function PricingSection() {
             Pricing Details
           </h2>
           <p className="text-lg max-w-2xl mx-auto text-neutral-700 dark:text-neutral-300">
-            A Comprehensive Breakdown of Our Pricing Plans to Help You Make the Best Choice!
+            {region === 'east_africa' 
+              ? "Special regional pricing enabled for East African educators." 
+              : "A Comprehensive Breakdown of Our Pricing Plans to Help You Make the Best Choice!"}
           </p>
         </div>
 
@@ -138,6 +138,7 @@ export function PricingSection() {
 
               <CardContent className="flex-grow">
                 <Button 
+                  disabled={loading !== null}
                   onClick={() => handleCheckout(plan.id)}
                   className={cn(
                     "w-full mb-8 py-6 text-lg font-bold transition-all",
@@ -146,7 +147,13 @@ export function PricingSection() {
                       : "bg-transparent border border-neutral-400 dark:border-neutral-600 text-neutral-900 dark:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800"
                   )}
                 >
-                  Get Started
+                  {loading === plan.id ? (
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                  ) : plan.id === 'free' ? (
+                    'Current Plan'
+                  ) : (
+                    'Get Started'
+                  )}
                 </Button>
 
                 <ul className="space-y-4">

@@ -163,7 +163,7 @@ export function SchoolAnalyticsSection({ analytics }: SchoolAnalyticsSectionProp
                     <div className="flex items-center justify-between">
                       <ErrorTypeLabel
                         name={err.error_name}
-                        description={err.description}
+                        description={err.description ?? null}
                         className="text-xs font-medium truncate max-w-[70%]"
                       />
                       <span className="text-xs text-muted-foreground">{err.percentage}%</span>

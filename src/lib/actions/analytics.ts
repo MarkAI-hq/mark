@@ -16,6 +16,7 @@ export interface ErrorDistribution {
   error_name:  string
   count:       number
   percentage:  number
+  description?: string
 }
 
 export interface AtRiskStudent {
