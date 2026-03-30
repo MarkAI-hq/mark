@@ -17,6 +17,10 @@ const sidebarNavItems = [
     title: 'Members',
     href: '/dashboard/settings/members',
   },
+  {
+    title: 'Billing',
+    href: '/dashboard/settings/billing',
+  },
   // Add more settings pages here in the future (e.g., Billing, Notifications)
 ];
 

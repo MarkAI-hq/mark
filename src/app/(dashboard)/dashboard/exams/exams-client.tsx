@@ -1,84 +1,124 @@
-//src/app/(dashboard)/dashboard/exams/exams-client.tsx
 'use client'
 
-import { useState, useTransition } from 'react';
-import { toast } from 'sonner'; // toast is already imported
-import { Plus } from 'lucide-react';
-import { useHotkeys } from 'react-hotkeys-hook';
+// src/app/(dashboard)/dashboard/exams/exams-client.tsx
 
-import { Button } from '@/components/ui/button';
-import { ExamsTable } from '@/components/exams/exams-table';
-import { ConfirmDialog } from '@/components/common/confirm-dialog';
-import { Assessment, deleteAssessment } from '@/lib/actions/assessments';
-import { Subject } from '@/lib/types';
-import { ExamDialog } from '@/components/exams/exam-dialog';
+import { useState, useTransition, useEffect } from 'react'
+import { useRouter, useSearchParams }          from 'next/navigation'
+import { toast }      from 'sonner'
+import { Plus }       from 'lucide-react'
+import { useHotkeys } from 'react-hotkeys-hook'
+
+import { Button }        from '@/components/ui/button'
+import { ExamsTable }    from '@/components/exams/exams-table'
+import { ConfirmDialog } from '@/components/common/confirm-dialog'
+import { ExamDialog }    from '@/components/exams/exam-dialog'
+import { Assessment, deleteAssessment, publishAssessment } from '@/lib/actions/assessments'
+import { getSubjects } from '@/lib/actions/subjects'
+
+type SubjectOption = { id: string; name: string }
 
 interface ExamsClientProps {
-  assessments: Assessment[];
-  subjects: Subject[];
+  assessments: Assessment[]
+  subjects:    SubjectOption[]
+  classes:     { class_id: string; name: string }[]
+  role?:       'Admin' | 'Teacher'
 }
 
-export function ExamsClient({ assessments, subjects }: ExamsClientProps) {
-  const [assessmentList, setAssessmentList] = useState<Assessment[]>(assessments);
-  const [selectedAssessment, setSelectedAssessment] = useState<Assessment | undefined>();
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [isPending, startTransition] = useTransition();
+function normaliseSubjects(raw: any[]): SubjectOption[] {
+  return raw
+    .map((s) => ({ id: s.subject_id ?? s.id, name: s.name }))
+    .filter((s): s is SubjectOption => Boolean(s.id && s.name))
+}
+
+export function ExamsClient({ assessments, subjects, classes, role = 'Admin' }: ExamsClientProps) {
+  const router       = useRouter()
+  const searchParams = useSearchParams()
+
+  const [assessmentList,     setAssessmentList]     = useState<Assessment[]>(assessments)
+  const [subjectList,        setSubjectList]        = useState<SubjectOption[]>(subjects)
+  const [selectedAssessment, setSelectedAssessment] = useState<Assessment | undefined>()
+  const [dialogOpen,         setDialogOpen]         = useState(false)
+  const [deleteDialogOpen,   setDeleteDialogOpen]   = useState(false)
+  const [isPending,          startTransition]       = useTransition()
+
+  // Auto-open create dialog when arriving from ?new=true
+  useEffect(() => {
+    if (searchParams.get('new') === 'true') {
+      setSelectedAssessment(undefined)
+      setDialogOpen(true)
+      router.replace('/dashboard/exams')
+    }
+  }, [searchParams, router])
 
   const resetState = () => {
-    setSelectedAssessment(undefined);
-    setDialogOpen(false);
-    setDeleteDialogOpen(false);
-  };
+    setSelectedAssessment(undefined)
+    setDialogOpen(false)
+    setDeleteDialogOpen(false)
+  }
 
-  const handleOpenNewDialog = () => {
-    setSelectedAssessment(undefined);
-    setDialogOpen(true);
-  };
+  const refreshSubjects = async () => {
+    const { data } = await getSubjects()
+    if (data) setSubjectList(normaliseSubjects(data as any[]))
+  }
 
-  useHotkeys('n', handleOpenNewDialog, {
-    preventDefault: true,
-    description: 'Create new assessment',
-  });
+  const handleOpenNewDialog = async () => {
+    setSelectedAssessment(undefined)
+    setDialogOpen(true)
+    await refreshSubjects()
+  }
 
-  useHotkeys('escape', resetState, {
-    preventDefault: true,
-    description: 'Close dialogs',
-  });
+  const handleOpenEditDialog = async (assessment: Assessment) => {
+    setSelectedAssessment(assessment)
+    setDialogOpen(true)
+    await refreshSubjects()
+  }
+
+  useHotkeys('n',      handleOpenNewDialog, { preventDefault: true })
+  useHotkeys('escape', resetState,          { preventDefault: true })
 
   const handleDelete = () => {
-    if (!selectedAssessment) return;
+    if (!selectedAssessment) return
+    toast.promise(deleteAssessment(selectedAssessment.assessment_id), {
+      loading: 'Deleting assessment...',
+      success: (res) => {
+        if (res.error) throw new Error(res.error.message)
+        startTransition(() => {
+          setAssessmentList((prev) =>
+            prev.filter((a) => a.assessment_id !== selectedAssessment.assessment_id),
+          )
+        })
+        resetState()
+        return res.data?.message ?? 'Assessment deleted.'
+      },
+      error: (err) => err.message ?? 'Failed to delete.',
+    })
+  }
 
-    // Move toast.promise OUTSIDE of startTransition
-    toast.promise(
-      deleteAssessment(selectedAssessment.assessment_id),
-      {
-        loading: 'Deleting assessment...',
-        success: (res) => {
-          if (res.error) {
-            throw new Error(res.error.message);
-          }
-          // Use startTransition only for the state update
-          startTransition(() => {
-            setAssessmentList((prevList) =>
-              prevList.filter((item) => item.assessment_id !== selectedAssessment.assessment_id),
-            );
-          });
-          resetState();
-          return res.data?.message || 'Assessment deleted successfully.';
-        },
-        error: (err) => {
-          return err.message || 'Failed to delete assessment.';
-        },
-      }
-    );
-  };
+  const handlePublish = (assessment: Assessment) => {
+    toast.promise(publishAssessment(assessment.assessment_id), {
+      loading: 'Publishing...',
+      success: (res) => {
+        if (res.error) throw new Error(res.error.message)
+        startTransition(() => {
+          setAssessmentList((prev) =>
+            prev.map((a) =>
+              a.assessment_id === assessment.assessment_id
+                ? { ...a, is_published: true }
+                : a,
+            ),
+          )
+        })
+        return `"${assessment.title}" is now published.`
+      },
+      error: (err) => err.message ?? 'Failed to publish.',
+    })
+  }
 
   return (
     <>
       <div className="flex items-center justify-between mb-4">
         <div />
-        <Button onClick={handleOpenNewDialog} id="create-assessment">
+        <Button onClick={handleOpenNewDialog}>
           <Plus className="mr-2 h-4 w-4" />
           New Assessment
         </Button>
@@ -86,39 +126,36 @@ export function ExamsClient({ assessments, subjects }: ExamsClientProps) {
 
       <ExamsTable
         data={assessmentList}
-        onEdit={(assessment) => {
-          setSelectedAssessment(assessment);
-          setDialogOpen(true);
-        }}
+        onEdit={handleOpenEditDialog}
         onDelete={(assessment) => {
-          setSelectedAssessment(assessment);
-          setDeleteDialogOpen(true);
+          setSelectedAssessment(assessment)
+          setDeleteDialogOpen(true)
         }}
+        onPublish={handlePublish}
       />
 
       <ConfirmDialog
         open={deleteDialogOpen}
         onOpenChange={setDeleteDialogOpen}
         onConfirm={handleDelete}
-        title="Are you sure?"
-        description={`This will permanently delete the "${selectedAssessment?.title || 'assessment'}" and all of its associated data. This action cannot be undone.`}
-        confirmText={isPending ? 'Deleting...' : 'Yes, Delete Assessment'}
+        title="Delete assessment?"
+        description={`This will permanently delete "${selectedAssessment?.title ?? 'this assessment'}" and all associated data. This cannot be undone.`}
+        confirmText={isPending ? 'Deleting...' : 'Yes, Delete'}
         isDestructive
       />
 
       <ExamDialog
-        key={selectedAssessment?.assessment_id || 'new'}
+        key={selectedAssessment?.assessment_id ?? 'new'}
         open={dialogOpen}
-        subjects={subjects}
+        subjects={subjectList}
+        classes={classes}
         assessment={selectedAssessment}
+        role={role}
         onOpenChange={(open) => {
-          if (!open) {
-            resetState();
-          } else {
-            setDialogOpen(true);
-          }
+          if (!open) resetState()
+          else setDialogOpen(true)
         }}
       />
     </>
-  );
+  )
 }

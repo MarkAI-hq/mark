@@ -70,7 +70,7 @@ export default function Header() {
                    and curricula creating a new generation of people ready to transform the world.
                 </p>
                 <a
-                  href="mailto:info@xrefracted.com ?subject=How%20Can%20We%20Collaborate?"
+                  href="mailto:founding@mirror.education ?subject=How%20Can%20We%20Collaborate?"
                   target="_blank"
                   rel="noopener"
                   className="px-6 py-3 text-lg font-medium text-center text-white bg-black dark:bg-white dark:hover:bg-[#926C15] dark:text-black dark:hover:text-white hover:bg-[#926C15] rounded-md ">

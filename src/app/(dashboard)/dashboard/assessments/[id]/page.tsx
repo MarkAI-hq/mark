@@ -1,29 +1,37 @@
-// src/app/(dashboard)/dashboard/assessments/[id]/page.tsx
-import { notFound } from 'next/navigation'
-import { getAssessment } from '@/lib/actions/assessments'
-import { AssessmentClient } from '@/components/assessments/assessment-client' 
+import { notFound }          from 'next/navigation'
+import { getAssessment }     from '@/lib/actions/assessments'
+import { getEnrolledStudents } from '@/lib/actions/enrollments'
+import { getLatestAudit }    from '@/lib/actions/audit' 
+import { AssessmentClient }  from '@/components/assessments/assessment-client'
 
 interface AssessmentDetailPageProps {
-  params: Promise<{
-    id: string
-  }>
+  params: Promise<{ id: string }>
 }
 
-export default async function AssessmentDetailPage({
-  params,
-}: AssessmentDetailPageProps) {
-  // ✅ Await params before using
-  const resolvedParams = await params
+export default async function AssessmentDetailPage({ params }: AssessmentDetailPageProps) {
+  const { id } = await params
 
-  const { data: assessment, error } = await getAssessment(resolvedParams.id)
+  // 1. Fetch Assessment
+  const { data: assessment, error } = await getAssessment(id)
+  if (error || !assessment) return notFound()
 
-  if (error || !assessment) {
-    return notFound()
+  // 2. Fetch Latest Audit (contains findings and prediction)
+  const { data: audit } = await getLatestAudit(id)
+
+  // 3. Fetch Enrolled Students
+  let enrolledStudentCount = 0
+  if (assessment.classId) {
+    const { data: enrolled } = await getEnrolledStudents(assessment.classId)
+    enrolledStudentCount = (enrolled ?? []).filter(s => s.status === 'active').length
   }
 
   return (
     <div className="space-y-6">
-      <AssessmentClient assessment={assessment} />
+      <AssessmentClient
+        assessment={assessment}
+        enrolledStudentCount={enrolledStudentCount}
+        latestAudit={audit} 
+      />
     </div>
   )
 }

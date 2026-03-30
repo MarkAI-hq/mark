@@ -1,53 +1,62 @@
 // src/app/(dashboard)/dashboard/classes/[id]/page.tsx
-import { getClassDetails, getAssignedCourses } from '@/lib/actions/classes';
-import { ClassDetailClient } from './_components/class-detail-client';
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from '@/components/ui/breadcrumb';
 
-/**
- * FIX: The 'params' type is updated to satisfy the Next.js 15 build-time type checker.
- */
+import { notFound }            from 'next/navigation'
+import {
+  getClassDetails,
+  getAssignedCourses,
+  getClassAnalytics,
+  getClassesWithTeachers,
+  getClassAssessments,
+  getClassGroups,
+}                              from '@/lib/actions/classes'
+import { getOrganizationUsers }   from '@/lib/actions/organizations'
+import { getClassReteachHistory } from '@/lib/actions/reteach-history'
+import {
+  Breadcrumb, BreadcrumbItem, BreadcrumbLink,
+  BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator,
+} from '@/components/ui/breadcrumb'
+import { ClassDetailTabs } from './_components/class-detail-tabs'
+
 interface ClassDetailPageProps {
-  params: Promise<{
-    id: string;
-  }>;
+  params: Promise<{ id: string }>
 }
 
 export default async function ClassDetailPage({ params }: ClassDetailPageProps) {
-  // FIX: Await the params object before accessing its properties.
-  const resolvedParams = await params;
-  const id = resolvedParams.id;
+  const { id } = await params
 
-  // Fetch class details and assigned courses in parallel using the `id` variable.
-  const [classDetailsResponse, assignedCoursesResponse] = await Promise.all([
+  const [
+    classRes, coursesRes, analytics, classesWithTeachersRes,
+    assessmentsRes, interventionsRes, groupsRes,
+  ] = await Promise.all([
     getClassDetails(id),
     getAssignedCourses(id),
-  ]);
+    getClassAnalytics(id),
+    getClassesWithTeachers(),
+    getClassAssessments(id),
+    getClassReteachHistory(id),
+    getClassGroups(id),
+  ])
 
-  const { data: classDetails, error: classError } = classDetailsResponse;
-  const { data: assignedCourses, error: coursesError } = assignedCoursesResponse;
+  if (classRes.error || !classRes.data) return notFound()
 
-  const error = classError || coursesError;
-  if (error || !classDetails) {
-    return (
-      <div className="flex-1 space-y-4 p-8 pt-6">
-        <h2 className="text-3xl font-bold tracking-tight">Error</h2>
-        <p className="text-red-500">
-          Failed to load class data: {error?.message || 'Class not found.'}
-        </p>
-      </div>
-    );
-  }
+  const classDetails       = classRes.data
+  const courses            = coursesRes.data     ?? []
+  const assessments        = assessmentsRes.data  ?? []
+  const interventions      = interventionsRes.data ?? []
+  const groups             = groupsRes.data        ?? null
+  const latestAssessmentId = assessments[0]?.assessment_id ?? null
+
+  const classWithTeachers = classesWithTeachersRes.data?.find((c) => c.class_id === id)
+  const teachers          = classWithTeachers?.teachers ?? []
+
+  const { data: orgUsers } = classDetails.organization_id
+    ? await getOrganizationUsers(classDetails.organization_id)
+    : { data: [] }
+  const orgTeachers = (orgUsers ?? []).filter((u) => u.role === 'Teacher')
 
   return (
-    <>
-      <Breadcrumb className="mb-4">
+    <div className="space-y-6">
+      <Breadcrumb>
         <BreadcrumbList>
           <BreadcrumbItem>
             <BreadcrumbLink href="/dashboard/classes">Classes</BreadcrumbLink>
@@ -59,16 +68,32 @@ export default async function ClassDetailPage({ params }: ClassDetailPageProps) 
         </BreadcrumbList>
       </Breadcrumb>
 
-      <div className="flex items-center justify-between mb-4">
-        <div className="text-3xl font-bold tracking-tight">
-          {classDetails.name}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">{classDetails.name}</h1>
+          {classDetails.description && (
+            <p className="text-muted-foreground mt-1">{classDetails.description}</p>
+          )}
         </div>
+        {analytics && analytics.averagePercentage > 0 && (
+          <div className="text-right">
+            <p className="text-3xl font-bold text-primary">{analytics.averagePercentage}%</p>
+            <p className="text-xs text-muted-foreground">Class average</p>
+          </div>
+        )}
       </div>
 
-      <ClassDetailClient
+      <ClassDetailTabs
+        classId={id}
         classDetails={classDetails}
-        initialCourses={assignedCourses ?? []}
+        courses={courses}
+        analytics={analytics}
+        teachers={teachers}
+        orgTeachers={orgTeachers}
+        latestAssessmentId={latestAssessmentId}
+        interventions={interventions}
+        groups={groups}
       />
-    </>
-  );
+    </div>
+  )
 }

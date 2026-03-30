@@ -38,7 +38,7 @@ export function StudentsClient({ initialStudents }: StudentsClientProps) {
         const result = await action
         if (selectedStudent) {
           setStudents((prev) =>
-            prev.map((s) => (s.user_id === result.user_id ? result : s)),
+            prev.map((s: Student) => (s.user_id === result.user_id ? result : s)),
           )
           toast.success('Student updated successfully.')
         } else {
@@ -60,7 +60,7 @@ export function StudentsClient({ initialStudents }: StudentsClientProps) {
     startTransition(async () => {
       try {
         await deleteStudent(studentToDelete.user_id)
-        setStudents((prev) => prev.filter((s) => s.user_id !== studentToDelete.user_id))
+        setStudents((prev) => prev.filter((s: Student) => s.user_id !== studentToDelete.user_id))
         const studentName = `${studentToDelete.first_name} ${studentToDelete.last_name || ''}`.trim()
         toast.success(`Student "${studentName}" deleted.`)
         setStudentToDelete(null)
@@ -74,16 +74,14 @@ export function StudentsClient({ initialStudents }: StudentsClientProps) {
 
   return (
     <>
-      {/* The generic type is now correctly used, and all required accessor props are provided. */}
       <StudentsTable<Student>
         data={students}
         onRemove={setStudentToDelete}
         onEdit={openForm}
-        getId={(s) => s.user_id}
-        getName={(s) => `${s.first_name} ${s.last_name || ''}`.trim()}
-        getEmail={(s) => s.email}
-        // ADDED: Provide the getStatus accessor to display the enrollment status.
-        getStatus={(s) => s.enrollment_status}
+        getId={(s: Student) => s.user_id}
+        getName={(s: Student) => `${s.first_name} ${s.last_name || ''}`.trim()}
+        getEmail={(s: Student) => s.email}
+        getStatus={(s: Student) => s.enrollment_status}
         headerSlot={
           <div className="flex gap-2">
             <Button onClick={() => openForm()}>

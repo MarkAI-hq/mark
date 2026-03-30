@@ -7,7 +7,7 @@ import { AlertTriangle, Loader2, Printer, Brain, Lightbulb } from 'lucide-react'
 import { SubmissionResult } from '@/lib/actions/results'
 import { Assessment } from '@/lib/actions/assessments'
 import { Student, ErrorType, BloomLevel } from '@/lib/types'
-import { StudentCognitiveProfile } from '@/lib/actions/cognitive' // Import the new type
+import { StudentCognitiveProfile } from '@/lib/actions/cognitive'
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -25,11 +25,11 @@ import { FeedbackPanel } from './feedback-panel'
 
 interface ResultsClientProps {
   submissionResults: SubmissionResult
-  assessment: Assessment
-  student: Student
-  errorTaxonomy: ErrorType[]
-  bloomsTaxonomy: BloomLevel[]
-  cognitiveProfile: StudentCognitiveProfile | null // Added missing prop type
+  assessment:        Assessment
+  student:           Student
+  errorTaxonomy:     ErrorType[]
+  bloomsTaxonomy:    BloomLevel[]
+  cognitiveProfile:  StudentCognitiveProfile | null
 }
 
 export function ResultsClient({
@@ -38,14 +38,14 @@ export function ResultsClient({
   student,
   errorTaxonomy,
   bloomsTaxonomy,
-  cognitiveProfile, // Receive the profile
+  cognitiveProfile,
 }: ResultsClientProps) {
   const studentName = `${student.first_name} ${student.last_name}`.trim()
-  const printRef = useRef<HTMLDivElement>(null)
+  const printRef    = useRef<HTMLDivElement>(null)
 
   const handlePrint = useReactToPrint({
     // @ts-ignore
-    content: () => printRef.current,
+    content:       () => printRef.current,
     documentTitle: `Feedback Report for ${studentName} - ${assessment.title}`,
   })
 
@@ -122,7 +122,10 @@ export function ResultsClient({
               Detailed feedback for {studentName}
             </p>
             {cognitiveProfile && (
-              <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 gap-1">
+              <Badge
+                variant="outline"
+                className="bg-blue-50 text-blue-700 border-blue-200 gap-1"
+              >
                 <Brain className="w-3 h-3" />
                 {cognitiveProfile.profile_name}
               </Badge>
@@ -135,7 +138,6 @@ export function ResultsClient({
         </Button>
       </div>
 
-      {/* Cognitive Profile Alert/Ribbon for Teachers */}
       {cognitiveProfile && (
         <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-100">
           <CardContent className="py-3 flex items-center justify-between">
@@ -144,22 +146,27 @@ export function ResultsClient({
                 <Lightbulb className="w-5 h-5 text-blue-600" />
               </div>
               <div>
-                <p className="text-sm font-semibold text-blue-900">Learning Scientist Identity: {cognitiveProfile.profile_name}</p>
-                <p className="text-xs text-blue-700 line-clamp-1">{cognitiveProfile.profile_description}</p>
+                <p className="text-sm font-semibold text-blue-900">
+                  Learning Scientist Identity: {cognitiveProfile.profile_name}
+                </p>
+                <p className="text-xs text-blue-700 line-clamp-1">
+                  {cognitiveProfile.profile_description}
+                </p>
               </div>
             </div>
-            {/* <Link href={`/dashboard/classes/current/students/${student.id}`}>
-              <Button variant="ghost" size="sm" className="text-blue-700 hover:text-blue-800 hover:bg-blue-100">
-                View Toolkit
-              </Button>
-            </Link> */}
           </CardContent>
         </Card>
       )}
 
-      <div ref={printRef} className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-full print:grid-cols-2">
+      <div
+        ref={printRef}
+        className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-full print:grid-cols-2"
+      >
         <div className="col-span-1 print:col-span-1">
-          <ScriptViewer scriptUrl={submissionResults.original_submission_url} />
+          <ScriptViewer
+            scriptUrl={submissionResults.original_submission_url}
+            annotatedScriptUrl={submissionResults.annotated_script_url ?? null}
+          />
         </div>
         <div className="col-span-1 print:col-span-1">
           <FeedbackPanel
@@ -167,6 +174,7 @@ export function ResultsClient({
             errorTaxonomy={errorTaxonomy}
             bloomsTaxonomy={bloomsTaxonomy}
             cognitiveProfile={cognitiveProfile}
+            studentName={studentName}        // ← added
           />
         </div>
       </div>
