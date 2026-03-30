@@ -1,58 +1,128 @@
+// src/middleware.ts
+
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
-import { refreshAccessToken } from './lib/actions/auth'  // use your updated function name
+import { refreshAccessToken } from './lib/actions/auth'
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
-  const token = request.cookies.get('token')?.value
+  const token        = request.cookies.get('token')?.value
+  const userCookie   = request.cookies.get('user')?.value
 
-  // Public or allowed paths that don't require authentication
   const publicPaths = [
     '/',
     '/login',
     '/signup',
+    '/register',
     '/forgot-password',
     '/reset-password',
     '/verify-email',
+    '/accept-invitation',
+    '/student/login',
+    '/onboarding',
   ]
 
-  const isPublicPath = publicPaths.includes(pathname) || pathname.startsWith('/assets')
+  const isPublicPath =
+    publicPaths.some(p => pathname === p || pathname.startsWith(p + '?')) ||
+    pathname.startsWith('/assets')
 
-  // Allow public paths immediately
+  const getUser = (): { role: string; id: string; onboarding_complete?: boolean } | null => {
+    if (!userCookie) return null
+    try {
+      const user   = JSON.parse(decodeURIComponent(userCookie))
+      const roles: string[] = user?.roles ?? [user?.role].filter(Boolean)
+      if (roles.includes('Student')) return { role: 'Student', id: user.id }
+      if (roles.includes('Admin'))   return { role: 'Admin',   id: user.id, onboarding_complete: user.onboarding_complete ?? true }
+      if (roles.includes('Teacher')) return { role: 'Teacher', id: user.id }
+      return null
+    } catch {
+      return null
+    }
+  }
+
   if (isPublicPath) {
-    // If user is logged in and tries to access login or signup, redirect to dashboard
-    if (token && (pathname === '/login' || pathname === '/signup')) {
-      return NextResponse.redirect(new URL('/dashboard/classes', request.url))
+    if (token) {
+      const user = getUser()
+      if (pathname === '/login' || pathname === '/signup' || pathname === '/register') {
+        if (user?.role === 'Student') return NextResponse.redirect(new URL('/student/dashboard', request.url))
+        if (user?.role === 'Teacher') return NextResponse.redirect(new URL('/dashboard/teacher', request.url))
+        if (user?.role === 'Admin')   return NextResponse.redirect(new URL('/dashboard',          request.url))
+      }
+      if (pathname === '/student/login' && user?.role === 'Student') {
+        return NextResponse.redirect(new URL('/student/dashboard', request.url))
+      }
+      // Authenticated admin who has already completed onboarding visiting /onboarding → dashboard
+      if (pathname === '/onboarding' && user?.role === 'Admin' && user.onboarding_complete === true) {
+        return NextResponse.redirect(new URL('/dashboard', request.url))
+      }
     }
     return NextResponse.next()
   }
 
-  // For protected routes, check tokens and user cookie
   const refreshToken = request.cookies.get('refreshToken')?.value
-  const user = request.cookies.get('user')
 
-  if (!token || !user) {
+  if (!token || !userCookie) {
     if (refreshToken) {
-      // Try to refresh token via your server action
       const { data: tokens } = await refreshAccessToken()
-      if (tokens) {
-        // Token refreshed, continue request
-        return NextResponse.next()
-      }
+      if (tokens) return NextResponse.next()
     }
-
-    // Not authenticated: redirect to login with return_url
-    const loginUrl = new URL('/login', request.url)
+    const isStudentPath = pathname.startsWith('/student')
+    const loginUrl      = new URL(isStudentPath ? '/student/login' : '/login', request.url)
     loginUrl.searchParams.set('return_url', pathname)
     return NextResponse.redirect(loginUrl)
   }
 
-  // Authenticated, allow request to proceed
+  const user = getUser()
+
+  if (user?.role === 'Student') {
+    if (pathname.startsWith('/dashboard')) {
+      return NextResponse.redirect(new URL('/student/dashboard', request.url))
+    }
+    return NextResponse.next()
+  }
+
+  if (pathname.startsWith('/student') && user?.role !== 'Student') {
+    return NextResponse.redirect(new URL('/dashboard', request.url))
+  }
+
+  // Admin hitting /dashboard before completing onboarding → back to wizard
+  if (user?.role === 'Admin' && pathname === '/dashboard' && user.onboarding_complete === false) {
+    return NextResponse.redirect(new URL('/onboarding', request.url))
+  }
+
+  if (user?.role === 'Teacher') {
+    const teacherBlockedPrefixes = [
+      '/dashboard/settings',
+      '/dashboard/students/new',
+      '/dashboard/students/import',
+      '/dashboard/classes/new',
+      '/dashboard/classes/accept-invite',
+      '/dashboard/members',
+      '/dashboard/invitations',
+      '/dashboard/classes',
+    ]
+
+    const isInviteAcceptance = pathname.startsWith('/dashboard/classes/accept-invite')
+
+    const isBlocked = !isInviteAcceptance &&
+      teacherBlockedPrefixes.some(p => pathname.startsWith(p))
+
+    if (isBlocked) {
+      return NextResponse.redirect(new URL('/dashboard/teacher', request.url))
+    }
+
+    if (pathname === '/dashboard') {
+      return NextResponse.redirect(new URL('/dashboard/teacher', request.url))
+    }
+  }
+
+  if (user?.role === 'Admin' && pathname.startsWith('/dashboard/teacher')) {
+    return NextResponse.redirect(new URL('/dashboard', request.url))
+  }
+
   return NextResponse.next()
 }
 
 export const config = {
-  matcher: [
-    '/((?!api|_next/static|_next/image|favicon.ico).*)',
-  ],
+  matcher: ['/((?!api|_next/static|_next/image|favicon.ico).*)'],
 }
