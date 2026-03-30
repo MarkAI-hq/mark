@@ -20,7 +20,8 @@ import {
   TableHead, TableHeader, TableRow,
 } from '@/components/ui/table'
 
-import type { AssignedCourse, ClassStudent } from '@/lib/actions/classes'
+import type { ClassStudent }                 from '@/lib/actions/classes'
+import type { AssignedCourse }               from '@/lib/types'
 import type { Assessment }                   from '@/lib/actions/assessments'
 
 interface Privileges {
