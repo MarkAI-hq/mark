@@ -1,7 +1,8 @@
-// src/components/organization/members-table.tsx
 'use client'
 
-import { MoreHorizontal, ShieldCheck, User } from 'lucide-react'
+// src/components/organization/members-table.tsx
+
+import { MoreHorizontal, ShieldCheck, User, BookOpen } from 'lucide-react'
 import { ColumnDef } from '@tanstack/react-table'
 
 import {
@@ -12,25 +13,32 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu'
-import { Button } from '@/components/ui/button'
-import { DataTable } from '@/components/ui/data-table'
+import { Button }           from '@/components/ui/button'
+import { DataTable }        from '@/components/ui/data-table'
 import { OrganizationUser } from '@/lib/actions/organizations'
-import { Badge } from '@/components/ui/badge'
+import { Badge }            from '@/components/ui/badge'
+
+// Extend OrganizationUser locally until the backend type is updated
+type MemberRow = OrganizationUser & {
+  classes?: Array<{ class_id: string; name: string }>
+}
 
 interface MembersTableProps {
-  data: OrganizationUser[]
-  onManage: (user: OrganizationUser) => void
-  onRemove: (user: OrganizationUser) => void
-  headerSlot?: React.ReactNode
+  data:             MemberRow[]
+  onManage:         (user: OrganizationUser) => void
+  onRemove:         (user: OrganizationUser) => void
+  onManageClasses?: (user: OrganizationUser) => void
+  headerSlot?:      React.ReactNode
 }
 
 export function MembersTable({
   data,
   onManage,
   onRemove,
+  onManageClasses,
   headerSlot,
 }: MembersTableProps) {
-  const columns: ColumnDef<OrganizationUser>[] = [
+  const columns: ColumnDef<MemberRow>[] = [
     {
       accessorKey: 'first_name',
       header: 'First Name',
@@ -46,12 +54,11 @@ export function MembersTable({
     {
       accessorKey: 'role',
       header: 'Role',
-      // FIX: The cell now receives the 'row' and uses the real role data.
       cell: ({ row }) => {
-        const role = row.original.role;
+        const role = row.original.role
 
         if (!role) {
-          return <span className="text-muted-foreground">No Role</span>;
+          return <span className="text-muted-foreground">No Role</span>
         }
 
         return (
@@ -63,28 +70,65 @@ export function MembersTable({
             )}
             {role}
           </Badge>
-        );
+        )
+      },
+    },
+    {
+      id:     'classes',
+      header: 'Classes',
+      cell: ({ row }) => {
+        const user    = row.original
+        const classes = user.classes ?? []
+
+        if (user.role !== 'Teacher') {
+          return <span className="text-muted-foreground">—</span>
+        }
+
+        if (classes.length === 0) {
+          return (
+            <span className="text-xs text-muted-foreground italic">
+              None assigned
+            </span>
+          )
+        }
+
+        return (
+          <div className="flex flex-wrap gap-1">
+            {classes.slice(0, 2).map((cls: { class_id: string; name: string }) => (
+              <Badge key={cls.class_id} variant="outline" className="text-xs">
+                <BookOpen className="mr-1 h-3 w-3" />
+                {cls.name}
+              </Badge>
+            ))}
+            {classes.length > 2 && (
+              <Badge variant="outline" className="text-xs text-muted-foreground">
+                +{classes.length - 2} more
+              </Badge>
+            )}
+          </div>
+        )
       },
     },
     {
       accessorKey: 'email_verified',
       header: 'Status',
       cell: ({ row }) => {
-        const isVerified = row.getValue('email_verified');
+        const isVerified = row.getValue('email_verified')
         return isVerified ? (
           <Badge variant="outline" className="text-green-600 border-green-600">
             Verified
           </Badge>
         ) : (
           <Badge variant="destructive">Unverified</Badge>
-        );
+        )
       },
     },
     {
-      id: 'actions',
+      id:     'actions',
       header: 'Actions',
       cell: ({ row }) => {
-        const user = row.original;
+        const user      = row.original
+        const isTeacher = user.role === 'Teacher'
 
         return (
           <DropdownMenu>
@@ -99,6 +143,12 @@ export function MembersTable({
               <DropdownMenuItem onClick={() => onManage(user)}>
                 Manage Role
               </DropdownMenuItem>
+              {isTeacher && onManageClasses && (
+                <DropdownMenuItem onClick={() => onManageClasses(user)}>
+                  <BookOpen className="mr-2 h-4 w-4" />
+                  Manage Classes
+                </DropdownMenuItem>
+              )}
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 className="text-red-600"
@@ -108,10 +158,10 @@ export function MembersTable({
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-        );
+        )
       },
     },
-  ];
+  ]
 
   return (
     <DataTable
@@ -120,5 +170,5 @@ export function MembersTable({
       filter={{ prompt: 'Filter members...', column: 'email' }}
       headerSlot={headerSlot}
     />
-  );
+  )
 }

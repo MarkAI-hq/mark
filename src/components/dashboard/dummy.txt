@@ -1,0 +1,177 @@
+// src/components/ui/error-type-badge.tsx
+// Drop in at that path. No new dependencies — uses only what's already in your project.
+//
+// Exports:
+//   ErrorTypeBadge  — inline badge with tooltip, for stat tiles and labels
+//   ErrorTypeBar    — progress bar row with tooltip, for breakdown lists
+
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
+import { Badge } from '@/components/ui/badge'
+import { cn } from '@/lib/utils'
+
+// ── Plain-language copy keyed by error_code ────────────────────────────────
+// Matches the error_code values coming from your ErrorDistribution / ErrorType
+// types. Add new codes here as the backend introduces them.
+
+const ERROR_COPY: Record<string, { short: string; detail: string }> = {
+  PRECISION_ERROR: {
+    short:  'Precision error',
+    detail: 'Student knows the content but answers are too vague or missing key detail. They lose marks on completeness, not knowledge.',
+  },
+  OMISSION_ERROR: {
+    short:  'Omission error',
+    detail: 'Required parts of the answer are missing entirely — key terms, steps, or components the question specifically asked for.',
+  },
+  CONCEPTUAL_ERROR: {
+    short:  'Conceptual error',
+    detail: 'Fundamental misunderstanding of the concept. The answer shows an incorrect mental model, not just incomplete knowledge.',
+  },
+  TERMINOLOGICAL_ERROR: {
+    short:  'Terminological error',
+    detail: 'Right idea, wrong words. Student uses incorrect subject-specific vocabulary — examiners mark on precise language.',
+  },
+  MISINTERPRETATION_ERROR: {
+    short:  'Misinterpretation error',
+    detail: 'Student answered a different question than was asked — misread the command word or the scope of the question.',
+  },
+}
+
+function getErrorCopy(errorCode: string, fallbackName: string) {
+  return ERROR_COPY[errorCode] ?? { short: fallbackName, detail: null }
+}
+
+// ── ErrorTypeBadge ─────────────────────────────────────────────────────────
+// Use wherever error type appears as a label — stat tile, table cell, tag.
+//
+// Usage:
+//   <ErrorTypeBadge errorCode="PRECISION_ERROR" errorName="Precision Error" />
+
+interface ErrorTypeBadgeProps {
+  errorCode:  string
+  errorName:  string
+  percentage?: number
+  className?: string
+}
+
+export function ErrorTypeBadge({
+  errorCode,
+  errorName,
+  percentage,
+  className,
+}: ErrorTypeBadgeProps) {
+  const copy = getErrorCopy(errorCode, errorName)
+
+  const badge = (
+    <Badge
+      variant="outline"
+      className={cn('cursor-default text-xs font-medium', className)}
+    >
+      {errorName}
+      {percentage !== undefined && (
+        <span className="ml-1 opacity-60 font-normal">{percentage}%</span>
+      )}
+    </Badge>
+  )
+
+  if (!copy.detail) return badge
+
+  return (
+    <TooltipProvider delayDuration={200}>
+      <Tooltip>
+        <TooltipTrigger asChild>{badge}</TooltipTrigger>
+        <TooltipContent
+          side="top"
+          className="max-w-[220px] text-xs leading-relaxed whitespace-normal"
+        >
+          {copy.detail}
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  )
+}
+
+// ── ErrorTypeBar ───────────────────────────────────────────────────────────
+// Use in progress-bar breakdown lists — replaces the bare `err.error_name`
+// span in school-analytics-section and student-overview-tab.
+//
+// Usage (drop-in replacement for the bare label + bar pattern):
+//   <ErrorTypeBar
+//     errorCode={err.error_code}
+//     errorName={err.error_name}
+//     percentage={err.percentage}
+//     barColor="#ef4444"
+//   />
+
+interface ErrorTypeBarProps {
+  errorCode:  string
+  errorName:  string
+  percentage: number
+  barColor?:  string
+  className?: string
+  /** Slot for an action button to the right (e.g. ReteachModal) */
+  action?:    React.ReactNode
+}
+
+export function ErrorTypeBar({
+  errorCode,
+  errorName,
+  percentage,
+  barColor,
+  className,
+  action,
+}: ErrorTypeBarProps) {
+  const copy = getErrorCopy(errorCode, errorName)
+
+  return (
+    <div className={cn('flex items-center gap-3', className)}>
+      {/* Label with tooltip */}
+      <div className="w-32 shrink-0">
+        <TooltipProvider delayDuration={200}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="text-xs font-medium truncate block cursor-default underline decoration-dotted underline-offset-2">
+                {errorName}
+              </span>
+            </TooltipTrigger>
+            {copy.detail && (
+              <TooltipContent
+                side="top"
+                className="max-w-[220px] text-xs leading-relaxed whitespace-normal"
+              >
+                {copy.detail}
+              </TooltipContent>
+            )}
+          </Tooltip>
+        </TooltipProvider>
+      </div>
+
+      {/* Progress bar */}
+      <div className="flex-1 bg-muted rounded-full h-2 overflow-hidden">
+        <div
+          className="h-full rounded-full transition-all duration-500"
+          style={{
+            width:           `${percentage}%`,
+            backgroundColor: barColor ?? 'hsl(var(--primary))',
+          }}
+        />
+      </div>
+
+      {/* Percentage */}
+      <span className="text-xs text-muted-foreground w-10 text-right shrink-0 tabular-nums">
+        {percentage}%
+      </span>
+
+      {/* Optional action slot */}
+      {action}
+    </div>
+  )
+}
+
+
+2. school analytics section
+3. student overview tab

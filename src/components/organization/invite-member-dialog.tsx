@@ -1,52 +1,45 @@
-// src/components/organization/invite-member-dialog.tsx
 'use client'
 
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
+// src/components/organization/invite-member-dialog.tsx
 
-import { Button } from '@/components/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { useForm }   from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { z }         from 'zod'
+import { Loader2 }   from 'lucide-react'
 
-// Define the validation schema for the form
+import { Button } from '@/components/ui/button'
+import { Input }  from '@/components/ui/input'
+import {
+  Dialog, DialogContent, DialogDescription,
+  DialogFooter, DialogHeader, DialogTitle,
+} from '@/components/ui/dialog'
+import {
+  Form, FormControl, FormField, FormItem, FormLabel, FormMessage,
+} from '@/components/ui/form'
+import {
+  Select, SelectContent, SelectItem,
+  SelectTrigger, SelectValue,
+} from '@/components/ui/select'
+
+// ── Schema ─────────────────────────────────────────────────────────────────
+
 const inviteSchema = z.object({
   email: z.string().email({ message: 'Please enter a valid email address.' }),
-  role: z.enum(['Admin', 'Teacher'], {
-    required_error: 'Please select a role.',
-  }),
-});
+  role:  z.enum(['Admin', 'Teacher'], { required_error: 'Please select a role.' }),
+})
 
-export type InviteMemberData = z.infer<typeof inviteSchema>;
+export type InviteMemberData = z.infer<typeof inviteSchema>
+
+// ── Props ──────────────────────────────────────────────────────────────────
 
 interface InviteMemberDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  onSubmit: (data: InviteMemberData) => void;
-  isSubmitting: boolean;
+  open:         boolean
+  onOpenChange: (open: boolean) => void
+  onSubmit:     (data: InviteMemberData) => void
+  isSubmitting: boolean
 }
+
+// ── Component ──────────────────────────────────────────────────────────────
 
 export function InviteMemberDialog({
   open,
@@ -55,28 +48,31 @@ export function InviteMemberDialog({
   isSubmitting,
 }: InviteMemberDialogProps) {
   const form = useForm<InviteMemberData>({
-    resolver: zodResolver(inviteSchema),
-    defaultValues: {
-      email: '',
-      role: 'Teacher', // Default to the most common role
-    },
-  });
+    resolver:      zodResolver(inviteSchema),
+    defaultValues: { email: '', role: 'Teacher' },
+  })
 
-  const handleFormSubmit = (data: InviteMemberData) => {
-    onSubmit(data);
-  };
+  const handleOpenChange = (next: boolean) => {
+    if (!next) form.reset()
+    onOpenChange(next)
+  }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>Invite New Member</DialogTitle>
           <DialogDescription>
-            Enter the email address and role for the new member. They will receive an email with instructions to join.
+            Enter the email address and role for the new member. They will
+            receive an email with instructions to join. Once they've joined,
+            you can assign them to classes from the class settings.
           </DialogDescription>
         </DialogHeader>
+
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-4 py-4">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
+
+            {/* Email */}
             <FormField
               control={form.control}
               name="email"
@@ -90,6 +86,8 @@ export function InviteMemberDialog({
                 </FormItem>
               )}
             />
+
+            {/* Role */}
             <FormField
               control={form.control}
               name="role"
@@ -111,22 +109,30 @@ export function InviteMemberDialog({
                 </FormItem>
               )}
             />
+
             <DialogFooter>
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => onOpenChange(false)}
+                onClick={() => handleOpenChange(false)}
                 disabled={isSubmitting}
               >
                 Cancel
               </Button>
               <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? 'Sending...' : 'Send Invitation'}
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Sending…
+                  </>
+                ) : (
+                  'Send Invitation'
+                )}
               </Button>
             </DialogFooter>
           </form>
         </Form>
       </DialogContent>
     </Dialog>
-  );
+  )
 }

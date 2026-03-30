@@ -38,4 +38,4 @@ export function StatCard({
 			</CardContent>
 		</Card>
 	)
-} 
+}

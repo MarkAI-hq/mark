@@ -1,0 +1,25 @@
+// src/app/(dashboard)/dashboard/teacher/layout.tsx
+import { redirect } from 'next/navigation'
+import { getSession } from '@/lib/session'
+import { DashboardShell } from '@/components/layout/dashboard-shell'
+
+export default async function TeacherLayout({
+  children,
+}: {
+  children: React.ReactNode
+}) {
+  const user = await getSession()
+
+  if (!user) redirect('/login')
+
+  // Hard server-side guard — admins and students cannot access teacher routes
+  if (user.role !== 'Teacher') {
+    redirect(user.role === 'Student' ? '/student/dashboard' : '/dashboard')
+  }
+
+  return (
+    <DashboardShell>
+      {children}
+    </DashboardShell>
+  )
+}
