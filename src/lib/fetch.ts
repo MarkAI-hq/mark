@@ -1,13 +1,12 @@
-import { cookies } from 'next/headers'
 import type { ServerActionResponse } from './types'
 
 /**
  * Raw response shape from NestJS backend
  */
 interface BackendResponse<T> {
-  data?: T
+  data?:    T
   message?: string | string[]
-  error?: string
+  error?:   string
 }
 
 /**
@@ -40,20 +39,25 @@ function getApiBaseUrl(): string {
 
 /**
  * Unified fetcher (server + client safe)
+ *
+ * FIX: cookies is imported dynamically so this file does NOT become
+ * server-only at the module level. Client components can import it safely.
  */
 export async function fetcher<T>(
   endpoint: string,
   init?: RequestInit,
 ): Promise<ServerActionResponse<T>> {
   const baseUrl = getApiBaseUrl()
-  const url = `${baseUrl}${endpoint}`
+  const url     = `${baseUrl}${endpoint}`
 
   const isFormData = init?.body instanceof FormData
 
   let token: string | undefined
 
-  // Cookies only exist on the server
+  // Dynamically import cookies only on the server — avoids the
+  // "next/headers cannot be used in Client Components" build error
   if (typeof window === 'undefined') {
+    const { cookies } = await import('next/headers')
     token = (await cookies()).get('token')?.value
   }
 
@@ -64,10 +68,7 @@ export async function fetcher<T>(
   }
 
   try {
-    const response = await fetch(url, {
-      ...init,
-      headers,
-    })
+    const response = await fetch(url, { ...init, headers })
 
     const text = await response.text()
     let parsed: BackendResponse<T> = {}
@@ -77,46 +78,32 @@ export async function fetcher<T>(
         parsed = JSON.parse(text)
       } catch {
         return {
-          data: null,
-          error: {
-            message: 'Invalid JSON response from API',
-            status: response.status,
-          },
+          data:  null,
+          error: { message: 'Invalid JSON response from API', status: response.status },
         }
       }
     }
 
     if (!response.ok) {
-      const message =
-        Array.isArray(parsed.message)
-          ? parsed.message[0]
-          : parsed.message || parsed.error || 'An unknown API error occurred'
+      const message = Array.isArray(parsed.message)
+        ? parsed.message[0]
+        : parsed.message || parsed.error || 'An unknown API error occurred'
 
-      return {
-        data: null,
-        error: {
-          message,
-          status: response.status,
-        },
-      }
+      return { data: null, error: { message, status: response.status } }
     }
 
     // Backend may return { data } OR raw object
-    const data =
-      parsed.data !== undefined
-        ? parsed.data
-        : (parsed as unknown as T)
+    const data = parsed.data !== undefined
+      ? parsed.data
+      : (parsed as unknown as T)
 
     return { data, error: null }
   } catch (err) {
     return {
-      data: null,
+      data:  null,
       error: {
-        message:
-          err instanceof Error
-            ? err.message
-            : 'Failed to connect to the API',
-        status: 500,
+        message: err instanceof Error ? err.message : 'Failed to connect to the API',
+        status:  500,
       },
     }
   }

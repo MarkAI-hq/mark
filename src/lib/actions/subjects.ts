@@ -1,4 +1,3 @@
-// src/lib/actions/subjects.ts
 'use server'
 
 import { revalidatePath } from 'next/cache'
@@ -28,6 +27,7 @@ export async function createSubject(data: {
 
     const createdSubject = handleMutationResponse(response);
     revalidatePath('/dashboard/subjects');
+    revalidatePath('/dashboard/exams');
     return { data: createdSubject, error: null };
   } catch (err) {
     const message = err instanceof Error ? err.message : 'An unknown error occurred';
@@ -59,6 +59,7 @@ export async function updateSubject(
 
     const updatedSubject = handleMutationResponse(response);
     revalidatePath('/dashboard/subjects');
+    revalidatePath('/dashboard/exams');
     return { data: updatedSubject, error: null };
   } catch (err) {
     const message = err instanceof Error ? err.message : 'An unknown error occurred';
@@ -77,6 +78,7 @@ export async function deleteSubject(id: string): Promise<ServerActionResponse<{ 
 
     const deleteMessage = handleMutationResponse(response);
     revalidatePath('/dashboard/subjects');
+    revalidatePath('/dashboard/exams');
     return { data: deleteMessage, error: null };
   } catch (err) {
     const message = err instanceof Error ? err.message : 'An unknown error occurred';

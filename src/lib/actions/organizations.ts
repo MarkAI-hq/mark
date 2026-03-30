@@ -12,6 +12,7 @@ export interface OrganizationUser {
   last_name: string;
   is_active: boolean;
   email_verified: boolean;
+  onboarding_complete: boolean;
   created_at: string;
   role: string | null;
 }

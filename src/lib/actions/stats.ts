@@ -1,21 +1,39 @@
+// src/lib/actions/stats.ts
 'use server'
 
 import { fetcher } from '@/lib/fetch'
-import { ServerActionResponse, DashboardStats } from '../types'
 
-export async function getStats() {
-	const { data, error } = await fetcher<ServerActionResponse<DashboardStats>>('/stats')
+export interface DailyCount {
+  name:  string
+  total: number
+}
 
-	if (data) return data
+export interface StatsResponse {
+  totalSubjects:     number
+  totalCourses:      number
+  totalClasses:      number
+  totalStudents:     number
+  totalExams:        number
+  markedPapers:      number
+  recentActivity:    Array<{ id: string; description: string; timestamp: string }>
+  upcomingDeadlines: Array<{ id: string; title: string; dueDate: string }>
+  dailyMarked:       DailyCount[]
+}
 
-	if (error) {
-		return {
-			totalCourses: 0,
-			totalStudents: 0,
-			totalExams: 0,
-			markedPapers: 0,
-			recentActivity: [],
-			upcomingDeadlines: []
-		}
-	}
+export async function getStats(): Promise<StatsResponse> {
+  const { data, error } = await fetcher<StatsResponse>('/stats')
+
+  if (data) return data
+
+  return {
+    totalSubjects:     0,
+    totalCourses:      0,
+    totalClasses:      0,
+    totalStudents:     0,
+    totalExams:        0,
+    markedPapers:      0,
+    recentActivity:    [],
+    upcomingDeadlines: [],
+    dailyMarked:       [],
+  }
 }
