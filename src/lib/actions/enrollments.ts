@@ -13,8 +13,6 @@ export interface Enrollment {
   status: string;
 }
 
-// FIXED: This interface now accurately reflects the data returned by the
-// `getClassStudents` method in the NestJS service.
 export interface EnrolledStudent {
   enrollment_id: string;
   student_id: string;
@@ -53,6 +51,29 @@ export async function enrollStudentInClass(
   return newEnrollment;
 }
 
+// Alias used by class-students-tab
+export const enrollStudent = enrollStudentInClass;
+
+export async function enrollMultipleStudents(
+  classId: string,
+  studentIds: string[],
+): Promise<void> {
+  const response = await fetcher<unknown>(
+    `/enrollments/classes/${classId}/students/bulk`,
+    {
+      method: 'POST',
+      body: JSON.stringify({ student_ids: studentIds }),
+    },
+  );
+
+  if (response.error) {
+    throw new Error(response.error.message);
+  }
+
+  revalidatePath(`/dashboard/classes/${classId}`);
+  revalidatePath('/dashboard/students');
+}
+
 export async function getEnrolledStudents(
   classId: string,
 ): Promise<ServerActionResponse<EnrolledStudent[]>> {
@@ -61,19 +82,16 @@ export async function getEnrolledStudents(
   });
 }
 
-/**
- * Removes a student's enrollment from a class.
- * Calls the DELETE /enrollments/classes/:classId/students/:studentId endpoint.
- */
+// Alias used by getClassStudents callers
+export const getClassStudents = getEnrolledStudents;
+
 export async function removeStudentFromClass(
   classId: string,
   studentId: string,
 ): Promise<{ message: string }> {
   const response = await fetcher<{ message: string }>(
     `/enrollments/classes/${classId}/students/${studentId}`,
-    {
-      method: 'DELETE',
-    },
+    { method: 'DELETE' },
   );
 
   const deleteMessage = handleMutationResponse(response);
