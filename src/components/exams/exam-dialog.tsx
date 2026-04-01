@@ -81,28 +81,29 @@ export function ExamDialog({
 }: ExamDialogProps) {
   const router = useRouter()
 
-  const [pdfPreview,       setPdfPreview]       = useState<string>()
-  const [classList,        setClassList]        = useState<{ class_id: string; name: string }[]>(classes ?? [])
-  const [curricula,        setCurricula]        = useState<CurriculumSchemaMetadata[]>([])
-  const [inlineClassOpen,  setInlineClassOpen]  = useState(false)
+  const [pdfPreview,         setPdfPreview]         = useState<string>()
+  const [classList,          setClassList]          = useState<{ class_id: string; name: string }[]>(classes ?? [])
+  const [curricula,          setCurricula]          = useState<CurriculumSchemaMetadata[]>([])
+  const [inlineClassOpen,    setInlineClassOpen]    = useState(false)
   const [isLoadingCurricula, setIsLoadingCurricula] = useState(false)
 
   useEffect(() => { setClassList(classes ?? []) }, [classes])
 
-  // Fetch available curricula on mount
+  // Fetch curricula once on mount so data is ready before the dialog opens.
+  // Previously this was gated on `open`, causing a visible loading delay
+  // every time the dialog was shown.
   useEffect(() => {
-    if (!open) return
     setIsLoadingCurricula(true)
     getCurricula()
       .then(({ data, error }) => {
         if (error) {
-          toast.error('Failed to load curriculum frameworks');
+          toast.error('Failed to load curriculum frameworks')
         } else if (data) {
           setCurricula(data)
         }
       })
       .finally(() => setIsLoadingCurricula(false))
-  }, [open])
+  }, [])
 
   const subjectList = subjects ?? []
   const noClasses   = classList.length === 0
@@ -230,7 +231,7 @@ export function ExamDialog({
                       <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue placeholder={isLoadingCurricula ? "Loading..." : "Select framework..."} />
+                            <SelectValue placeholder={isLoadingCurricula ? 'Loading…' : 'Select framework…'} />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>

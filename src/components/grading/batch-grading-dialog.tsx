@@ -446,7 +446,7 @@ export function BatchGradingDialog({
             <>
               <DialogHeader className="px-6 pt-6 pb-4 border-b bg-muted/30 shrink-0">
                 <div className="flex items-center gap-2 text-amber-600 mb-1"><AlertTriangle className="h-5 w-5" /><DialogTitle>Assessment Quality Audit</DialogTitle></div>
-                <DialogDescription>This assessment deviates from the official curriculum schema.</DialogDescription>
+                <DialogDescription>This assessment deviates from the official curriculum schema. Grading this assessment may result in inaccurate grading which could impact student outcomes.</DialogDescription>
               </DialogHeader>
 
               <div className="px-6 py-6 flex-1 flex flex-col min-h-0 overflow-hidden">
@@ -595,4 +595,3 @@ export function BatchGradingDialog({
   )
 }
 
-//changed from 801 lines
