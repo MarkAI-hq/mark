@@ -1,7 +1,7 @@
 import { notFound, redirect }   from 'next/navigation'
 import { getAssessment }        from '@/lib/actions/assessments'
 import { getEnrolledStudents }  from '@/lib/actions/enrollments'
-import { getLatestAudit }       from '@/lib/actions/audit' 
+import { getLatestAudit, getRedesignItems } from '@/lib/actions/audit'
 import { AssessmentClient }     from '@/components/assessments/assessment-client'
 
 interface AssessmentDetailPageProps {
@@ -25,7 +25,10 @@ export default async function AssessmentDetailPage({ params }: AssessmentDetailP
   // 2. Fetch Latest Audit (contains findings and prediction)
   const { data: audit } = await getLatestAudit(id)
 
-  // 3. Fetch Enrolled Students
+  // 3. Fetch saved redesign items (blueprint items teacher has added)
+  const { data: redesignItems } = await getRedesignItems(id)
+
+  // 4. Fetch Enrolled Students
   let enrolledStudentCount = 0
   if (assessment.classId) {
     const { data: enrolled } = await getEnrolledStudents(assessment.classId)
@@ -37,7 +40,8 @@ export default async function AssessmentDetailPage({ params }: AssessmentDetailP
       <AssessmentClient
         assessment={assessment}
         enrolledStudentCount={enrolledStudentCount}
-        latestAudit={audit} 
+        latestAudit={audit}
+        savedRedesignItems={redesignItems ?? []}
       />
     </div>
   )
