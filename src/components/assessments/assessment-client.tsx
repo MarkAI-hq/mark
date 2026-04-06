@@ -9,17 +9,16 @@ import {
   CheckCircle2, 
   ShieldCheck,
   FileText,
-  TrendingUp,
-  BookOpen,
   Download,
-  Loader2
+  Loader2,
+  ClipboardList,
 } from 'lucide-react'
 import Link                     from 'next/link'
 import { Assessment }           from '@/lib/actions/assessments'
 import { Button }               from '@/components/ui/button'
 import {
   Card, CardContent, CardHeader,
-  CardTitle, CardDescription,
+  CardTitle,
 } from '@/components/ui/card'
 import { Badge }   from '@/components/ui/badge'
 import {
@@ -30,34 +29,63 @@ import {
   Tooltip, TooltipProvider, TooltipTrigger, TooltipContent
 } from '@/components/ui/tooltip'
 import { BatchGradingDialog }  from '@/components/grading/batch-grading-dialog'
+import { ExamDialog }          from '@/components/exams/exam-dialog'
 import { InlineClassDialog }   from '@/components/classes/inline-class-dialog'
 import { PredictionCard }      from './prediction-card'
-import { cn } from '@/lib/utils'
-import { toast } from 'sonner'
+import { cn }                  from '@/lib/utils'
+import { toast }               from 'sonner'
+
+interface RedesignItem {
+  dimension:               string
+  issue_summary:           string
+  title:                   string
+  description:             string
+  action_type:             string
+  marks:                   number
+  bloom_level:             string
+  command_word:            string
+  assessment_objective_id: string
+  syllabus_topic:          string
+  example_question_stem?:  string
+}
 
 interface AssessmentClientProps {
   assessment:           Assessment
   enrolledStudentCount: number
-  latestAudit?:         any 
+  latestAudit?:         any
+  savedRedesignItems?:  RedesignItem[]
+  // For ExamDialog — needed to re-open it in audit views
+  subjects?:            { id: string; name: string }[]
+  classes?:             { class_id: string; name: string }[]
 }
+
+// Views that live in ExamDialog (audit flow)
+type AuditDialogView = 'audit_passed' | 'audit_flagged' | 'saved_redesign_items'
+
+// Views that live in BatchGradingDialog (grading flow)
+type GradingDialogView = 'upload' | 'saved_redesign_items'
 
 export function AssessmentClient({ 
   assessment, 
   enrolledStudentCount,
-  latestAudit 
+  latestAudit,
+  savedRedesignItems = [],
+  subjects = [],
+  classes  = [],
 }: AssessmentClientProps) {
-  const [isGradingDialogOpen, setIsGradingDialogOpen] = useState(false)
-  const [initialGradingView, setInitialGradingView] = useState<'upload' | 'audit_flagged'>('upload')
-  const [inlineClassOpen,    setInlineClassOpen]    = useState(false)
-  const [availableClasses,   setAvailableClasses]   = useState<{ class_id: string; name: string }[]>([])
-  const [linkedClassId,      setLinkedClassId]      = useState<string | null>(assessment.classId ?? null)
-  
-  // --- NEW: Loading state for PDF generation ---
-  const [isDownloading, setIsDownloading] = useState(false)
 
-  useEffect(() => {
-    console.log('[DEBUG] AssessmentClient received assessment prop:', assessment)
-  }, [assessment])
+  // ── Grading dialog (BatchGradingDialog) ───────────────────────────────
+  const [isGradingDialogOpen, setIsGradingDialogOpen] = useState(false)
+  const [initialGradingView,  setInitialGradingView]  = useState<GradingDialogView>('upload')
+
+  // ── Audit dialog (ExamDialog re-used at audit views) ──────────────────
+  const [isAuditDialogOpen,   setIsAuditDialogOpen]   = useState(false)
+  const [initialAuditView,    setInitialAuditView]    = useState<AuditDialogView>('audit_flagged')
+
+  const [inlineClassOpen,     setInlineClassOpen]     = useState(false)
+  const [availableClasses,    setAvailableClasses]    = useState<{ class_id: string; name: string }[]>(classes)
+  const [linkedClassId,       setLinkedClassId]       = useState<string | null>(assessment.classId ?? null)
+  const [isDownloading,       setIsDownloading]       = useState(false)
 
   useEffect(() => {
     if (!assessment.classId) {
@@ -69,21 +97,27 @@ export function AssessmentClient({
     }
   }, [assessment.classId])
 
-  const isAiGrading     = assessment.assessment_type === 'AI_ASSISTED_GRADING'
-  const canGradeWithAI  = isAiGrading && !!linkedClassId
-  const hasStudents     = enrolledStudentCount > 0
+  const isAiGrading      = assessment.assessment_type === 'AI_ASSISTED_GRADING'
+  const canGradeWithAI   = isAiGrading && !!linkedClassId
+  const hasStudents      = enrolledStudentCount > 0
   const gradeButtonReady = canGradeWithAI && hasStudents
   const needsClass       = isAiGrading && !linkedClassId
 
-  const auditStatus = assessment.audit_status || 'not_audited'
-  const hasPrediction = latestAudit?.prediction
+  const auditStatus   = assessment.audit_status || 'not_audited'
+  const hasPrediction = !!latestAudit?.prediction
+  const hasSavedItems = savedRedesignItems.length > 0
+  const hasAudit      = auditStatus === 'passed' || auditStatus === 'flagged'
 
-  const openGrading = (view: 'upload' | 'audit_flagged') => {
+  const openGrading = (view: GradingDialogView) => {
     setInitialGradingView(view)
     setIsGradingDialogOpen(true)
   }
 
-  // --- NEW: Handle Diagnostic Report Download ---
+  const openAudit = (view: AuditDialogView) => {
+    setInitialAuditView(view)
+    setIsAuditDialogOpen(true)
+  }
+
   const handleDownloadReport = async () => {
     setIsDownloading(true)
     try {
@@ -92,12 +126,7 @@ export function AssessmentClient({
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({ assessmentId: assessment.assessment_id }),
       })
-
-      if (!res.ok) {
-        toast.error('Failed to generate diagnostic report.')
-        return
-      }
-
+      if (!res.ok) { toast.error('Failed to generate diagnostic report.'); return }
       const blob = await res.blob()
       const url  = URL.createObjectURL(blob)
       const a    = document.createElement('a')
@@ -105,7 +134,6 @@ export function AssessmentClient({
       a.download = `${assessment.title}_Diagnostic_Report.pdf`
       a.click()
       URL.revokeObjectURL(url)
-
       toast.success('Report downloaded successfully.')
     } catch {
       toast.error('Something went wrong. Please try again.')
@@ -150,7 +178,30 @@ export function AssessmentClient({
         </div>
 
         <div className="flex items-center gap-3">
-          {/* --- NEW: Download Report Button --- */}
+          {/* Blueprint shortcut */}
+          {hasSavedItems && (
+            <Button
+              variant="outline"
+              className="gap-2 border-indigo-200 text-indigo-600 hover:bg-indigo-50"
+              onClick={() => openAudit('saved_redesign_items')}
+            >
+              <ClipboardList className="h-4 w-4" />
+              Blueprint ({savedRedesignItems.length})
+            </Button>
+          )}
+
+          {/* Audit results shortcut — passed assessment */}
+          {auditStatus === 'passed' && (
+            <Button
+              variant="outline"
+              className="gap-2 border-green-200 text-green-600 hover:bg-green-50"
+              onClick={() => openAudit('audit_passed')}
+            >
+              <ShieldCheck className="h-4 w-4" />
+              Audit Results
+            </Button>
+          )}
+
           {hasPrediction && (
             <Button 
               variant="outline" 
@@ -158,11 +209,10 @@ export function AssessmentClient({
               disabled={isDownloading}
               className="gap-2"
             >
-              {isDownloading ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Download className="h-4 w-4" />
-              )}
+              {isDownloading
+                ? <Loader2 className="h-4 w-4 animate-spin" />
+                : <Download className="h-4 w-4" />
+              }
               {isDownloading ? 'Generating...' : 'Download Report'}
             </Button>
           )}
@@ -234,11 +284,12 @@ export function AssessmentClient({
                 <p className="text-xs text-muted-foreground">This paper deviates from the curriculum. Predictions may be inaccurate.</p>
               </div>
             </div>
+            {/* Always mounted — opens ExamDialog at audit_flagged, no guard needed */}
             <Button 
               size="sm" 
               variant="outline" 
               className="border-amber-500/30 text-amber-600 hover:bg-amber-500/10" 
-              onClick={() => openGrading('audit_flagged')}
+              onClick={() => openAudit('audit_flagged')}
             >
               View Audit Results
             </Button>
@@ -249,7 +300,7 @@ export function AssessmentClient({
       {/* ── Main Layout ────────────────────────────────────────────── */}
       <div className="grid gap-6 lg:grid-cols-12 mt-6">
         
-        {/* Left Column: Details & Status (4 cols) */}
+        {/* Left Column */}
         <div className="lg:col-span-4 space-y-6">
           <Card>
             <CardHeader><CardTitle className="text-base">Assessment Details</CardTitle></CardHeader>
@@ -273,13 +324,30 @@ export function AssessmentClient({
 
               <div className="flex justify-between items-center">
                 <span className="text-sm font-medium">Audit Status</span>
-                <Badge className={cn(
-                  auditStatus === 'passed' ? 'bg-green-500/10 text-green-600' : 
-                  auditStatus === 'flagged' ? 'bg-amber-500/10 text-amber-600' : 'bg-muted text-muted-foreground'
-                )}>
+                <Badge
+                  className={cn(
+                    'cursor-pointer',
+                    auditStatus === 'passed'  ? 'bg-green-500/10 text-green-600 hover:bg-green-500/20' : 
+                    auditStatus === 'flagged' ? 'bg-amber-500/10 text-amber-600 hover:bg-amber-500/20' : 
+                    'bg-muted text-muted-foreground',
+                  )}
+                  onClick={hasAudit ? () => openAudit(auditStatus === 'passed' ? 'audit_passed' : 'audit_flagged') : undefined}
+                >
                   {auditStatus.replace('_', ' ')}
                 </Badge>
               </div>
+
+              {hasSavedItems && (
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-medium">Blueprint Items</span>
+                  <button
+                    onClick={() => openAudit('saved_redesign_items')}
+                    className="text-xs font-medium text-indigo-600 hover:text-indigo-700 hover:underline underline-offset-2 transition-colors"
+                  >
+                    {savedRedesignItems.length} saved → view
+                  </button>
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -291,7 +359,7 @@ export function AssessmentClient({
           )}
         </div>
 
-        {/* Right Column: Marking Scheme (8 cols) */}
+        {/* Right Column: Marking Scheme */}
         <div className="lg:col-span-8">
           {assessment.marking_scheme_url ? (
             <Card className="h-full">
@@ -321,13 +389,33 @@ export function AssessmentClient({
         </div>
       </div>
 
-      {gradeButtonReady && (
+      {/* ── Audit Dialog (ExamDialog at audit views) ────────────────── */}
+      {/*
+        Always mounted when there is an audit result — no gradeButtonReady
+        guard so "View Audit Results" always works regardless of enrollment.
+      */}
+      {hasAudit && (
+        <ExamDialog
+          open={isAuditDialogOpen}
+          onOpenChange={setIsAuditDialogOpen}
+          assessment={assessment}
+          subjects={subjects}
+          classes={availableClasses}
+          initialView={initialAuditView}
+          savedRedesignItems={savedRedesignItems}
+          latestAudit={latestAudit}
+        />
+      )}
+
+      {/* ── Grading Dialog (BatchGradingDialog) ─────────────────────── */}
+      {(gradeButtonReady || hasSavedItems) && (
         <BatchGradingDialog
           open={isGradingDialogOpen}
           onOpenChange={setIsGradingDialogOpen}
           assessmentId={assessment.assessment_id}
-          classId={assessment.classId!}
+          classId={assessment.classId ?? ''}
           initialView={initialGradingView}
+          savedRedesignItems={savedRedesignItems}
         />
       )}
 
@@ -336,8 +424,8 @@ export function AssessmentClient({
         onOpenChange={setInlineClassOpen}
         existingClasses={availableClasses}
         onClassReady={(cls) => {
-          setLinkedClassId(cls.class_id);
-          setInlineClassOpen(false);
+          setLinkedClassId(cls.class_id)
+          setInlineClassOpen(false)
         }}
       />
     </>

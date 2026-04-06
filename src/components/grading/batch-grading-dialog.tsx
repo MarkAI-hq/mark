@@ -7,7 +7,9 @@ import { toast }       from 'sonner'
 import {
   Upload, X, FileText, CheckCircle2, XCircle, Loader2,
   Brain, FileSearch, MessageSquare, Save, Pencil, Zap,
-  Users, UserPlus, AlertTriangle, Wrench, ShieldAlert, BookOpen, Lightbulb
+  Users, UserPlus, AlertTriangle, Wrench, ShieldAlert,
+  BookOpen, Lightbulb, Download, PlusCircle, RefreshCw,
+  ClipboardList,
 } from 'lucide-react'
 import Image from 'next/image'
 import { InlineEnrollDialog } from '@/components/grading/inline-enroll-dialog'
@@ -33,20 +35,30 @@ import {
   getBatchGradingStatus,
   BatchStatusResult,
 } from '@/lib/actions/grading'
-
-import { getLatestAudit, overrideAudit, getRedesignSuggestions } from '@/lib/actions/audit'
+import {
+  getLatestAudit, overrideAudit, getRedesignSuggestions,
+  saveRedesignItems, getRedesignItems, reuploadAssessment,
+} from '@/lib/actions/audit'
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
-type DialogView = 'upload' | 'audit_flagged' | 'redesign_suggestions' | 'progress' | 'complete'
+type DialogView =
+  | 'upload'
+  | 'audit_flagged'
+  | 'redesign_suggestions'
+  | 'saved_redesign_items'
+  | 'progress'
+  | 'complete'
 
 interface BatchGradingDialogProps {
-  open:              boolean
-  onOpenChange:      (open: boolean) => void
-  assessmentId:      string
-  classId:           string
-  initialStudentId?: string
-  initialView?:      DialogView
+  open:                boolean
+  onOpenChange:        (open: boolean) => void
+  assessmentId:        string
+  classId:             string
+  initialStudentId?:   string
+  initialView?:        DialogView
+  /** Pre-loaded from the server page so the tab renders immediately */
+  savedRedesignItems?: RedesignItem[]
 }
 
 interface FileWithPreview {
@@ -64,6 +76,20 @@ interface LiveSubmissionState {
   error?:       string
   score?:       number | null
   maxScore?:    number | null
+}
+
+interface RedesignItem {
+  dimension:               string
+  issue_summary:           string
+  title:                   string
+  description:             string
+  action_type:             string
+  marks:                   number
+  bloom_level:             string
+  command_word:            string
+  assessment_objective_id: string
+  syllabus_topic:          string
+  example_question_stem?:  string
 }
 
 // ── Step config ────────────────────────────────────────────────────────────
@@ -93,35 +119,153 @@ const AuditScoreCircle = ({ score }: { score: number }) => {
   return (
     <div className="relative w-28 h-28 mx-auto mb-4">
       <svg viewBox="0 0 112 112" className="w-full h-full -rotate-90">
-        <circle
-          cx="56" cy="56" r="48"
-          stroke="currentColor" strokeWidth="10" fill="transparent"
-          className="text-muted opacity-20"
-        />
-        <circle
-          cx="56" cy="56" r="48"
-          stroke="currentColor" strokeWidth="10" fill="transparent"
-          strokeLinecap="round"
-          strokeDasharray={`${(score / 100) * circumference} ${circumference}`}
-          className={color}
-        />
+        <circle cx="56" cy="56" r="48" stroke="currentColor" strokeWidth="10" fill="transparent" className="text-muted opacity-20" />
+        <circle cx="56" cy="56" r="48" stroke="currentColor" strokeWidth="10" fill="transparent" strokeLinecap="round"
+          strokeDasharray={`${(score / 100) * circumference} ${circumference}`} className={color} />
       </svg>
-      <span className="absolute inset-0 flex items-center justify-center text-3xl font-bold">
-        {score}
-      </span>
+      <span className="absolute inset-0 flex items-center justify-center text-3xl font-bold">{score}</span>
     </div>
+  )
+}
+
+// ── Saved Redesign Items View ──────────────────────────────────────────────
+
+const ACTION_TYPE_COLORS: Record<string, string> = {
+  add_question:    'bg-blue-100 text-blue-700',
+  modify_question: 'bg-amber-100 text-amber-700',
+  remove_question: 'bg-red-100 text-red-700',
+  rebalance_marks: 'bg-purple-100 text-purple-700',
+}
+
+function SavedRedesignItemsView({
+  items,
+  isDownloading,
+  onDownload,
+  onBack,
+}: {
+  items:         RedesignItem[]
+  isDownloading: boolean
+  onDownload:    () => void
+  onBack:        () => void
+}) {
+  // Group by dimension
+  const grouped = items.reduce<Record<string, RedesignItem[]>>((acc, item) => {
+    ;(acc[item.dimension] ??= []).push(item)
+    return acc
+  }, {})
+
+  const DIMENSION_LABELS: Record<string, string> = {
+    blooms:        "Bloom's Taxonomy",
+    topics:        'Syllabus Topics',
+    command_words: 'Command Words',
+    marks:         'Mark Allocation',
+  }
+
+  return (
+    <>
+      <DialogHeader className="px-6 pt-6 pb-4 border-b bg-indigo-50/50 dark:bg-indigo-950/10 shrink-0">
+        <div className="flex items-center gap-2 text-indigo-600 mb-1">
+          <ClipboardList className="h-5 w-5" />
+          <DialogTitle>Saved Blueprint Items</DialogTitle>
+        </div>
+        <DialogDescription>
+          {items.length === 0
+            ? 'No items saved yet. Use "Fix My Assessment" to generate suggestions and add them.'
+            : `${items.length} item${items.length !== 1 ? 's' : ''} saved to your redesign blueprint.`}
+        </DialogDescription>
+      </DialogHeader>
+
+      <div className="px-6 py-6 flex-1 overflow-y-auto">
+        {items.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-40 gap-3 text-center">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-indigo-100">
+              <ClipboardList className="h-6 w-6 text-indigo-400" />
+            </div>
+            <p className="text-sm text-muted-foreground leading-relaxed max-w-xs">
+              Your blueprint is empty. Go back to the audit and click <strong>Fix My Assessment</strong> to get AI suggestions.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-6">
+            {Object.entries(grouped).map(([dimension, dimItems]) => (
+              <div key={dimension} className="space-y-3">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-indigo-600 flex items-center gap-2">
+                  <BookOpen className="w-3.5 h-3.5" />
+                  {DIMENSION_LABELS[dimension] ?? dimension}
+                  <span className="ml-auto font-normal normal-case text-muted-foreground">
+                    {dimItems.length} item{dimItems.length !== 1 ? 's' : ''}
+                  </span>
+                </h4>
+                <div className="grid gap-3 pl-4 border-l-2 border-indigo-100">
+                  {dimItems.map((item, j) => (
+                    <div key={j} className="bg-card border border-indigo-50 rounded-md p-3 shadow-sm">
+                      <div className="flex items-start justify-between gap-2 mb-1">
+                        <span className="font-bold text-sm text-slate-900 dark:text-slate-100 flex-1">
+                          {item.title}
+                        </span>
+                        <Badge
+                          className={cn(
+                            'border-none text-[9px] uppercase tracking-tighter shrink-0',
+                            ACTION_TYPE_COLORS[item.action_type] ?? 'bg-indigo-100 text-indigo-700',
+                          )}
+                        >
+                          {item.action_type.replace('_', ' ')}
+                        </Badge>
+                      </div>
+                      <p className="text-xs text-slate-600 dark:text-slate-400 mb-2 leading-relaxed">
+                        {item.description}
+                      </p>
+                      <div className="flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-muted-foreground">
+                        <span><strong>{item.marks}</strong> marks</span>
+                        <span>Bloom: <strong>{item.bloom_level}</strong></span>
+                        <span>CW: <strong>{item.command_word}</strong></span>
+                        <span>{item.assessment_objective_id}</span>
+                        <span>{item.syllabus_topic}</span>
+                      </div>
+                      {item.example_question_stem && (
+                        <div className="mt-2 bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 p-2.5 rounded text-xs font-medium text-slate-700 dark:text-slate-300">
+                          <span className="text-indigo-600 font-bold mr-2">CBC ITEM STEM:</span>
+                          {item.example_question_stem}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <DialogFooter className="px-6 py-4 border-t bg-slate-50/50 dark:bg-slate-900/30 shrink-0">
+        <div className="flex items-center justify-between w-full gap-3">
+          <Button variant="outline" size="sm" onClick={onBack}>
+            Back to Audit
+          </Button>
+          <Button
+            size="sm"
+            className="bg-indigo-600 hover:bg-indigo-700 gap-2"
+            disabled={isDownloading || items.length === 0}
+            onClick={onDownload}
+          >
+            {isDownloading
+              ? <Loader2 className="w-4 h-4 animate-spin" />
+              : <Download className="w-4 h-4" />
+            }
+            {isDownloading ? 'Generating…' : `Download blueprint (${items.length})`}
+          </Button>
+        </div>
+      </DialogFooter>
+    </>
   )
 }
 
 // ── Component ──────────────────────────────────────────────────────────────
 
 export function BatchGradingDialog({
-  open,
-  onOpenChange,
-  assessmentId,
-  classId,
-  initialStudentId,
-  initialView = 'upload',
+  open, onOpenChange, assessmentId, classId,
+  initialStudentId, initialView = 'upload',
+  savedRedesignItems: initialSavedItems = [],
 }: BatchGradingDialogProps) {
   const router = useRouter()
 
@@ -143,6 +287,20 @@ export function BatchGradingDialog({
   const [redesignData,         setRedesignData]         = useState<any>(null)
   const [isRequestingRedesign, setIsRequestingRedesign] = useState(false)
 
+  // ── Redesign items state ───────────────────────────────────────────────
+  // savedItems:    full objects, accumulated across saves (replaces the rebuild loop)
+  // savedItemKeys: Set of `${dimension}::${title}` for O(1) "already added" lookup
+  const [savedItems,    setSavedItems]    = useState<RedesignItem[]>(initialSavedItems)
+  const [savedItemKeys, setSavedItemKeys] = useState<Set<string>>(
+    () => new Set(initialSavedItems.map(i => `${i.dimension}::${i.title}`)),
+  )
+  const [savingKey,     setSavingKey]     = useState<string | null>(null)
+  const [isDownloading, setIsDownloading] = useState(false)
+
+  // ── Reupload state ─────────────────────────────────────────────────────
+  const [isReuploading,  setIsReuploading]  = useState(false)
+  const reuploadInputRef = useRef<HTMLInputElement>(null)
+
   const abortRefs   = useRef<Map<string, AbortController>>(new Map())
   const pollRef     = useRef<ReturnType<typeof setInterval> | null>(null)
   const attemptsRef = useRef(0)
@@ -150,18 +308,23 @@ export function BatchGradingDialog({
 
   const resultsHref = `/dashboard/assessments/${assessmentId}/results`
 
-  // ── Sync view and fetch audit data ───────────────────────────────────
+  // ── Sync view + load audit ─────────────────────────────────────────────
   useEffect(() => {
     if (open && !hasInitializedView.current) {
       setView(initialView)
-      if (initialView === 'audit_flagged') {
+      if (initialView === 'audit_flagged' || initialView === 'saved_redesign_items') {
         getLatestAudit(assessmentId).then(({ data }) => setAuditResult(data))
       }
+      // Sync saved items in case they were updated outside this dialog
+      getRedesignItems(assessmentId).then(({ data }) => {
+        if (data && data.length > 0) {
+          setSavedItems(data)
+          setSavedItemKeys(new Set(data.map((i: RedesignItem) => `${i.dimension}::${i.title}`)))
+        }
+      })
       hasInitializedView.current = true
     }
-    if (!open) {
-      hasInitializedView.current = false
-    }
+    if (!open) hasInitializedView.current = false
   }, [open, initialView, assessmentId])
 
   const handleEnrolled = useCallback(async () => {
@@ -199,11 +362,10 @@ export function BatchGradingDialog({
     })
   }, [])
 
-  const openSSE = useCallback((submissionId: string) => {
+const openSSE = useCallback((submissionId: string) => {
     const ctrl    = new AbortController()
     abortRefs.current.set(submissionId, ctrl)
-    const apiBase = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'
-    const url     = `${apiBase}/grading/submissions/${submissionId}/progress`
+    const url     = `/api/v1/grading/submissions/${submissionId}/progress`
 
     fetch(url, { credentials: 'include', headers: { Accept: 'text/event-stream' }, signal: ctrl.signal })
       .then(async res => {
@@ -238,10 +400,7 @@ export function BatchGradingDialog({
     attemptsRef.current = 0
     pollRef.current = setInterval(async () => {
       attemptsRef.current += 1
-      if (attemptsRef.current > MAX_POLL_ATTEMPTS) {
-        clearInterval(pollRef.current!)
-        return
-      }
+      if (attemptsRef.current > MAX_POLL_ATTEMPTS) { clearInterval(pollRef.current!); return }
       const { data } = await getBatchGradingStatus(id)
       if (!data) return
       setBatchStatus(data)
@@ -282,7 +441,7 @@ export function BatchGradingDialog({
   const removeFile    = (index: number) => setFiles(prev => { const n = [...prev]; if (n[index]?.preview) URL.revokeObjectURL(n[index].preview!); n.splice(index, 1); return n })
   const assignStudent = (index: number, studentId: string) => setFiles(prev => { const n = [...prev]; if (n[index]) n[index].assignedStudentId = studentId; return n })
 
-  // ── Submit Logic ─────────────────────────────────────────────────────
+  // ── Submit ─────────────────────────────────────────────────────────────
   const handleSubmit = (bypassAuditCheck = false) => {
     if (files.length === 0) return
     if (files.some(f => !f.assignedStudentId)) { setShowUnassigned(true); return }
@@ -298,10 +457,7 @@ export function BatchGradingDialog({
       if (error) {
         if (!bypassAuditCheck && error.message.includes('audit flagged')) {
           const { data: auditData } = await getLatestAudit(assessmentId)
-          if (auditData) {
-            setAuditResult(auditData)
-            setView('audit_flagged')
-          }
+          if (auditData) { setAuditResult(auditData); setView('audit_flagged') }
           return
         }
         toast.error('Submission Failed', { description: error.message })
@@ -330,16 +486,9 @@ export function BatchGradingDialog({
     const { error } = await overrideAudit(assessmentId, overrideReason)
     setIsOverriding(false)
     if (error) return toast.error(error.message)
-    
     toast.success('Audit overridden successfully.')
     setShowOverrideInput(false)
-    
-    if (files.length > 0) {
-      handleSubmit(true) // Continue to grade
-    } else {
-      setView('upload') // Return to upload screen
-      router.refresh()
-    }
+    files.length > 0 ? handleSubmit(true) : (setView('upload'), router.refresh())
   }
 
   const handleGetRedesign = async () => {
@@ -350,32 +499,136 @@ export function BatchGradingDialog({
     if (data) { setRedesignData(data); setView('redesign_suggestions') }
   }
 
-  const handleClose = (shouldRedirect = false) => {
-    if (shouldRedirect && view === 'complete') {
-      router.push(resultsHref)
+  // ── Add item to blueprint ──────────────────────────────────────────────
+  const handleAddItem = async (action: any, sug: any) => {
+    const key = `${sug.dimension}::${action.title}`
+    setSavingKey(key)
+
+    const newItem: RedesignItem = {
+      dimension:               sug.dimension,
+      issue_summary:           sug.issue_summary,
+      title:                   action.title,
+      description:             action.description,
+      action_type:             action.action_type,
+      marks:                   Number(action.marks),   // cast: AI may return strings
+      bloom_level:             action.bloom_level,
+      command_word:            action.command_word,
+      assessment_objective_id: action.assessment_objective_id,
+      syllabus_topic:          action.syllabus_topic,
+      example_question_stem:   action.example_question_stem,
     }
-    cleanupAll(); setFiles([]); setLiveStates([]); setBatchStatus(null)
-    setShowUnassigned(false); setView('upload'); onOpenChange(false)
-    setStudentsLoading(true); setShowOverrideInput(false); setOverrideReason('')
+
+    const updatedItems = [...savedItems, newItem]
+
+    const { error } = await saveRedesignItems(assessmentId, updatedItems)
+    setSavingKey(null)
+
+    if (error) {
+      console.error('saveRedesignItems error:', error)
+      return toast.error('Failed to save item.', { description: error.message })
+    }
+
+    setSavedItems(updatedItems)
+    setSavedItemKeys(prev => new Set([...prev, key]))
+    toast.success('Item added to blueprint.')
   }
 
-  // ── Derived Values ───────────────────────────────────────────────────
+  // ── Download DOCX ──────────────────────────────────────────────────────
+const handleDownloadDocx = async () => {
+  if (savedItems.length === 0) {
+    return toast.warning('Add at least one item to the blueprint first.')
+  }
+  setIsDownloading(true)
+  try {
+    const apiBase = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000'
+    console.log('[download] apiBase:', apiBase)
+    console.log('[download] assessmentId:', assessmentId)
+    console.log('[download] savedItems:', savedItems.length)
+
+    const res = await fetch(
+      `${apiBase}/api/v1/assessments/${assessmentId}/audit/redesign-items/download`,
+      { credentials: 'include' },
+    )
+
+    console.log('[download] status:', res.status)
+    console.log('[download] headers:', Object.fromEntries(res.headers.entries()))
+
+    if (!res.ok) {
+      const body = await res.text().catch(() => '(no body)')
+      console.error('[download] error body:', body)
+      throw new Error(`HTTP ${res.status}: ${body}`)
+    }
+
+    const blob = await res.blob()
+    console.log('[download] blob size:', blob.size, 'type:', blob.type)
+
+    if (blob.size === 0) throw new Error('Server returned an empty file')
+
+    const url  = URL.createObjectURL(blob)
+    const a    = document.createElement('a')
+    a.href     = url
+    a.download = `redesign-blueprint.docx`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+    toast.success('Blueprint downloaded.')
+  } catch (err) {
+    console.error('[download] caught:', err)
+    toast.error('Failed to download blueprint.', {
+      description: err instanceof Error ? err.message : String(err),
+    })
+  } finally {
+    setIsDownloading(false)
+  }
+}
+  // ── Reupload ───────────────────────────────────────────────────────────
+  const handleReuploadFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setIsReuploading(true)
+    const formData = new FormData()
+    formData.append('file', file)
+
+    const { data, error } = await reuploadAssessment(assessmentId, formData)
+    setIsReuploading(false)
+
+    if (error) return toast.error('Reupload failed', { description: error.message })
+
+    toast.success('Assessment reuploaded — audit re-running.')
+    const { data: freshAudit } = await getLatestAudit(assessmentId)
+    if (freshAudit) setAuditResult(freshAudit)
+    setView('audit_flagged')
+    router.refresh()
+  }
+
+  const handleClose = (shouldRedirect = false) => {
+    if (shouldRedirect && view === 'complete') router.push(resultsHref)
+    cleanupAll()
+    setFiles([]); setLiveStates([]); setBatchStatus(null)
+    setShowUnassigned(false); setView('upload'); onOpenChange(false)
+    setStudentsLoading(true); setShowOverrideInput(false); setOverrideReason('')
+    setRedesignData(null)
+    // NOTE: we intentionally keep savedItems / savedItemKeys alive so the
+    // "Saved Items" tab still shows data when the dialog is reopened.
+  }
+
+  // ── Derived ────────────────────────────────────────────────────────────
   const completedCount  = liveStates.filter(s => s.step === 'Complete').length
-  const failedCount     = liveStates.filter(s => s.step === 'Failed').length
   const totalCount      = liveStates.length
   const unassignedCount = files.filter(f => !f.assignedStudentId).length
   const overallPct      = totalCount > 0
     ? Math.round(liveStates.reduce((sum, s) => sum + Math.max(0, s.progress), 0) / totalCount)
     : 0
-
   const noStudents = !studentsLoading && students.length === 0
 
   return (
     <>
       <Dialog open={open} onOpenChange={v => { if (!v) handleClose(view === 'complete') }}>
         <DialogContent className={cn(
-          "max-h-[85vh] flex flex-col p-0 transition-all duration-300",
-          view === 'upload' ? 'sm:max-w-4xl' : 'sm:max-w-3xl'
+          'max-h-[85vh] flex flex-col p-0 transition-all duration-300',
+          view === 'upload' ? 'sm:max-w-4xl' : 'sm:max-w-3xl',
         )}>
 
           {/* ── UPLOAD VIEW ───────────────────────────────────────────── */}
@@ -402,7 +655,9 @@ export function BatchGradingDialog({
                     </div>
                   ) : (
                     <div {...getRootProps()} className={cn('border-2 border-dashed rounded-lg p-6 transition-colors cursor-pointer flex flex-col items-center justify-center text-center h-[200px]', 'hover:border-primary/50 hover:bg-muted/50', isDragActive && 'border-primary bg-primary/5')}>
-                      <input {...getInputProps()} /><Upload className="h-12 w-12 text-muted-foreground" /><p className="mt-4 text-sm font-medium">Drag & drop files here</p><p className="mt-1 text-xs text-muted-foreground">PDF, JPG, PNG — max 10MB each</p>
+                      <input {...getInputProps()} /><Upload className="h-12 w-12 text-muted-foreground" />
+                      <p className="mt-4 text-sm font-medium">Drag & drop files here</p>
+                      <p className="mt-1 text-xs text-muted-foreground">PDF, JPG, PNG — max 10MB each</p>
                     </div>
                   )}
                 </div>
@@ -445,8 +700,25 @@ export function BatchGradingDialog({
           {view === 'audit_flagged' && (
             <>
               <DialogHeader className="px-6 pt-6 pb-4 border-b bg-muted/30 shrink-0">
-                <div className="flex items-center gap-2 text-amber-600 mb-1"><AlertTriangle className="h-5 w-5" /><DialogTitle>Assessment Quality Audit</DialogTitle></div>
-                <DialogDescription>This assessment deviates from the official curriculum schema. Grading this assessment may result in inaccurate grading which could impact student outcomes.</DialogDescription>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-amber-600 mb-1">
+                    <AlertTriangle className="h-5 w-5" />
+                    <DialogTitle>Assessment Quality Audit</DialogTitle>
+                  </div>
+                  {/* Quick-access button to saved blueprint items */}
+                  {savedItems.length > 0 && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-1.5 text-indigo-600 border-indigo-200 hover:bg-indigo-50 shrink-0"
+                      onClick={() => setView('saved_redesign_items')}
+                    >
+                      <ClipboardList className="h-3.5 w-3.5" />
+                      Blueprint ({savedItems.length})
+                    </Button>
+                  )}
+                </div>
+                <DialogDescription>This assessment deviates from the official curriculum schema. Grading may produce inaccurate results.</DialogDescription>
               </DialogHeader>
 
               <div className="px-6 py-6 flex-1 flex flex-col min-h-0 overflow-hidden">
@@ -463,10 +735,10 @@ export function BatchGradingDialog({
                       <ScrollArea className="flex-1 min-h-0 pr-4 -mr-4">
                         <div className="space-y-3 pb-4">
                           {auditResult.findings.map((finding: any, i: number) => (
-                            <div key={i} className={cn("p-3 rounded-lg border flex gap-3 items-start", finding.status === 'flagged' ? 'border-amber-200 bg-amber-50 dark:bg-amber-950/20' : 'border-green-200 bg-green-50 dark:bg-green-950/20')}>
+                            <div key={i} className={cn('p-3 rounded-lg border flex gap-3 items-start', finding.status === 'flagged' ? 'border-amber-200 bg-amber-50 dark:bg-amber-950/20' : 'border-green-200 bg-green-50 dark:bg-green-950/20')}>
                               {finding.status === 'flagged' ? <XCircle className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" /> : <CheckCircle2 className="w-4 h-4 text-green-500 mt-0.5 shrink-0" />}
                               <div className="flex-1 min-w-0">
-                                <p className={cn("text-sm font-semibold capitalize", finding.status === 'flagged' ? 'text-amber-900 dark:text-amber-200' : 'text-green-900 dark:text-green-200')}>{finding.dimension.replace('_', ' ')}</p>
+                                <p className={cn('text-sm font-semibold capitalize', finding.status === 'flagged' ? 'text-amber-900 dark:text-amber-200' : 'text-green-900 dark:text-green-200')}>{finding.dimension.replace('_', ' ')}</p>
                                 <p className="text-xs mt-1 text-muted-foreground leading-relaxed">{finding.description}</p>
                                 {finding.citation && <span className="mt-2 text-[10px] font-medium text-muted-foreground/80 flex items-center gap-1.5 bg-background/50 w-fit px-1.5 py-0.5 rounded"><BookOpen className="w-3 h-3 shrink-0" />{finding.citation}</span>}
                               </div>
@@ -483,7 +755,7 @@ export function BatchGradingDialog({
                 {showOverrideInput ? (
                   <div className="animate-in fade-in slide-in-from-bottom-2 duration-200">
                     <div className="flex items-center gap-2 text-destructive mb-2"><ShieldAlert className="w-4 h-4 shrink-0" /><span className="text-sm font-semibold">Liability Override</span></div>
-                    <Textarea placeholder="Provide a reason for overriding the audit..." value={overrideReason} onChange={(e) => setOverrideReason(e.target.value)} className="text-sm bg-background mb-3 min-h-[72px] resize-none" autoFocus />
+                    <Textarea placeholder="Provide a reason for overriding the audit..." value={overrideReason} onChange={e => setOverrideReason(e.target.value)} className="text-sm bg-background mb-3 min-h-[72px] resize-none" autoFocus />
                     <div className="flex justify-end gap-2">
                       <Button variant="ghost" size="sm" onClick={() => { setShowOverrideInput(false); setOverrideReason('') }}>Cancel</Button>
                       <Button variant="destructive" size="sm" onClick={handleOverride} disabled={isOverriding}>{isOverriding && <Loader2 className="w-4 h-4 animate-spin mr-2" />}Confirm & Grade</Button>
@@ -492,44 +764,161 @@ export function BatchGradingDialog({
                 ) : (
                   <div className="flex items-center justify-end gap-3">
                     <Button variant="ghost" className="text-muted-foreground hover:text-foreground" onClick={() => setShowOverrideInput(true)}>Grade Anyway</Button>
-                    <Button onClick={handleGetRedesign} disabled={isRequestingRedesign} className="gap-2">{isRequestingRedesign ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wrench className="w-4 h-4" />}Fix My Assessment</Button>
+                    <Button onClick={handleGetRedesign} disabled={isRequestingRedesign} className="gap-2">
+                      {isRequestingRedesign ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wrench className="w-4 h-4" />}Fix My Assessment
+                    </Button>
                   </div>
                 )}
               </div>
             </>
           )}
 
-          {/* ── REDESIGN SUGGESTIONS VIEW (BLUEPRINT THEME) ────────────────── */}
+          {/* ── REDESIGN SUGGESTIONS VIEW ──────────────────────────────── */}
           {view === 'redesign_suggestions' && redesignData && (
             <>
               <DialogHeader className="px-6 pt-6 pb-4 border-b bg-indigo-50/50 dark:bg-indigo-950/10 shrink-0">
-                <div className="flex items-center gap-2 text-indigo-600 mb-1"><Lightbulb className="h-5 w-5" /><DialogTitle>CBC Alignment Blueprint</DialogTitle></div>
-                <DialogDescription>These suggestions are mapped directly to your curriculum standards.</DialogDescription>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-indigo-600 mb-1">
+                    <Lightbulb className="h-5 w-5" />
+                    <DialogTitle>CBC Alignment Blueprint</DialogTitle>
+                  </div>
+                  {/* Quick-access to already-saved items */}
+                  {savedItems.length > 0 && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-1.5 text-indigo-600 border-indigo-200 hover:bg-indigo-50 shrink-0"
+                      onClick={() => setView('saved_redesign_items')}
+                    >
+                      <ClipboardList className="h-3.5 w-3.5" />
+                      View saved ({savedItems.length})
+                    </Button>
+                  )}
+                </div>
+                <DialogDescription>
+                  Click <strong>Add to blueprint</strong> on any item. When ready, download the DOCX, fix your assessment, then reupload.
+                </DialogDescription>
               </DialogHeader>
+
               <div className="px-6 py-6 flex-1 overflow-y-auto">
-                <div className="bg-indigo-600 text-white p-4 rounded-lg mb-6 text-sm font-medium shadow-sm">{redesignData.overall_advice}</div>
+                <div className="bg-indigo-600 text-white p-4 rounded-lg mb-6 text-sm font-medium shadow-sm">
+                  {redesignData.overall_advice}
+                </div>
                 <div className="space-y-6">
                   {redesignData.detailed_suggestions.map((sug: any, i: number) => (
                     <div key={i} className="space-y-3">
-                      <h4 className="text-xs font-bold uppercase tracking-wider text-indigo-600 flex items-center gap-2"><BookOpen className="w-3.5 h-3.5" />{sug.issue_summary}</h4>
+                      <h4 className="text-xs font-bold uppercase tracking-wider text-indigo-600 flex items-center gap-2">
+                        <BookOpen className="w-3.5 h-3.5" />{sug.issue_summary}
+                      </h4>
                       <div className="grid gap-3 pl-4 border-l-2 border-indigo-100">
-                        {sug.suggestions.map((action: any, j: number) => (
-                          <div key={j} className="bg-card border border-indigo-50 rounded-md p-3 shadow-sm">
-                            <div className="flex items-center justify-between mb-1"><span className="font-bold text-sm text-slate-900">{action.title}</span><Badge className="bg-indigo-100 text-indigo-700 hover:bg-indigo-100 border-none text-[9px] uppercase tracking-tighter">{action.action_type.replace('_', ' ')}</Badge></div>
-                            <p className="text-xs text-slate-600 mb-3 leading-relaxed">{action.description}</p>
-                            {action.example_question_stem && <div className="bg-slate-50 border border-slate-100 p-2.5 rounded text-xs font-medium text-slate-700"><span className="text-indigo-600 font-bold mr-2">CBC ITEM STEM:</span>{action.example_question_stem}</div>}
-                          </div>
-                        ))}
+                        {sug.suggestions.map((action: any, j: number) => {
+                          const key     = `${sug.dimension}::${action.title}`
+                          const saved   = savedItemKeys.has(key)
+                          const saving  = savingKey === key
+                          return (
+                            <div key={j} className={cn('bg-card border rounded-md p-3 shadow-sm transition-colors', saved ? 'border-indigo-200 bg-indigo-50/50 dark:bg-indigo-950/10' : 'border-indigo-50')}>
+                              <div className="flex items-start justify-between gap-2 mb-1">
+                                <span className="font-bold text-sm text-slate-900 dark:text-slate-100 flex-1">{action.title}</span>
+                                <div className="flex items-center gap-2 shrink-0">
+                                  <Badge className="bg-indigo-100 text-indigo-700 hover:bg-indigo-100 border-none text-[9px] uppercase tracking-tighter">
+                                    {action.action_type.replace('_', ' ')}
+                                  </Badge>
+                                  {saved ? (
+                                    <span className="flex items-center gap-1 text-[11px] text-indigo-600 font-medium">
+                                      <CheckCircle2 className="w-3.5 h-3.5" /> Added
+                                    </span>
+                                  ) : (
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      className="h-7 text-xs gap-1 border-indigo-200 text-indigo-700 hover:bg-indigo-50"
+                                      disabled={saving}
+                                      onClick={() => handleAddItem(action, sug)}
+                                    >
+                                      {saving
+                                        ? <Loader2 className="w-3 h-3 animate-spin" />
+                                        : <PlusCircle className="w-3 h-3" />
+                                      }
+                                      Add to blueprint
+                                    </Button>
+                                  )}
+                                </div>
+                              </div>
+                              <p className="text-xs text-slate-600 dark:text-slate-400 mb-2 leading-relaxed">{action.description}</p>
+                              <div className="flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-muted-foreground">
+                                <span><strong>{action.marks}</strong> marks</span>
+                                <span>Bloom: <strong>{action.bloom_level}</strong></span>
+                                <span>CW: <strong>{action.command_word}</strong></span>
+                                <span>{action.assessment_objective_id}</span>
+                                <span>{action.syllabus_topic}</span>
+                              </div>
+                              {action.example_question_stem && (
+                                <div className="mt-2 bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 p-2.5 rounded text-xs font-medium text-slate-700 dark:text-slate-300">
+                                  <span className="text-indigo-600 font-bold mr-2">CBC ITEM STEM:</span>
+                                  {action.example_question_stem}
+                                </div>
+                              )}
+                            </div>
+                          )
+                        })}
                       </div>
                     </div>
                   ))}
                 </div>
               </div>
-              <DialogFooter className="px-6 py-4 border-t flex justify-end gap-3 bg-slate-50/50">
-                <Button variant="outline" size="sm" onClick={() => setView('audit_flagged')}>Back to Audit</Button>
-                <Button size="sm" className="bg-indigo-600 hover:bg-indigo-700" onClick={() => handleClose(false)}>I&apos;ll fix it and return</Button>
+
+              <DialogFooter className="px-6 py-4 border-t bg-slate-50/50 dark:bg-slate-900/30 shrink-0">
+                <div className="flex items-center justify-between w-full gap-3">
+                  <Button variant="outline" size="sm" onClick={() => setView('audit_flagged')}>
+                    Back to Audit
+                  </Button>
+                  <div className="flex items-center gap-2">
+                    <input
+                      ref={reuploadInputRef}
+                      type="file"
+                      accept=".pdf,.jpg,.jpeg,.png"
+                      className="hidden"
+                      onChange={handleReuploadFile}
+                    />
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="gap-2"
+                      disabled={isReuploading}
+                      onClick={() => reuploadInputRef.current?.click()}
+                    >
+                      {isReuploading
+                        ? <Loader2 className="w-4 h-4 animate-spin" />
+                        : <RefreshCw className="w-4 h-4" />
+                      }
+                      {isReuploading ? 'Reuploading…' : 'Reupload fixed assessment'}
+                    </Button>
+                    <Button
+                      size="sm"
+                      className="bg-indigo-600 hover:bg-indigo-700 gap-2"
+                      disabled={isDownloading || savedItems.length === 0}
+                      onClick={handleDownloadDocx}
+                    >
+                      {isDownloading
+                        ? <Loader2 className="w-4 h-4 animate-spin" />
+                        : <Download className="w-4 h-4" />
+                      }
+                      {isDownloading ? 'Generating…' : `Download blueprint${savedItems.length > 0 ? ` (${savedItems.length})` : ''}`}
+                    </Button>
+                  </div>
+                </div>
               </DialogFooter>
             </>
+          )}
+
+          {/* ── SAVED REDESIGN ITEMS VIEW ──────────────────────────────── */}
+          {view === 'saved_redesign_items' && (
+            <SavedRedesignItemsView
+              items={savedItems}
+              isDownloading={isDownloading}
+              onDownload={handleDownloadDocx}
+              onBack={() => setView(redesignData ? 'redesign_suggestions' : 'audit_flagged')}
+            />
           )}
 
           {/* ── PROGRESS VIEW ─────────────────────────────────────────── */}
@@ -537,7 +926,10 @@ export function BatchGradingDialog({
             <>
               <DialogHeader className="px-6 pt-6 pb-2"><DialogTitle>Grading in Progress</DialogTitle></DialogHeader>
               <div className="px-6 py-4 flex-1 space-y-5 overflow-y-auto">
-                <div className="space-y-1.5"><div className="flex justify-between text-sm"><span className="text-muted-foreground">Overall</span><span className="font-medium tabular-nums">{overallPct}%</span></div><Progress value={overallPct} className="h-2" /></div>
+                <div className="space-y-1.5">
+                  <div className="flex justify-between text-sm"><span className="text-muted-foreground">Overall</span><span className="font-medium tabular-nums">{overallPct}%</span></div>
+                  <Progress value={overallPct} className="h-2" />
+                </div>
                 <div className="space-y-3">
                   {liveStates.map(ls => {
                     const student = students.find(s => s.student_id === ls.studentId)
@@ -547,7 +939,10 @@ export function BatchGradingDialog({
                     const isFail  = ls.step === 'Failed'
                     return (
                       <div key={ls.submissionId} className={cn('rounded-lg border p-4 transition-colors', isDone && 'border-green-200 bg-green-50', isFail && 'border-destructive/30 bg-destructive/5', !isDone && !isFail && 'bg-card')}>
-                        <div className="flex items-center justify-between mb-2"><span className="text-sm font-medium">{name}</span><div className={cn('flex items-center gap-1.5 text-xs font-medium', cfg.color)}>{cfg.icon}<span>{cfg.label}</span></div></div>
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-sm font-medium">{name}</span>
+                          <div className={cn('flex items-center gap-1.5 text-xs font-medium', cfg.color)}>{cfg.icon}<span>{cfg.label}</span></div>
+                        </div>
                         <Progress value={Math.max(0, ls.progress)} className={cn('h-1.5', isDone && '[&>div]:bg-green-500', isFail && '[&>div]:bg-destructive')} />
                         <div className="flex items-center justify-between mt-2">
                           {[10, 30, 60, 75, 85, 100].map(milestone => (
@@ -564,19 +959,26 @@ export function BatchGradingDialog({
             </>
           )}
 
-          {/* ── COMPLETE VIEW ────────────────────────────────────────────── */}
+          {/* ── COMPLETE VIEW ─────────────────────────────────────────── */}
           {view === 'complete' && (
             <>
               <DialogHeader className="px-6 pt-6 pb-4"><DialogTitle>Grading Complete</DialogTitle></DialogHeader>
               <div className="px-6 py-6 flex-1 space-y-5">
-                <div className="flex flex-wrap gap-3"><Badge variant="outline" className="gap-1.5 text-green-600 text-sm py-1.5 px-3"><CheckCircle2 className="w-4 h-4" />{completedCount} graded successfully</Badge></div>
+                <div className="flex flex-wrap gap-3">
+                  <Badge variant="outline" className="gap-1.5 text-green-600 text-sm py-1.5 px-3">
+                    <CheckCircle2 className="w-4 h-4" />{completedCount} graded successfully
+                  </Badge>
+                </div>
                 <ScrollArea className="h-[260px] border rounded-lg p-3">
                   {liveStates.map(ls => {
                     const student = students.find(s => s.student_id === ls.studentId)
                     const name    = student ? `${student.first_name} ${student.last_name}` : ls.studentId.slice(0, 8)
                     return (
                       <div key={ls.submissionId} className="flex items-center justify-between py-2.5 border-b last:border-b-0">
-                        <div className="flex items-center gap-2 text-sm">{ls.step === 'Complete' ? <CheckCircle2 className="w-4 h-4 text-green-600" /> : <XCircle className="w-4 h-4 text-destructive" />}<span>{name}</span></div>
+                        <div className="flex items-center gap-2 text-sm">
+                          {ls.step === 'Complete' ? <CheckCircle2 className="w-4 h-4 text-green-600" /> : <XCircle className="w-4 h-4 text-destructive" />}
+                          <span>{name}</span>
+                        </div>
                         {ls.step === 'Complete' && <span className="text-sm font-semibold tabular-nums">{ls.score}/{ls.maxScore}</span>}
                       </div>
                     )
@@ -594,4 +996,3 @@ export function BatchGradingDialog({
     </>
   )
 }
-
