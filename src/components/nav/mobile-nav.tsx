@@ -37,7 +37,9 @@ export function MobileNav({ organizationName }: MobileNavProps) {
             {/* <Logo /> */}
           </div>
           {/* Reuse the MainNav component for consistency */}
-          <MainNav organizationName={organizationName} />
+          <MainNav organizationName={organizationName} collapsed={false} onToggleCollapse={function (): void {
+            throw new Error('Function not implemented.');
+          } } />
         </nav>
       </SheetContent>
     </Sheet>

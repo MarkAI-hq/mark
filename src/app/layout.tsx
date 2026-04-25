@@ -1,6 +1,7 @@
 // src/app/layout.tsx
 import type { Metadata } from 'next';
-import { Geist, Geist_Mono } from 'next/font/google';
+import { GeistSans } from 'geist/font/sans';
+import { GeistMono } from 'geist/font/mono';
 import { CookiesProvider } from 'next-client-cookies/server';
 
 import './globals.css';
@@ -12,16 +13,6 @@ import { cn } from '@/lib/utils';
 import { getSession } from '@/lib/session';
 import { AuthInitializer } from '@/components/auth/auth-initializer';
 // --- END NEW IMPORTS ---
-
-const geistSans = Geist({
-  variable: '--font-geist-sans',
-  subsets: ['latin'],
-});
-
-const geistMono = Geist_Mono({
-  variable: '--font-geist-mono',
-  subsets: ['latin'],
-});
 
 export const metadata: Metadata = {
   title: 'Mark AI: Learning Improvement System',
@@ -41,8 +32,8 @@ export default async function RootLayout({
         suppressHydrationWarning
         className={cn(
           'min-h-screen bg-background font-sans antialiased',
-          geistSans.variable,
-          geistMono.variable,
+          GeistSans.variable,
+          GeistMono.variable,
         )}
       >
         <AuthInitializer user={user} />
@@ -54,7 +45,7 @@ export default async function RootLayout({
           disableTransitionOnChange
         >
           <CookiesProvider>{children}</CookiesProvider>
-          <Toaster position="bottom-right" richColors /> {/* CHANGED: Using Sonner Toaster with props */}
+          <Toaster position="bottom-right" richColors />
         </ThemeProvider>
       </body>
     </html>

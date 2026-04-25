@@ -3,10 +3,12 @@ import { UserRole } from '@/lib/types'
 import {
   LayoutDashboard,
   BookMarked,
+  GraduationCap,
   Users,
   FileSignature,
   HelpCircle,
   Settings,
+  Sparkles,
   LucideIcon,
 } from 'lucide-react'
 
@@ -21,6 +23,12 @@ export interface NavItem {
 
 export const dashboardConfig = {
   mainNav: [
+    {
+      title: 'Tracy',
+      href:  '/dashboard/tracy',
+      roles: ['Admin', 'Teacher'],
+      icon:  Sparkles,
+    },
     {
       title: 'Dashboard',
       href:  '/dashboard',
@@ -37,11 +45,11 @@ export const dashboardConfig = {
       roles: ['Admin'],
       icon:  BookMarked,
     },
-        {
+    {
       title: 'Courses',
       href:  '/dashboard/courses',
       roles: ['Admin'],
-      icon:  BookMarked,
+      icon:  GraduationCap,
     },
     {
       title: 'Classes',
