@@ -20,7 +20,7 @@ export interface Assessment {
   className:          string | null
   id:                 string
   curriculum_id?:     string | null
-  audit_status?:      'not_audited' | 'passed' | 'flagged' | 'overridden'
+  audit_status?:      'not_audited' | 'passed' | 'flagged' | 'overridden' | 'failed'
 }
 
 function handleMutationResponse<T>(response: ServerActionResponse<T>): T {

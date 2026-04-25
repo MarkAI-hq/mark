@@ -11,9 +11,10 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { AlertCircle, CheckCircle2, RefreshCw } from 'lucide-react';
+import { getLatestAudit, triggerAudit as triggerAuditAction } from '@/lib/actions/audit';
 
 interface AuditFinding {
-  dimension: 'blooms' | 'topics' | 'command_words' | 'marks';
+  dimension: 'cognitive_coverage' | 'topics' | 'command_words' | 'marks' | 'structure';
   status: 'passed' | 'flagged';
   description: string;
   citation?: string;
@@ -21,7 +22,7 @@ interface AuditFinding {
 
 interface AuditResult {
   overall_score: number;
-  status: 'passed' | 'flagged';
+  status: 'passed' | 'flagged' | 'failed' | 'overridden' | 'not_audited';
   findings: AuditFinding[];
 }
 
@@ -38,10 +39,11 @@ export const AuditResultsDisplay: React.FC<AuditResultsDisplayProps> = ({ assess
   const fetchAuditResult = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`/api/assessments/${assessmentId}/audit`);
-      const data = await response.json();
-      setAuditResult(data);
-      setStatus(data.status);
+      const response = await getLatestAudit(assessmentId);
+      if (response.data) {
+        setAuditResult(response.data);
+        setStatus(response.data.status);
+      }
     } catch (error) {
       console.error('Failed to fetch audit result:', error);
     } finally {
@@ -52,10 +54,11 @@ export const AuditResultsDisplay: React.FC<AuditResultsDisplayProps> = ({ assess
   const triggerAudit = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`/api/assessments/${assessmentId}/audit`, { method: 'POST' });
-      const data = await response.json();
-      setAuditResult(data);
-      setStatus(data.status);
+      const response = await triggerAuditAction(assessmentId);
+      if (response.data) {
+        setAuditResult(response.data);
+        setStatus(response.data.status);
+      }
     } catch (error) {
       console.error('Failed to trigger audit:', error);
     } finally {
@@ -64,10 +67,10 @@ export const AuditResultsDisplay: React.FC<AuditResultsDisplayProps> = ({ assess
   };
 
   useEffect(() => {
-    if (status !== 'not_audited') {
+    if (initialStatus !== 'not_audited') {
       fetchAuditResult();
     }
-  }, [assessmentId, status]);
+  }, [assessmentId]);
 
   if (status === 'not_audited') {
     return (
@@ -108,7 +111,9 @@ export const AuditResultsDisplay: React.FC<AuditResultsDisplayProps> = ({ assess
                 <AlertCircle className="h-5 w-5 text-red-500 mt-0.5" />
               )}
               <div className="space-y-1">
-                <p className="text-sm font-medium leading-none capitalize">{finding.dimension.replace('_', ' ')}</p>
+                <p className="text-sm font-medium leading-none capitalize">
+                  {finding.dimension.replace(/_/g, ' ')}
+                </p>
                 <p className="text-sm text-muted-foreground">{finding.description}</p>
                 {finding.citation && (
                   <p className="text-xs text-blue-600 italic">{finding.citation}</p>

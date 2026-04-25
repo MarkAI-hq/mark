@@ -35,35 +35,19 @@ import { PredictionCard }      from './prediction-card'
 import { cn }                  from '@/lib/utils'
 import { toast }               from 'sonner'
 
-interface RedesignItem {
-  dimension:               string
-  issue_summary:           string
-  title:                   string
-  description:             string
-  action_type:             string
-  marks:                   number
-  bloom_level:             string
-  command_word:            string
-  assessment_objective_id: string
-  syllabus_topic:          string
-  example_question_stem?:  string
-}
+import { RedesignItem } from '@/lib/actions/audit'
 
 interface AssessmentClientProps {
   assessment:           Assessment
   enrolledStudentCount: number
   latestAudit?:         any
   savedRedesignItems?:  RedesignItem[]
-  // For ExamDialog — needed to re-open it in audit views
   subjects?:            { id: string; name: string }[]
   classes?:             { class_id: string; name: string }[]
 }
 
-// Views that live in ExamDialog (audit flow)
 type AuditDialogView = 'audit_passed' | 'audit_flagged' | 'saved_redesign_items'
-
-// Views that live in BatchGradingDialog (grading flow)
-type GradingDialogView = 'upload' | 'saved_redesign_items'
+type GradingDialogView = 'upload' | 'audit_flagged'
 
 export function AssessmentClient({ 
   assessment, 
@@ -74,14 +58,10 @@ export function AssessmentClient({
   classes  = [],
 }: AssessmentClientProps) {
 
-  // ── Grading dialog (BatchGradingDialog) ───────────────────────────────
   const [isGradingDialogOpen, setIsGradingDialogOpen] = useState(false)
   const [initialGradingView,  setInitialGradingView]  = useState<GradingDialogView>('upload')
-
-  // ── Audit dialog (ExamDialog re-used at audit views) ──────────────────
   const [isAuditDialogOpen,   setIsAuditDialogOpen]   = useState(false)
   const [initialAuditView,    setInitialAuditView]    = useState<AuditDialogView>('audit_flagged')
-
   const [inlineClassOpen,     setInlineClassOpen]     = useState(false)
   const [availableClasses,    setAvailableClasses]    = useState<{ class_id: string; name: string }[]>(classes)
   const [linkedClassId,       setLinkedClassId]       = useState<string | null>(assessment.classId ?? null)
@@ -106,7 +86,7 @@ export function AssessmentClient({
   const auditStatus   = assessment.audit_status || 'not_audited'
   const hasPrediction = !!latestAudit?.prediction
   const hasSavedItems = savedRedesignItems.length > 0
-  const hasAudit      = auditStatus === 'passed' || auditStatus === 'flagged'
+  const hasAudit      = auditStatus === 'passed' || auditStatus === 'flagged' || auditStatus === 'failed' || auditStatus === 'overridden'
 
   const openGrading = (view: GradingDialogView) => {
     setInitialGradingView(view)
@@ -178,7 +158,6 @@ export function AssessmentClient({
         </div>
 
         <div className="flex items-center gap-3">
-          {/* Blueprint shortcut */}
           {hasSavedItems && (
             <Button
               variant="outline"
@@ -190,7 +169,6 @@ export function AssessmentClient({
             </Button>
           )}
 
-          {/* Audit results shortcut — passed assessment */}
           {auditStatus === 'passed' && (
             <Button
               variant="outline"
@@ -275,21 +253,26 @@ export function AssessmentClient({
           </div>
         )}
 
-        {auditStatus === 'flagged' && (
+        {auditStatus !== 'not_audited' && (
           <div className="flex items-center justify-between gap-4 rounded-lg border border-amber-500/30 bg-amber-500/5 px-4 py-3">
             <div className="flex items-center gap-3">
               <AlertTriangle className="h-5 w-5 text-amber-500 shrink-0" />
               <div>
-                <p className="text-sm font-bold text-amber-600">Quality Audit Flagged</p>
-                <p className="text-xs text-muted-foreground">This paper deviates from the curriculum. Predictions may be inaccurate.</p>
+                <p className="text-sm font-bold text-amber-600 capitalize">
+                  Quality Audit: {auditStatus.replace('_', ' ')}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {latestAudit?.findings?.length
+                    ? `${latestAudit.findings.filter((f: any) => f.status === 'flagged').length} dimension(s) flagged`
+                    : 'Click to view audit results'}
+                </p>
               </div>
             </div>
-            {/* Always mounted — opens ExamDialog at audit_flagged, no guard needed */}
-            <Button 
-              size="sm" 
-              variant="outline" 
-              className="border-amber-500/30 text-amber-600 hover:bg-amber-500/10" 
-              onClick={() => openAudit('audit_flagged')}
+            <Button
+              size="sm"
+              variant="outline"
+              className="border-amber-500/30 text-amber-600 hover:bg-amber-500/10"
+              onClick={() => openAudit(auditStatus === 'passed' ? 'audit_passed' : 'audit_flagged')}
             >
               View Audit Results
             </Button>
@@ -327,8 +310,10 @@ export function AssessmentClient({
                 <Badge
                   className={cn(
                     'cursor-pointer',
-                    auditStatus === 'passed'  ? 'bg-green-500/10 text-green-600 hover:bg-green-500/20' : 
-                    auditStatus === 'flagged' ? 'bg-amber-500/10 text-amber-600 hover:bg-amber-500/20' : 
+                    auditStatus === 'passed'    ? 'bg-green-500/10 text-green-600 hover:bg-green-500/20' : 
+                    auditStatus === 'flagged'   ? 'bg-amber-500/10 text-amber-600 hover:bg-amber-500/20' :
+                    auditStatus === 'failed'    ? 'bg-red-500/10 text-red-600 hover:bg-red-500/20' :
+                    auditStatus === 'overridden' ? 'bg-blue-500/10 text-blue-600 hover:bg-blue-500/20' :
                     'bg-muted text-muted-foreground',
                   )}
                   onClick={hasAudit ? () => openAudit(auditStatus === 'passed' ? 'audit_passed' : 'audit_flagged') : undefined}
@@ -389,11 +374,7 @@ export function AssessmentClient({
         </div>
       </div>
 
-      {/* ── Audit Dialog (ExamDialog at audit views) ────────────────── */}
-      {/*
-        Always mounted when there is an audit result — no gradeButtonReady
-        guard so "View Audit Results" always works regardless of enrollment.
-      */}
+      {/* ── Audit Dialog ────────────────────────────────────────────── */}
       {hasAudit && (
         <ExamDialog
           open={isAuditDialogOpen}
@@ -407,15 +388,14 @@ export function AssessmentClient({
         />
       )}
 
-      {/* ── Grading Dialog (BatchGradingDialog) ─────────────────────── */}
-      {(gradeButtonReady || hasSavedItems) && (
+      {/* ── Grading Dialog ─────────────────────────────────────────── */}
+      {gradeButtonReady && (
         <BatchGradingDialog
           open={isGradingDialogOpen}
           onOpenChange={setIsGradingDialogOpen}
           assessmentId={assessment.assessment_id}
           classId={assessment.classId ?? ''}
           initialView={initialGradingView}
-          savedRedesignItems={savedRedesignItems}
         />
       )}
 

@@ -3,6 +3,29 @@
 import { fetcher } from '@/lib/fetch'
 import type { ServerActionResponse } from '@/lib/types'
 
+/**
+ * Matches the RedesignItem structure defined in the 
+ * database and backend DTOs.
+ */
+export interface RedesignItem {
+  section_label:           string;
+  dimension:               string;
+  issue_summary:           string;
+  title:                   string;
+  description:             string;
+  
+  // NEW: Added marking_guide to the shared interface
+  marking_guide:           string;
+
+  action_type:             string;
+  marks:                   number;
+  bloom_level:             string;
+  command_word:            string;
+  assessment_objective_id: string;
+  syllabus_topic:          string;
+  example_question_stem?:  string;
+}
+
 export async function getLatestAudit(assessmentId: string): Promise<ServerActionResponse<any>> {
   return fetcher(`/assessments/${assessmentId}/audit`, { cache: 'no-store' });
 }
@@ -20,25 +43,31 @@ export async function getRedesignSuggestions(assessmentId: string): Promise<Serv
   });
 }
 
-export async function saveRedesignItems(assessmentId: string, items: any[]): Promise<ServerActionResponse<any>> {
+/**
+ * FIX: Updated from any[] to RedesignItem[] to ensure 
+ * the new section_label and marking_guide are enforced.
+ */
+export async function saveRedesignItems(
+  assessmentId: string, 
+  items: RedesignItem[]
+): Promise<ServerActionResponse<any>> {
   return fetcher(`/assessments/${assessmentId}/audit/redesign-items`, {
     method: 'POST',
     body: JSON.stringify({ items }),
   });
 }
 
-export async function getRedesignItems(assessmentId: string): Promise<ServerActionResponse<any[]>> {
+/**
+ * FIX: Returns the typed RedesignItem array.
+ */
+export async function getRedesignItems(assessmentId: string): Promise<ServerActionResponse<RedesignItem[]>> {
   return fetcher(`/assessments/${assessmentId}/audit/redesign-items`, { cache: 'no-store' });
 }
-
-// Download is handled client-side directly — binary responses can't go through
-// the server action / fetcher pipeline. See downloadRedesignDocx() in the dialog.
 
 export async function reuploadAssessment(assessmentId: string, formData: FormData): Promise<ServerActionResponse<any>> {
   return fetcher(`/assessments/${assessmentId}/audit/reupload`, {
     method: 'POST',
     body: formData,
-    // No Content-Type header — browser sets multipart boundary automatically
   });
 }
 
