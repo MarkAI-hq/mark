@@ -218,7 +218,7 @@ export function ClassDetailTabs({
   })) ?? []
 
   const scoreData = analytics?.scoreDistribution ?? []
-  const hasData   = analytics && analytics.averagePercentage > 0
+  const hasData = analytics && analytics.studentSummaries.some((s) => s.submissions > 0)
 
   // Top error — pulled out for use in JSX stat tile
   const topError = analytics?.errorDistribution[0] ?? null

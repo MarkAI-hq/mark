@@ -75,7 +75,7 @@ export default async function ClassDetailPage({ params }: ClassDetailPageProps) 
             <p className="text-muted-foreground mt-1">{classDetails.description}</p>
           )}
         </div>
-        {analytics && analytics.averagePercentage > 0 && (
+        {analytics && analytics.studentSummaries.some((s) => s.submissions > 0) && (
           <div className="text-right">
             <p className="text-3xl font-bold text-primary">{analytics.averagePercentage}%</p>
             <p className="text-xs text-muted-foreground">Class average</p>

@@ -106,6 +106,11 @@ export function StudentsTable<TData>({
               <DropdownMenuItem asChild>
                 <Link href={href}>View Details</Link>
               </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href={`/dashboard/students/${getId(item)}/record`}>
+                  View proof of learning
+                </Link>
+              </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() => alert(`Creating assessment for ${getName(item)}`)}
               >
