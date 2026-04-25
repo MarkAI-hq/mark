@@ -21,6 +21,7 @@ const nextConfig: NextConfig = {
   },
 
   experimental: {
+    optimizePackageImports: ['geist'],
     serverActions: {
       bodySizeLimit: '50mb',
     },
