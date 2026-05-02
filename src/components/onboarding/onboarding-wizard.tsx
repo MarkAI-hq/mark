@@ -149,6 +149,7 @@ export function OnboardingWizard({ adminName, schoolName }: OnboardingWizardProp
       try {
         const newClass = await createClass({
           name:        data.name,
+          grade_level: data.name,
           description: data.description || null,
         })
         setCreatedClassId(newClass.class_id)
