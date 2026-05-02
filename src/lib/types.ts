@@ -132,6 +132,7 @@ export type Class = {
   class_id: string;
   name: string;
   description: string | null;
+  grade_level: string | null;
   created_by: string;
   organization_id: string | null;
   createdAt: string;
