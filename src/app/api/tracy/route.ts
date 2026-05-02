@@ -9,37 +9,33 @@ export async function POST(req: NextRequest) {
     const cookieStore = await cookies();
     let jwt = cookieStore.get("token")?.value;
 
-    // Token missing or expired — try refresh before giving up
     if (!jwt) {
       console.log("[Tracy proxy] No token — attempting refresh...");
       const { data } = await refreshAccessToken();
-      if (!data) {
-        console.error("[Tracy proxy] Refresh failed — user must re-login");
-        return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
-      }
-      // Re-read cookie after refresh
-      jwt = cookieStore.get("token")?.value;
+      if (!data) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+      jwt = data.accessToken;
     }
 
-    if (!jwt) {
-      console.error("[Tracy proxy] No 'token' cookie found after refresh attempt");
-      return NextResponse.json({ reply: "__AUTH_PENDING__" });
-    }
+    if (!jwt) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
 
     const body = await req.json() as {
       message: string;
       sessionId: string;
-      attachments?: Array<{ name: string; type: string; size: number }>;
+      attachments?: Array<{ name: string; type: string; size: number; url?: string }>;
     };
 
+    // Build enriched message — include file URLs so Tracy can pass them to tools
     let enrichedMessage = body.message;
     if (body.attachments && body.attachments.length > 0) {
-      const fileList = body.attachments
-        .map((f) => `${f.name} (${f.type})`)
-        .join(", ");
-      enrichedMessage = `${body.message}\n\n[Attached files: ${fileList}]`;
+      const fileContext = body.attachments.map((f) => {
+        if (f.url) {
+          return `- File: "${f.name}" | Type: ${f.type} | fileUrl: ${f.url}`;
+        }
+        return `- File: "${f.name}" | Type: ${f.type} | STATUS: upload pending — do NOT call any tool with this file`;
+      }).join("\n");
+      enrichedMessage = `${body.message}\n\n[ATTACHED FILES — when calling tools, use the exact fileUrl values below:\n${fileContext}\n]`;
     }
-
+    console.log("[Tracy proxy] enrichedMessage:", enrichedMessage);
     const tracyRes = await fetch(`${TRACY_URL}/chat`, {
       method: "POST",
       headers: {
@@ -63,12 +59,8 @@ export async function POST(req: NextRequest) {
 
     const data = await tracyRes.json();
     return NextResponse.json(data);
-
   } catch (err) {
     console.error("[Tracy route error]", err);
-    return NextResponse.json(
-      { error: "Internal server error connecting to Tracy." },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

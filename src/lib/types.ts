@@ -119,9 +119,10 @@ export type Course = {
   title: string;
   code: string;
   description?: string | null;
+  grade_level: string;
+  class_id: string;    
   subject_id: string;
   organization_id: string;
-  grade_level?: string | null;
   is_active: boolean;
   createdBy: string;
   createdAt: string;
@@ -131,6 +132,7 @@ export type Course = {
 export type Class = {
   class_id: string;
   name: string;
+  grade_level: string;       
   description: string | null;
   created_by: string;
   organization_id: string | null;

@@ -40,7 +40,7 @@ export function ClassesClient({ initialClasses }: ClassesClientProps) {
   const handleCreate = (data: ClassData) => {
     startTransition(async () => {
       try {
-        const payload = { ...data, description: data.description || null };
+        const payload = { ...data, grade_level: data.name, description: data.description || null };
         const newClass = await createClass(payload);
         setClasses((prev) => [newClass, ...prev]);
         toast.success(`Class "${newClass.name}" created.`);
@@ -56,7 +56,7 @@ export function ClassesClient({ initialClasses }: ClassesClientProps) {
     if (!selectedClass) return;
     startTransition(async () => {
       try {
-        const payload = { ...data, description: data.description || null };
+        const payload = { ...data, grade_level: data.name, description: data.description || null };
         const updatedClass = await updateClass(selectedClass.class_id, payload);
         setClasses((prev) =>
           prev.map((c) => (c.class_id === updatedClass.class_id ? updatedClass : c)),
