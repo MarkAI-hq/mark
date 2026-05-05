@@ -69,7 +69,7 @@ const FEATURES = [
 ]
 
 const classSchema = z.object({
-  name:        z.string().min(1, 'Class name is required'),
+  gradeLevel:  z.string().min(1, 'Grade level is required').max(100),
   description: z.string().optional(),
 })
 type ClassData = z.infer<typeof classSchema>
@@ -96,7 +96,7 @@ export function OnboardingWizard({ adminName, schoolName }: OnboardingWizardProp
 
   const classForm = useForm<ClassData>({
     resolver: zodResolver(classSchema),
-    defaultValues: { name: '', description: '' },
+    defaultValues: { gradeLevel: '', description: '' },
   })
   const [createdClassId,   setCreatedClassId]   = useState<string | null>(null)
   const [createdClassName, setCreatedClassName] = useState('')
@@ -148,8 +148,8 @@ export function OnboardingWizard({ adminName, schoolName }: OnboardingWizardProp
     startT(async () => {
       try {
         const newClass = await createClass({
-          name:        data.name,
-          grade_level: data.name,
+          name: data.gradeLevel,
+          gradeLevel: data.gradeLevel,
           description: data.description || null,
         })
         setCreatedClassId(newClass.class_id)
@@ -523,7 +523,7 @@ function StepClass({
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
           <FormField
             control={form.control}
-            name="name"
+            name="gradeLevel"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Class Name</FormLabel>
