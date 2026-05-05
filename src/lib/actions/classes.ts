@@ -72,9 +72,14 @@ function handleMutationResponse<T>(response: ServerActionResponse<T>): T {
     throw new Error('API returned success but no data was received.')
   return response.data
 }
+export interface CreateClassInput {
+  name:        string
+  gradeLevel:  string
+  description?: string | null
+}
 
-export async function createClass(data: CreateClassData): Promise<Class> {
-  const response = await fetcher<Class>('/academics/classes', {
+export async function createClass(data: CreateClassInput): Promise<Class> {
+  const response = await fetcher<Class>('/classes', {
     method: 'POST',
     body: JSON.stringify(data),
   })
