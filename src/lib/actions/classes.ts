@@ -74,7 +74,7 @@ function handleMutationResponse<T>(response: ServerActionResponse<T>): T {
 }
 export interface CreateClassInput {
   name:        string
-  gradeLevel:  string
+  gradeLevel?:  string | null
   description?: string | null
 }
 
