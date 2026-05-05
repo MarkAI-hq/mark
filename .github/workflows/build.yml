@@ -1,4 +1,4 @@
-name: Build & Push Frontend
+name: Build & Push mark
 
 on:
   push:
@@ -7,6 +7,10 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
     steps:
       - uses: actions/checkout@v4
 
@@ -22,6 +26,26 @@ jobs:
         with:
           context: .
           push: true
-          tags: ghcr.io/markai-hq/mark:latest
+          tags: |
+            ghcr.io/markai-hq/mark:latest
+            ghcr.io/markai-hq/mark:${{ github.sha }}
           build-args: |
             NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL }}
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: SSH & deploy
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ubuntu
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u ${{ secrets.GHCR_USER }} --password-stdin
+            cd /home/ubuntu/infra
+            docker compose pull frontend
+            docker compose up -d --no-deps frontend
+            docker image prune -f
