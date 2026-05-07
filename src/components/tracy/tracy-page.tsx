@@ -32,6 +32,9 @@ interface UploadedFile {
   size: number;
   type: string;
   previewUrl?: string;
+  // FIX 1: Track upload state per file
+  uploadState?: "pending" | "uploading" | "done" | "error";
+  uploadedUrl?: string;
 }
 
 interface ConfirmationOption {
@@ -95,6 +98,19 @@ function formatTime(d: Date) {
   return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
 
+// FIX 1: Upload a single file and return its URL
+async function uploadFile(file: File): Promise<string> {
+  const formData = new FormData();
+  formData.append("file", file);
+  const res = await fetch("/api/upload", {
+    method: "POST",
+    body: formData,
+  });
+  if (!res.ok) throw new Error(`Upload failed: ${res.statusText}`);
+  const data = await res.json();
+  return data.url as string;
+}
+
 const SUGGESTIONS = [
   { label: "How did my class perform on the last assessment?", icon: "📊" },
   { label: "Which students need intervention right now?", icon: "🎯" },
@@ -130,12 +146,33 @@ function TypingDots() {
   );
 }
 
+// FIX 1: PendingFileCard now shows upload state
 function PendingFileCard({ file, onRemove }: { file: UploadedFile; onRemove?: () => void }) {
   const isImage = file.type.startsWith("image/");
   const isPdf = file.type === "application/pdf";
+
+  const stateIndicator = () => {
+    if (file.uploadState === "uploading") return (
+      <div className="absolute inset-0 bg-background/70 rounded-xl flex items-center justify-center">
+        <span className="w-5 h-5 border-2 border-muted-foreground/30 border-t-foreground rounded-full animate-spin" />
+      </div>
+    );
+    if (file.uploadState === "done") return (
+      <div className="absolute top-1 left-1 w-5 h-5 rounded-full bg-green-500 flex items-center justify-center">
+        <span className="text-white text-[10px]">✓</span>
+      </div>
+    );
+    if (file.uploadState === "error") return (
+      <div className="absolute top-1 left-1 w-5 h-5 rounded-full bg-red-500 flex items-center justify-center">
+        <span className="text-white text-[10px]">✕</span>
+      </div>
+    );
+    return null;
+  };
+
   return (
     <div className="relative flex-shrink-0 w-24 group">
-      <div className="w-24 h-20 rounded-xl overflow-hidden border border-border bg-muted/60 flex items-center justify-center">
+      <div className="relative w-24 h-20 rounded-xl overflow-hidden border border-border bg-muted/60 flex items-center justify-center">
         {isImage && file.previewUrl ? (
           <img src={file.previewUrl} alt={file.name} className="w-full h-full object-cover" />
         ) : isPdf ? (
@@ -151,6 +188,7 @@ function PendingFileCard({ file, onRemove }: { file: UploadedFile; onRemove?: ()
             </span>
           </div>
         )}
+        {stateIndicator()}
       </div>
       <p className="text-[10px] text-muted-foreground truncate mt-1 px-0.5">{file.name}</p>
       {onRemove && (
@@ -258,7 +296,6 @@ function ArtifactPanel({
 
   return (
     <div className="flex flex-col h-full" style={{ animation: "slideInRight 0.22s ease" }}>
-      {/* Header */}
       <div className="flex items-center gap-3 px-5 py-3.5 border-b border-border flex-shrink-0 bg-background">
         <div className="w-7 h-7 rounded-lg bg-[#c9a84c]/10 flex items-center justify-center text-[#c9a84c]">
           {ARTIFACT_ICONS[artifact.type]}
@@ -276,8 +313,6 @@ function ArtifactPanel({
           <X className="w-4 h-4" />
         </button>
       </div>
-
-      {/* Scrollable content */}
       <div className="flex-1 overflow-y-auto">
         {renderContent()}
       </div>
@@ -288,15 +323,23 @@ function ArtifactPanel({
 // ── Form View ─────────────────────────────────────────────────────────────────
 
 function FormView({ data, onSendMessage }: { data: any; onSendMessage: (msg: string) => void }) {
-  const fields: any[] = data.fields ?? [];
-  const [values, setValues] = useState<Record<string, any>>({});
+  // FIX 2: Separate visible fields from hidden fields
+  const allFields: any[] = data.fields ?? [];
+  const visibleFields = allFields.filter((f) => f.type !== "hidden");
+  const hiddenFields = allFields.filter((f) => f.type === "hidden");
+
+  // Pre-populate values with hidden field defaults
+  const initialValues: Record<string, any> = {};
+  hiddenFields.forEach((f) => { initialValues[f.id] = f.value ?? ""; });
+
+  const [values, setValues] = useState<Record<string, any>>(initialValues);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const validate = () => {
     const errs: Record<string, string> = {};
-    fields.forEach((f) => {
+    visibleFields.forEach((f) => {
       if (f.required && !values[f.id]) {
         errs[f.id] = `${f.label} is required`;
       }
@@ -309,9 +352,12 @@ function FormView({ data, onSendMessage }: { data: any; onSendMessage: (msg: str
     if (!validate()) return;
     setIsSubmitting(true);
     try {
-      // Build a natural language message from form values so Tracy's backend can handle it
-      const formSummary = fields
-        .map((f) => `${f.label}: ${values[f.id] ?? "not provided"}`)
+      // FIX 2: Include ALL values (visible + hidden) in the submitted message
+      const allValues = { ...values };
+      hiddenFields.forEach((f) => { allValues[f.id] = f.value ?? ""; });
+
+      const formSummary = allFields
+        .map((f) => `${f.label}: ${allValues[f.id] ?? "not provided"}`)
         .join(", ");
       const msg = `${data.action ?? "submit_form"} | ${formSummary}`;
       onSendMessage(msg);
@@ -333,7 +379,7 @@ function FormView({ data, onSendMessage }: { data: any; onSendMessage: (msg: str
 
   return (
     <div className="px-5 py-5 space-y-5">
-      {fields.map((field: any) => (
+      {visibleFields.map((field: any) => (
         <div key={field.id} className="space-y-1.5">
           <label className="text-xs font-semibold text-foreground uppercase tracking-wider flex items-center gap-1">
             {field.label}
@@ -480,7 +526,6 @@ function AuditView({ data }: { data: any }) {
 
   return (
     <div className="px-5 py-4 space-y-4">
-      {/* Pass/fail card */}
       <div className={`rounded-xl p-4 border ${passed ? "bg-green-500/5 border-green-500/20" : "bg-red-500/5 border-red-500/20"}`}>
         <div className="flex items-center gap-3">
           <div className={`w-12 h-12 rounded-full flex items-center justify-center text-2xl flex-shrink-0 ${passed ? "bg-green-500/10" : "bg-red-500/10"}`}>
@@ -507,7 +552,6 @@ function AuditView({ data }: { data: any }) {
         </div>
       </div>
 
-      {/* Category breakdown */}
       {categories.length > 0 && (
         <div className="space-y-2">
           <p className="text-xs font-semibold text-foreground uppercase tracking-wider">Criteria</p>
@@ -530,7 +574,6 @@ function AuditView({ data }: { data: any }) {
         </div>
       )}
 
-      {/* Feedback */}
       {feedback.length > 0 && (
         <div className="space-y-2">
           <p className="text-xs font-semibold text-foreground uppercase tracking-wider">Feedback</p>
@@ -543,7 +586,6 @@ function AuditView({ data }: { data: any }) {
         </div>
       )}
 
-      {/* Suggestions */}
       {suggestions.length > 0 && (
         <div className="space-y-2">
           <p className="text-xs font-semibold text-foreground uppercase tracking-wider">Suggestions</p>
@@ -553,16 +595,6 @@ function AuditView({ data }: { data: any }) {
               {s}
             </div>
           ))}
-        </div>
-      )}
-
-      {/* Fallback for plain string suggestions */}
-      {!Array.isArray(data.suggestions) && typeof data.suggestions === "string" && suggestions.length === 0 && (
-        <div className="space-y-2">
-          <p className="text-xs font-semibold text-foreground uppercase tracking-wider">Suggestions</p>
-          <div className="text-sm text-foreground/80 leading-relaxed bg-blue-500/5 rounded-lg px-3 py-2 border border-blue-500/10">
-            {data.suggestions}
-          </div>
         </div>
       )}
     </div>
@@ -585,7 +617,6 @@ function ResultsView({ data }: { data: any }) {
 
   return (
     <div className="px-5 py-4 space-y-4">
-      {/* Stats row */}
       {(avg !== undefined || data.highest !== undefined || data.lowest !== undefined) && (
         <div className="grid grid-cols-3 gap-3">
           {avg !== undefined && (
@@ -609,7 +640,6 @@ function ResultsView({ data }: { data: any }) {
         </div>
       )}
 
-      {/* Student table */}
       {students.length > 0 && (
         <div className="rounded-xl border border-border overflow-hidden">
           <table className="min-w-full text-xs">
@@ -858,7 +888,6 @@ export default function TracyPage() {
   const [authReady, setAuthReady] = useState(false);
   const [confirmation, setConfirmation] = useState<ConfirmationPayload | null>(null);
 
-  // Artifact panel
   const [artifacts, setArtifacts] = useState<Record<string, ArtifactPayload>>({});
   const [activeArtifact, setActiveArtifact] = useState<ArtifactPayload | null>(null);
   const [panelOpen, setPanelOpen] = useState(false);
@@ -918,19 +947,34 @@ export default function TracyPage() {
     setTimeout(() => setActiveArtifact(null), 250);
   }, []);
 
+  // FIX 1: Upload files immediately on add, track state per file
   const addFiles = useCallback((files: FileList | File[]) => {
     const allowedTypes = [
       "application/pdf", "image/png", "image/jpeg", "image/jpg", "image/webp",
       "text/csv", "application/vnd.ms-excel",
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     ];
+
     Array.from(files).forEach((file) => {
       if (!allowedTypes.includes(file.type) && !file.name.endsWith(".csv")) return;
       if (file.size > 10 * 1024 * 1024) return;
+
       const fileId = `f_${Date.now()}_${Math.random().toString(36).slice(2)}`;
       const previewUrl = file.type.startsWith("image/") ? URL.createObjectURL(file) : undefined;
       fileObjectsRef.current[fileId] = file;
-      setPendingFiles((prev) => [...prev, { id: fileId, name: file.name, size: file.size, type: file.type, previewUrl }]);
+
+      const newFile: UploadedFile = {
+        id: fileId,
+        name: file.name,
+        size: file.size,
+        type: file.type,
+        previewUrl,
+        uploadState: "pending",
+      };
+
+      setPendingFiles((prev) => [...prev, newFile]);
+
+      // Handle CSV content extraction
       if (file.type === "text/csv" || file.name.endsWith(".csv")) {
         const reader = new FileReader();
         reader.onload = (e) => {
@@ -939,10 +983,32 @@ export default function TracyPage() {
         };
         reader.readAsText(file);
       }
+
+      // Upload PDF and images immediately, track progress on the card
+      if (file.type === "application/pdf" || file.type.startsWith("image/")) {
+        setPendingFiles((prev) =>
+          prev.map((f) => f.id === fileId ? { ...f, uploadState: "uploading" } : f)
+        );
+        uploadFile(file)
+          .then((url) => {
+            setPendingFiles((prev) =>
+              prev.map((f) => f.id === fileId ? { ...f, uploadState: "done", uploadedUrl: url } : f)
+            );
+          })
+          .catch(() => {
+            setPendingFiles((prev) =>
+              prev.map((f) => f.id === fileId ? { ...f, uploadState: "error" } : f)
+            );
+          });
+      }
     });
   }, []);
 
   const clearChat = () => {
+    // FIX 3: Revoke all object URLs before clearing
+    pendingFiles.forEach((f) => {
+      if (f.previewUrl) URL.revokeObjectURL(f.previewUrl);
+    });
     setMessages([]);
     setPendingFiles([]);
     setPendingFileContents({});
@@ -976,15 +1042,17 @@ export default function TracyPage() {
       attachments: snapshotFiles.length > 0 ? snapshotFiles : undefined,
     };
 
-    const loadingId = `l_${Date.now()}`;
-
     if (!isRetry) {
       setMessages((prev) => [
         ...prev,
         userMsg,
-        { id: loadingId, role: "tracy", content: "", timestamp: new Date(), isLoading: true },
+        { id: `l_${Date.now()}`, role: "tracy", content: "", timestamp: new Date(), isLoading: true },
       ]);
       setInput("");
+      // FIX 3: Revoke object URLs for files being sent
+      snapshotFiles.forEach((f) => {
+        if (f.previewUrl) URL.revokeObjectURL(f.previewUrl);
+      });
       setPendingFiles([]);
       setPendingFileContents({});
     }
@@ -992,7 +1060,28 @@ export default function TracyPage() {
     setIsLoading(true);
 
     try {
-      const finalPayloadMessage = fileDataContext ? `${userMsg.content}${fileDataContext}` : userMsg.content;
+      // FIX 1: Collect already-uploaded URLs (uploaded eagerly in addFiles)
+      // Fall back to uploading now if somehow still pending
+      const uploadedParts: string[] = [];
+      for (const f of snapshotFiles) {
+        if (f.type === "application/pdf" || f.type.startsWith("image/")) {
+          let url = f.uploadedUrl;
+          if (!url) {
+            const fileObj = fileObjectsRef.current[f.id];
+            if (fileObj) {
+              try { url = await uploadFile(fileObj); } catch { /* skip */ }
+            }
+          }
+          if (url) uploadedParts.push(`${f.name} (${f.type}) ${url}`);
+        }
+      }
+
+      // FIX 1: Inject attached file URLs into the payload message only (not shown in UI)
+      const attachedFilesBlock = uploadedParts.length > 0
+        ? `\n\n[ATTACHED FILES: ${uploadedParts.join(", ")}]`
+        : "";
+
+      const finalPayloadMessage = `${userMsg.content}${fileDataContext}${attachedFilesBlock}`;
       const attachmentsMeta = snapshotFiles.map(({ name, type, size }) => ({ name, type, size }));
 
       const res = await fetch("/api/tracy", {
@@ -1016,47 +1105,61 @@ export default function TracyPage() {
       retryCount.current = 0;
       const reply: string = data.reply || data.error || "I hit a snag. Please try again.";
 
-      // Normalise: strip leading/trailing whitespace then detect signal prefixes.
-      // Handles both __ARTIFACT__: and bare ARTIFACT: (and same for CONFIRM).
       const trimmed = reply.trim();
 
-      // Helper: find artifact/confirm JSON in a string regardless of prefix style
+      // FIX: Extract first balanced JSON object only, not everything after the colon
+      function extractJson(str: string): string | null {
+        const start = str.indexOf("{");
+        if (start === -1) return null;
+        let depth = 0;
+        for (let i = start; i < str.length; i++) {
+          if (str[i] === "{") depth++;
+          else if (str[i] === "}") {
+            depth--;
+            if (depth === 0) return str.slice(start, i + 1);
+          }
+        }
+        return null;
+      }
+
       const ARTIFACT_RE = /(?:^|\n)(?:__)?ARTIFACT(?:__)?\s*:\s*(\{[\s\S]*)/;
       const CONFIRM_RE  = /(?:^|\n)(?:__)?CONFIRM(?:__)?\s*:\s*(\{[\s\S]*)/;
 
       const confirmMatch = trimmed.match(CONFIRM_RE);
       if (confirmMatch) {
-        try {
-          const parsed: ConfirmationPayload = JSON.parse(confirmMatch[1]);
-          setMessages((prev) => prev.filter((m) => !m.isLoading));
-          setConfirmation(parsed);
-          return;
-        } catch { console.warn("[Tracy UI] Failed to parse confirmation payload", confirmMatch[1]); }
+        const json = extractJson(confirmMatch[1]);
+        if (json) {
+          try {
+            const parsed: ConfirmationPayload = JSON.parse(json);
+            setMessages((prev) => prev.filter((m) => !m.isLoading));
+            setConfirmation(parsed);
+            return;
+          } catch { console.warn("[Tracy UI] Failed to parse confirmation payload"); }
+        }
       }
 
       const artifactMatch = trimmed.match(ARTIFACT_RE);
       if (artifactMatch) {
-        try {
-          const rawArtifact = JSON.parse(artifactMatch[1]);
-          const artifactId = `art_${Date.now()}`;
-          const artifact: ArtifactPayload = { id: artifactId, ...rawArtifact };
+        const json = extractJson(artifactMatch[1]);
+        if (json) {
+          try {
+            const rawArtifact = JSON.parse(json);
+            const artifactId = `art_${Date.now()}`;
+            const artifact: ArtifactPayload = { id: artifactId, ...rawArtifact };
+            const beforeTag = trimmed.slice(0, trimmed.search(ARTIFACT_RE)).trim();
+            const fallback = rawArtifact.summary ?? `Here's the ${(rawArtifact.type as string)?.replace("_", " ") ?? "result"} — click to view.`;
+            const bubbleText = beforeTag || fallback;
 
-          // Any text that appeared BEFORE the ARTIFACT tag becomes the bubble text
-          const beforeTag = trimmed.slice(0, trimmed.search(ARTIFACT_RE)).trim();
-          const fallback = (rawArtifact.summary ?? `Here's the ${(rawArtifact.type as string)?.replace("_", " ") ?? "result"} — click to view.`);
-          const bubbleText = beforeTag || fallback;
-
-          setArtifacts((prev) => ({ ...prev, [artifactId]: artifact }));
-          setMessages((prev) =>
-            prev.map((m) =>
-              m.isLoading
-                ? { ...m, content: bubbleText, isLoading: false, artifactId }
-                : m
-            )
-          );
-          openArtifact(artifact);
-          return;
-        } catch { console.warn("[Tracy UI] Failed to parse artifact payload", artifactMatch[1]); }
+            setArtifacts((prev) => ({ ...prev, [artifactId]: artifact }));
+            setMessages((prev) =>
+              prev.map((m) =>
+                m.isLoading ? { ...m, content: bubbleText, isLoading: false, artifactId } : m
+              )
+            );
+            openArtifact(artifact);
+            return;
+          } catch { console.warn("[Tracy UI] Failed to parse artifact payload"); }
+        }
       }
 
       setMessages((prev) =>
@@ -1070,7 +1173,7 @@ export default function TracyPage() {
       setIsLoading(false);
       inputRef.current?.focus();
     }
-  }, [input, pendingFiles, pendingFileContents, isLoading, openArtifact]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [input, pendingFiles, pendingFileContents, isLoading, openArtifact]);
 
   const handleConfirmationSelect = useCallback((value: string) => {
     setConfirmation(null);
@@ -1112,16 +1215,12 @@ export default function TracyPage() {
         )}
 
         <ResizablePanelGroup direction="horizontal" className="flex-1 min-h-0">
-
-          {/* ── Chat Panel ── */}
           <ResizablePanel
             defaultSize={panelOpen ? 50 : 100}
             minSize={30}
             className="flex flex-col min-h-0"
           >
             <div className="flex flex-col h-full min-h-0">
-
-              {/* Show/hide panel toggle bar */}
               {hasArtifacts && (
                 <div className="flex justify-end px-4 pt-2.5 pb-0 flex-shrink-0">
                   <button
@@ -1131,7 +1230,6 @@ export default function TracyPage() {
                       } else if (activeArtifact) {
                         setPanelOpen(true);
                       } else {
-                        // Re-open with most recent artifact
                         const last = Object.values(artifacts).at(-1);
                         if (last) openArtifact(last);
                       }
@@ -1146,7 +1244,6 @@ export default function TracyPage() {
                 </div>
               )}
 
-              {/* Scrollable messages */}
               <div className="flex-1 overflow-y-auto min-h-0">
                 <div className="max-w-2xl mx-auto px-4 sm:px-6 py-10">
                   {isEmpty ? (
@@ -1193,7 +1290,6 @@ export default function TracyPage() {
                 </div>
               </div>
 
-              {/* Input area */}
               <div className="flex-shrink-0 px-4 sm:px-6 pb-6 pt-2">
                 <div className="max-w-2xl mx-auto">
                   {confirmation && (
@@ -1207,6 +1303,8 @@ export default function TracyPage() {
                           key={f.id}
                           file={f}
                           onRemove={() => {
+                            // FIX 3: Revoke object URL on removal
+                            if (f.previewUrl) URL.revokeObjectURL(f.previewUrl);
                             setPendingFiles((prev) => prev.filter((p) => p.id !== f.id));
                             setPendingFileContents((prev) => {
                               const u = { ...prev };
@@ -1251,7 +1349,8 @@ export default function TracyPage() {
                       onKeyDown={handleKeyDown}
                       placeholder="Ask Tracy anything…"
                       rows={1}
-                      disabled={isLoading}
+                      // FIX: Disable input while confirmation is active
+                      disabled={isLoading || !!confirmation}
                       className="flex-1 bg-transparent border-none outline-none resize-none text-sm text-foreground placeholder:text-muted-foreground/50 leading-relaxed min-h-[24px] max-h-[160px] py-1.5 disabled:opacity-50"
                     />
 
@@ -1275,7 +1374,7 @@ export default function TracyPage() {
                       <button
                         type="button"
                         onClick={() => send()}
-                        disabled={isLoading || (!input.trim() && pendingFiles.length === 0)}
+                        disabled={isLoading || !!confirmation || (!input.trim() && pendingFiles.length === 0)}
                         className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all shadow-sm ${
                           !input.trim() && pendingFiles.length === 0
                             ? "bg-muted text-muted-foreground opacity-50 cursor-not-allowed"
@@ -1295,7 +1394,6 @@ export default function TracyPage() {
             </div>
           </ResizablePanel>
 
-          {/* ── Resize Handle + Artifact Panel ── */}
           {panelOpen && activeArtifact && (
             <>
               <ResizableHandle withHandle className="w-1 bg-border hover:bg-[#c9a84c]/30 transition-colors data-[resize-handle-active]:bg-[#c9a84c]/50" />
@@ -1314,7 +1412,6 @@ export default function TracyPage() {
               </ResizablePanel>
             </>
           )}
-
         </ResizablePanelGroup>
       </div>
     </>
