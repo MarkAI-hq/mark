@@ -25,8 +25,10 @@ interface PredictionCardProps {
 
 export function PredictionCard({ prediction, status }: PredictionCardProps) {
   const { predicted_average, range, confidence, factors } = prediction;
-  const isFlagged   = status === 'flagged';
-  const totalPenalty = Number((factors.cognitive_penalty + factors.topic_penalty).toFixed(2));
+  const isFlagged    = status === 'flagged';
+  const totalPenalty = Number(
+    ((factors.cognitive_penalty ?? 0) + (factors.topic_penalty ?? 0)).toFixed(2),
+  );
 
   return (
     <Card className={cn(
@@ -126,15 +128,15 @@ export function PredictionCard({ prediction, status }: PredictionCardProps) {
                     <span>Cognitive Framework Penalty</span>
                     <span className="text-[10px] text-muted-foreground">
                       {factors.flagged_levels} of {factors.total_levels} levels out of range
-                      {' '}(weight: {Math.round(factors.cognitive_weight * 100)}%)
+                      {' '}(weight: {Math.round((factors.cognitive_weight ?? 0) * 100)}%)
                     </span>
                   </div>
-                  <span className="font-mono font-bold">-{factors.cognitive_penalty}%</span>
+                  <span className="font-mono font-bold">-{factors.cognitive_penalty ?? 0}%</span>
                 </div>
 
                 <div className="flex justify-between items-center text-amber-600">
                   <span>Topic Coverage Penalty</span>
-                  <span className="font-mono font-bold">-{factors.topic_penalty}%</span>
+                  <span className="font-mono font-bold">-{factors.topic_penalty ?? 0}%</span>
                 </div>
 
                 <div className="pt-3 border-t-2 border-dashed flex justify-between items-center font-black text-primary text-base">
