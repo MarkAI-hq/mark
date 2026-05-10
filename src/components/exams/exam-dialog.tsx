@@ -45,12 +45,14 @@ import { getCurricula }          from '@/lib/actions/curricula'
 import {
   triggerAudit,
   getLatestAudit,
+  getAuditHistory,
   getRedesignSuggestions,
   saveRedesignItems,
   getRedesignItems,
   overrideAudit,
   reuploadAssessment,
   RedesignItem,
+  AuditHistoryEntry,
 } from '@/lib/actions/audit'
 import { CurriculumSchemaMetadata } from '@/types/curricula'
 
@@ -117,7 +119,7 @@ const INITIAL_STEPS: AuditStep[] = [
   { id: 'upload',    label: 'Uploading assessment',           done: false },
   { id: 'parse',     label: 'Parsing document structure',     done: false },
   { id: 'analyze',   label: 'Analysing curriculum alignment', done: false },
-  { id: 'cognitive', label: 'Checking cognitive framework',   done: false }, // was "Checking Bloom's taxonomy"
+  { id: 'cognitive', label: 'Checking cognitive framework',   done: false },
   { id: 'score',     label: 'Computing quality score',        done: false },
 ]
 
@@ -155,6 +157,10 @@ export function ExamDialog({
   const [auditError,     setAuditError]     = useState<string | null>(null)
   const [auditCardTab,   setAuditCardTab]   = useState<'results' | 'predictions'>('results')
 
+  // ── Diff state ────────────────────────────────────────────────────────────
+  const [previousFindings, setPreviousFindings] = useState<any[] | undefined>(undefined)
+  const [cycleCount,       setCycleCount]       = useState<number | undefined>(undefined)
+
   const [redesignData,         setRedesignData]         = useState<any>(null)
   const [isRequestingRedesign, setIsRequestingRedesign] = useState(false)
   const [savedItems,           setSavedItems]           = useState<RedesignItem[]>([])
@@ -179,12 +185,31 @@ export function ExamDialog({
     if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null }
   }
 
+  // ── Fetch and apply audit history ─────────────────────────────────────────
+  // Derives previousFindings and cycleCount from the history array.
+  // Called on initial load (when reopening a flagged assessment) and
+  // after every re-audit completes.
+  const applyAuditHistory = (history: AuditHistoryEntry[]) => {
+    if (!history || history.length === 0) return
+
+    const latest = history[history.length - 1]
+    setCycleCount(latest.cycle_number)
+
+    if (history.length >= 2) {
+      const previous = history[history.length - 2]
+      setPreviousFindings(previous.findings)
+    } else {
+      // First ever audit — no previous to diff against
+      setPreviousFindings(undefined)
+    }
+  }
+
   useEffect(() => { setClassList(classes ?? []) }, [classes])
 
   useEffect(() => {
     setIsLoadingCurricula(true)
     getCurricula()
-      .then((data) => { setCurricula(data) })         // FIX: was .then(({ data }) => ...)
+      .then((data) => { setCurricula(data) })
       .finally(() => setIsLoadingCurricula(false))
   }, [])
 
@@ -200,10 +225,16 @@ export function ExamDialog({
     if (initialViewProp && initialViewProp !== 'form') {
       setView(initialViewProp)
       if (assessmentId) {
+        // Fetch latest audit result
         getLatestAudit(assessmentId).then(({ data }) => {
-        console.log('ExamDialog auditResult:', JSON.stringify(data, null, 2)) // ← add this
+          console.log('ExamDialog auditResult:', JSON.stringify(data, null, 2))
           if (data) setAuditResult(data)
           else if (latestAuditProp) setAuditResult(latestAuditProp)
+        })
+
+        // Fetch history to populate diff state
+        getAuditHistory(assessmentId).then(({ data }) => {
+          if (data) applyAuditHistory(data)
         })
       } else if (latestAuditProp) {
         setAuditResult(latestAuditProp)
@@ -233,6 +264,7 @@ export function ExamDialog({
     setAuditCardTab('results'); setRedesignData(null)
     setPdfPreview(undefined)
     setShowOverrideInput(false); setOverrideReason('')
+    setPreviousFindings(undefined); setCycleCount(undefined)
     hasInitializedView.current = false
   }
 
@@ -304,6 +336,11 @@ export function ExamDialog({
       const { data: finalData } = await getLatestAudit(assessmentId)
       const resolved = finalData ?? data
       setAuditResult(resolved)
+
+      // Fetch full history to derive diff state after audit completes
+      const { data: history } = await getAuditHistory(assessmentId)
+      if (history) applyAuditHistory(history)
+
       router.refresh()
       setAuditCardTab('results')
       setView(resolved.status === 'passed' ? 'audit_passed' : 'audit_flagged')
@@ -452,6 +489,7 @@ export function ExamDialog({
 
     setView('auditing')
     toast.success('Assessment replaced — re-auditing…')
+    // Don't reset previousFindings here — history fetch after poll completes will update it
     pollForAuditResult(createdId)
   }
 
@@ -760,6 +798,8 @@ export function ExamDialog({
                       overallScore={auditResult.overall_score}
                       findings={auditResult.findings}
                       status="passed"
+                      previousFindings={previousFindings}
+                      cycleCount={cycleCount}
                     />
                   </div>
                 )}
@@ -836,6 +876,8 @@ export function ExamDialog({
                           overallScore={auditResult.overall_score}
                           findings={auditResult.findings}
                           status="flagged"
+                          previousFindings={previousFindings}
+                          cycleCount={cycleCount}
                         />
                       </div>
                     )}
