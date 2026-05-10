@@ -4,7 +4,7 @@ import { fetcher } from '@/lib/fetch'
 import type { ServerActionResponse } from '@/lib/types'
 
 /**
- * Matches the RedesignItem structure defined in the 
+ * Matches the RedesignItem structure defined in the
  * database and backend DTOs.
  */
 export interface RedesignItem {
@@ -13,10 +13,7 @@ export interface RedesignItem {
   issue_summary:           string;
   title:                   string;
   description:             string;
-  
-  // NEW: Added marking_guide to the shared interface
   marking_guide:           string;
-
   action_type:             string;
   marks:                   number;
   bloom_level:             string;
@@ -26,8 +23,22 @@ export interface RedesignItem {
   example_question_stem?:  string;
 }
 
+export interface AuditHistoryEntry {
+  audit_id:      string;
+  assessment_id: string;
+  status:        'passed' | 'flagged' | 'failed' | 'overridden';
+  overall_score: number;
+  findings:      any[];
+  cycle_number:  number;
+  created_at:    string;
+}
+
 export async function getLatestAudit(assessmentId: string): Promise<ServerActionResponse<any>> {
   return fetcher(`/assessments/${assessmentId}/audit`, { cache: 'no-store' });
+}
+
+export async function getAuditHistory(assessmentId: string): Promise<ServerActionResponse<AuditHistoryEntry[]>> {
+  return fetcher(`/assessments/${assessmentId}/audit/history`, { cache: 'no-store' });
 }
 
 export async function overrideAudit(assessmentId: string, reason: string): Promise<ServerActionResponse<any>> {
@@ -43,12 +54,8 @@ export async function getRedesignSuggestions(assessmentId: string): Promise<Serv
   });
 }
 
-/**
- * FIX: Updated from any[] to RedesignItem[] to ensure 
- * the new section_label and marking_guide are enforced.
- */
 export async function saveRedesignItems(
-  assessmentId: string, 
+  assessmentId: string,
   items: RedesignItem[]
 ): Promise<ServerActionResponse<any>> {
   return fetcher(`/assessments/${assessmentId}/audit/redesign-items`, {
@@ -57,9 +64,6 @@ export async function saveRedesignItems(
   });
 }
 
-/**
- * FIX: Returns the typed RedesignItem array.
- */
 export async function getRedesignItems(assessmentId: string): Promise<ServerActionResponse<RedesignItem[]>> {
   return fetcher(`/assessments/${assessmentId}/audit/redesign-items`, { cache: 'no-store' });
 }
