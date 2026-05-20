@@ -1,0 +1,50 @@
+/*
+ * mirror editor — suggestion mark styles
+ *
+ * Using oklch for perceptual colour consistency across light/dark modes.
+ * These classes are applied by InsertionMark and DeletionMark TipTap extensions.
+ */
+
+/* Insertion — green underline highlight */
+.mirror-insertion {
+  background-color: oklch(0.92 0.08 150 / 0.45);
+  border-bottom: 2px solid oklch(0.5 0.16 150);
+  border-radius: 2px;
+  padding-bottom: 1px;
+  transition: background-color 150ms ease;
+}
+
+.mirror-insertion:hover {
+  background-color: oklch(0.88 0.1 150 / 0.55);
+}
+
+/* Deletion — red strikethrough */
+.mirror-deletion {
+  text-decoration: line-through;
+  text-decoration-color: oklch(0.52 0.2 25);
+  text-decoration-thickness: 2px;
+  background-color: oklch(0.96 0.04 25 / 0.35);
+  color: oklch(0.42 0.1 25);
+  border-radius: 2px;
+  transition: background-color 150ms ease;
+}
+
+.mirror-deletion:hover {
+  background-color: oklch(0.92 0.06 25 / 0.45);
+}
+
+/*
+ * Dark mode overrides
+ * If your Tailwind config uses class-based dark mode (.dark),
+ * keep these. If you use media queries, swap the selector.
+ */
+.dark .mirror-insertion {
+  background-color: oklch(0.3 0.1 150 / 0.4);
+  border-bottom-color: oklch(0.65 0.18 150);
+}
+
+.dark .mirror-deletion {
+  background-color: oklch(0.25 0.05 25 / 0.4);
+  color: oklch(0.7 0.08 25);
+  text-decoration-color: oklch(0.65 0.2 25);
+}

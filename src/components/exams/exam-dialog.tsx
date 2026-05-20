@@ -9,12 +9,11 @@ import { useDropzone }           from 'react-dropzone'
 import { z }                     from 'zod'
 import {
   Upload, X, School, BookOpen,
-  Loader2, CheckCircle2, XCircle, AlertTriangle,
+  Loader2, CheckCircle2, AlertTriangle,
   Zap, Brain, ShieldCheck, PartyPopper,
   Wrench, Lightbulb, ClipboardList, PlusCircle,
   Download, RefreshCw, ArrowRight, Sparkles,
-  TrendingUp, ShieldAlert, Layout, Trash2,
-  FileCheck2
+  TrendingUp, ShieldAlert, Trash2,
 } from 'lucide-react'
 
 import {
@@ -33,15 +32,17 @@ import { Input }      from '@/components/ui/input'
 import { Button }     from '@/components/ui/button'
 import { Checkbox }   from '@/components/ui/checkbox'
 import { Badge }      from '@/components/ui/badge'
-import { ScrollArea } from '@/components/ui/scroll-area'
 import { Textarea }   from '@/components/ui/textarea'
 import { Assessment, createAssessment } from '@/lib/actions/assessments'
-import { InlineClassDialog }     from '@/components/classes/inline-class-dialog'
-import { BatchGradingDialog }    from '@/components/grading/batch-grading-dialog'
-import { PredictionCard }        from '@/components/assessments/prediction-card'
-import { AuditCard }             from '@/components/assessments/audit-card'
-import { cn }                    from '@/lib/utils'
-import { getCurricula }          from '@/lib/actions/curricula'
+import { InlineClassDialog }        from '@/components/classes/inline-class-dialog'
+import { BatchGradingDialog }       from '@/components/grading/batch-grading-dialog'
+import { PredictionCard }           from '@/components/assessments/prediction-card'
+import { AuditCard }                from '@/components/assessments/audit-card'
+import { MirrorEditor, MirrorEditorHandle } from '@/components/editor/MirrorEditor'
+import { BlueprintPreviewDialog }   from '@/components/editor/BlueprintPreviewDialog'
+import type { AssessmentDiff }      from '@/components/editor/types'
+import { cn }                       from '@/lib/utils'
+import { getCurricula }             from '@/lib/actions/curricula'
 import {
   triggerAudit,
   getLatestAudit,
@@ -157,11 +158,10 @@ export function ExamDialog({
   const [auditError,     setAuditError]     = useState<string | null>(null)
   const [auditCardTab,   setAuditCardTab]   = useState<'results' | 'predictions'>('results')
 
-  // ── Diff state ────────────────────────────────────────────────────────────
   const [previousFindings, setPreviousFindings] = useState<any[] | undefined>(undefined)
   const [cycleCount,       setCycleCount]       = useState<number | undefined>(undefined)
 
-  const [redesignData,         setRedesignData]         = useState<any>(null)
+  const [redesignData,         setRedesignData]         = useState<AssessmentDiff | null>(null)
   const [isRequestingRedesign, setIsRequestingRedesign] = useState(false)
   const [savedItems,           setSavedItems]           = useState<RedesignItem[]>([])
   const [savedItemKeys,        setSavedItemKeys]        = useState<Set<string>>(new Set())
@@ -175,6 +175,13 @@ export function ExamDialog({
   const [batchOpen,     setBatchOpen]     = useState(false)
   const [isReuploading, setIsReuploading] = useState(false)
 
+  // ── Preview state ─────────────────────────────────────────────────────────
+  const [previewOpen,     setPreviewOpen]     = useState(false)
+  const [previewOriginal, setPreviewOriginal] = useState('')
+  const [previewRevised,  setPreviewRevised]  = useState('')
+
+  // ── Refs ──────────────────────────────────────────────────────────────────
+  const mirrorEditorRef             = useRef<MirrorEditorHandle>(null)
   const reuploadInputFlaggedRef     = useRef<HTMLInputElement>(null)
   const reuploadInputSuggestionsRef = useRef<HTMLInputElement>(null)
 
@@ -185,22 +192,21 @@ export function ExamDialog({
     if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null }
   }
 
-  // ── Fetch and apply audit history ─────────────────────────────────────────
-  // Derives previousFindings and cycleCount from the history array.
-  // Called on initial load (when reopening a flagged assessment) and
-  // after every re-audit completes.
   const applyAuditHistory = (history: AuditHistoryEntry[]) => {
     if (!history || history.length === 0) return
-
     const latest = history[history.length - 1]
     setCycleCount(latest.cycle_number)
-
     if (history.length >= 2) {
       const previous = history[history.length - 2]
       setPreviousFindings(previous.findings)
     } else {
-      // First ever audit — no previous to diff against
       setPreviousFindings(undefined)
+    }
+  }
+
+  const applyRedesignDiff = (auditPayload: any) => {
+    if (auditPayload?.redesign_diff) {
+      setRedesignData(auditPayload.redesign_diff as AssessmentDiff)
     }
   }
 
@@ -225,19 +231,21 @@ export function ExamDialog({
     if (initialViewProp && initialViewProp !== 'form') {
       setView(initialViewProp)
       if (assessmentId) {
-        // Fetch latest audit result
         getLatestAudit(assessmentId).then(({ data }) => {
-          console.log('ExamDialog auditResult:', JSON.stringify(data, null, 2))
-          if (data) setAuditResult(data)
-          else if (latestAuditProp) setAuditResult(latestAuditProp)
+          if (data) {
+            setAuditResult(data)
+            applyRedesignDiff(data)
+          } else if (latestAuditProp) {
+            setAuditResult(latestAuditProp)
+            applyRedesignDiff(latestAuditProp)
+          }
         })
-
-        // Fetch history to populate diff state
         getAuditHistory(assessmentId).then(({ data }) => {
           if (data) applyAuditHistory(data)
         })
       } else if (latestAuditProp) {
         setAuditResult(latestAuditProp)
+        applyRedesignDiff(latestAuditProp)
       }
     }
 
@@ -265,6 +273,7 @@ export function ExamDialog({
     setPdfPreview(undefined)
     setShowOverrideInput(false); setOverrideReason('')
     setPreviousFindings(undefined); setCycleCount(undefined)
+    setPreviewOpen(false); setPreviewOriginal(''); setPreviewRevised('')
     hasInitializedView.current = false
   }
 
@@ -336,8 +345,8 @@ export function ExamDialog({
       const { data: finalData } = await getLatestAudit(assessmentId)
       const resolved = finalData ?? data
       setAuditResult(resolved)
+      applyRedesignDiff(resolved)
 
-      // Fetch full history to derive diff state after audit completes
       const { data: history } = await getAuditHistory(assessmentId)
       if (history) applyAuditHistory(history)
 
@@ -379,7 +388,62 @@ export function ExamDialog({
     const { data, error } = await getRedesignSuggestions(createdId)
     setIsRequestingRedesign(false)
     if (error) return toast.error(error.message)
-    if (data) { setRedesignData(data); setView('redesign_suggestions') }
+    if (data) { setRedesignData(data as AssessmentDiff); setView('redesign_suggestions') }
+  }
+
+  // ── Editor confirm: open preview instead of downloading directly ──────────
+  const handleEditorConfirm = (
+    html: string,
+    _acceptedImages: Array<{ image_url: string | null; position: number }>,
+  ) => {
+    console.log('handleEditorConfirm fired', html.slice(0, 100))
+    setPreviewOriginal(redesignData?.documentContent ?? '')
+    setPreviewRevised(html)
+    setPreviewOpen(true)
+  }
+
+  // ── Preview download: confirm + export ───────────────────────────────────
+  const handlePreviewDownload = async () => {
+    if (!createdId) return
+    const html           = previewRevised
+    const acceptedImages = mirrorEditorRef.current?.getAcceptedImages() ?? []
+
+    setIsDownloading(true)
+    try {
+      await fetch(
+        `/api/v1/assessments/${createdId}/audit/redesign/confirm`,
+        {
+          method:      'POST',
+          credentials: 'include',
+          headers:     { 'Content-Type': 'application/json' },
+          body:        JSON.stringify({ html }),
+        },
+      )
+
+      const res = await fetch(
+        `/api/v1/assessments/${createdId}/audit/redesign/export`,
+        {
+          method:      'POST',
+          credentials: 'include',
+          headers:     { 'Content-Type': 'application/json' },
+          body:        JSON.stringify({ html, imageCandidates: acceptedImages }),
+        },
+      )
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const blob = await res.blob()
+      const url  = URL.createObjectURL(blob)
+      const a    = document.createElement('a')
+      a.href     = url
+      a.download = `blueprint-${createdId.slice(0, 8)}.docx`
+      document.body.appendChild(a); a.click(); document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+      setPreviewOpen(false)
+      toast.success('Blueprint downloaded. Assessment updated.')
+    } catch {
+      toast.error('Failed to export blueprint.')
+    } finally {
+      setIsDownloading(false)
+    }
   }
 
   const handleOverride = async () => {
@@ -467,7 +531,7 @@ export function ExamDialog({
       document.body.appendChild(a); a.click(); document.body.removeChild(a)
       URL.revokeObjectURL(url)
       toast.success('Assessment items downloaded.')
-    } catch (err) {
+    } catch {
       toast.error('Failed to download assessment items.')
     } finally { setIsDownloading(false) }
   }
@@ -489,7 +553,6 @@ export function ExamDialog({
 
     setView('auditing')
     toast.success('Assessment replaced — re-auditing…')
-    // Don't reset previousFindings here — history fetch after poll completes will update it
     pollForAuditResult(createdId)
   }
 
@@ -500,6 +563,7 @@ export function ExamDialog({
   }
 
   const schemeValue = form.watch('scheme')
+
   const isWide = view === 'form' || view === 'redesign_suggestions' || view === 'saved_redesign_items'
 
   const tabActive   = 'bg-white dark:bg-[#2d2a25] shadow-sm text-[#7a6230] dark:text-[#c9a84c]'
@@ -510,8 +574,12 @@ export function ExamDialog({
     <>
       <Dialog open={open} onOpenChange={v => { if (!v) handleClose() }}>
         <DialogContent className={cn(
-          'flex flex-col p-0 max-h-[88vh] transition-all duration-300 overflow-hidden',
-          isWide ? 'sm:max-w-[680px]' : 'sm:max-w-[560px]',
+          'flex flex-col p-0 transition-all duration-300 overflow-hidden',
+          view === 'redesign_suggestions'
+            ? 'sm:max-w-[900px] h-[88vh] max-h-[88vh]'
+            : isWide
+              ? 'sm:max-w-[680px] max-h-[88vh]'
+              : 'sm:max-w-[560px] max-h-[88vh]',
         )}>
 
           {/* ════════════════════════════════════════════════════════════
@@ -953,7 +1021,7 @@ export function ExamDialog({
           ════════════════════════════════════════════════════════════ */}
           {view === 'redesign_suggestions' && redesignData && (
             <>
-              <DialogHeader className="px-6 pt-6 pb-4 border-b shrink-0"
+              <DialogHeader className="px-6 pt-5 pb-4 border-b shrink-0"
                 style={{ background: 'linear-gradient(to bottom, #f5edda, transparent)' }}>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2 mb-1" style={{ color: '#c9a84c' }}>
@@ -966,90 +1034,44 @@ export function ExamDialog({
                     </Button>
                   )}
                 </div>
-                <DialogDescription>Click <strong>Add to items</strong> on any suggestion, then download the DOCX blueprint.</DialogDescription>
+                <DialogDescription>
+                  Accept or reject individual changes, then confirm to preview and export the blueprint.
+                </DialogDescription>
               </DialogHeader>
 
-              <div className="flex-1 px-6 py-6 overflow-y-auto">
-                <div className="p-4 rounded-lg mb-6 text-sm font-medium text-white shadow-sm"
-                  style={{ background: 'linear-gradient(135deg, #1e1c1a, #2d2a25)', borderLeft: '3px solid #c9a84c' }}>
-                  {redesignData.overall_advice}
-                </div>
-
-                <div className="space-y-6">
-                  {redesignData.detailed_suggestions.map((sug: any, i: number) => (
-                    <div key={i} className="space-y-3">
-                      <h4 className="text-xs font-bold uppercase tracking-wider flex items-center gap-2" style={{ color: '#c9a84c' }}>
-                        <Layout className="w-3.5 h-3.5" />{sug.section_label}
-                      </h4>
-                      <div className="grid gap-3 pl-4 border-l-2" style={{ borderColor: '#e8d5a3' }}>
-                        {sug.suggestions.map((action: any, j: number) => {
-                          const key    = `${sug.section_label}::${action.title}`
-                          const saved  = savedItemKeys.has(key)
-                          const saving = savingKey === key
-                          return (
-                            <div key={j} className={cn(
-                              'bg-card border rounded-md p-3 shadow-sm transition-colors',
-                              saved ? 'border-[#e8d5a3] bg-[#f5edda]/30' : 'border-border',
-                            )}>
-                              <div className="flex items-start justify-between gap-2 mb-1">
-                                <div className="flex-1">
-                                  <span className="font-bold text-sm block">{action.title}</span>
-                                  <span className="text-[10px] text-[#a8893d] font-medium uppercase tracking-tight">Resolves: {action.dimension || sug.dimension || 'Curriculum Gap'}</span>
-                                </div>
-                                <div className="flex items-center gap-2 shrink-0">
-                                  <Badge className={cn('border-none text-[9px] uppercase tracking-tighter', ACTION_TYPE_COLORS[action.action_type] ?? 'bg-[#f5edda] text-[#7a6230]')}>{action.action_type.replace('_', ' ')}</Badge>
-                                  {saved ? (
-                                    <span className="flex items-center gap-1 text-[11px] font-medium" style={{ color: '#c9a84c' }}><CheckCircle2 className="w-3.5 h-3.5" />Added</span>
-                                  ) : (
-                                    <Button size="sm" variant="outline" className="h-7 text-xs gap-1 border-[#e8d5a3] text-[#7a6230] hover:bg-[#f5edda]" disabled={saving} onClick={() => handleAddItem(action, sug)}>
-                                      {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <PlusCircle className="w-3 h-3" />}Add to items
-                                    </Button>
-                                  )}
-                                </div>
-                              </div>
-                              <p className="text-xs text-muted-foreground mb-2 leading-relaxed">{action.description}</p>
-
-                              {action.marking_guide && action.marking_guide !== 'No marking guide provided.' && (
-                                <div className="mt-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-md p-3">
-                                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 flex items-center gap-1.5">
-                                    <FileCheck2 className="w-3 h-3" /> Proposed Marking Guide
-                                  </p>
-                                  <p className="text-xs text-slate-700 dark:text-slate-300 whitespace-pre-wrap">{action.marking_guide}</p>
-                                </div>
-                              )}
-
-                              <div className="flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-muted-foreground mt-3">
-                                <span><strong>{action.marks}</strong> marks</span>
-                                <span>Bloom: <strong>{action.bloom_level}</strong></span>
-                                <span>CW: <strong>{action.command_word}</strong></span>
-                                <span>{action.assessment_objective_id}</span>
-                                <span>{action.syllabus_topic}</span>
-                              </div>
-                            </div>
-                          )
-                        })}
-                      </div>
-                    </div>
-                  ))}
-                </div>
+              <div className="flex-1 overflow-hidden">
+                <MirrorEditor
+                  ref={mirrorEditorRef}
+                  diff={redesignData}
+                  onConfirm={handleEditorConfirm}
+                  className="h-full"
+                />
               </div>
 
-              <DialogFooter className="px-6 py-4 border-t bg-muted/10 shrink-0">
-                <div className="flex items-center justify-between w-full gap-3">
-                  <Button variant="outline" size="sm" onClick={() => setView('audit_flagged')}>Back to Audit</Button>
-                  <div className="flex items-center gap-2">
-                    <input ref={reuploadInputSuggestionsRef} type="file" accept=".pdf" className="hidden" onChange={handleReuploadFile} />
-                    <Button size="sm" variant="outline" className="gap-2 text-muted-foreground" disabled={isReuploading} onClick={() => reuploadInputSuggestionsRef.current?.click()}>
-                      {isReuploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-                      {isReuploading ? 'Reuploading…' : 'Replace assessment'}
-                    </Button>
-                    <Button size="sm" className="gap-2 border-0 text-white" style={{ background: '#c9a84c' }} disabled={isDownloading || savedItems.length === 0} onClick={handleDownloadDocx}>
-                      {isDownloading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-                      {isDownloading ? 'Generating…' : `Download Blueprint (${savedItems.length})`}
-                    </Button>
-                  </div>
+              <div className="px-6 py-3 border-t bg-muted/10 shrink-0 flex items-center justify-between">
+                <Button variant="outline" size="sm" onClick={() => setView('audit_flagged')}>
+                  Back to Audit
+                </Button>
+                <div className="flex items-center gap-2">
+                  <input
+                    ref={reuploadInputSuggestionsRef}
+                    type="file"
+                    accept=".pdf"
+                    className="hidden"
+                    onChange={handleReuploadFile}
+                  />
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="gap-2 text-muted-foreground"
+                    disabled={isReuploading}
+                    onClick={() => reuploadInputSuggestionsRef.current?.click()}
+                  >
+                    {isReuploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                    {isReuploading ? 'Reuploading…' : 'Replace assessment'}
+                  </Button>
                 </div>
-              </DialogFooter>
+              </div>
             </>
           )}
 
@@ -1081,15 +1103,19 @@ export function ExamDialog({
                 <div className="flex-1 px-6 py-6 overflow-y-auto">
                   {savedItems.length === 0 ? (
                     <div className="flex flex-col items-center justify-center h-40 gap-3 text-center">
-                      <div className="flex h-12 w-12 items-center justify-center rounded-full" style={{ background: '#f5edda' }}><ClipboardList className="h-6 w-6" style={{ color: '#c9a84c' }} /></div>
-                      <p className="text-sm text-muted-foreground leading-relaxed max-w-xs">Your assessment items list is empty. Go back and click <strong>Fix My Assessment</strong> to get AI suggestions.</p>
+                      <div className="flex h-12 w-12 items-center justify-center rounded-full" style={{ background: '#f5edda' }}>
+                        <ClipboardList className="h-6 w-6" style={{ color: '#c9a84c' }} />
+                      </div>
+                      <p className="text-sm text-muted-foreground leading-relaxed max-w-xs">
+                        Your assessment items list is empty. Go back and click <strong>Fix My Assessment</strong> to get AI suggestions.
+                      </p>
                     </div>
                   ) : (
                     <div className="space-y-6">
                       {Object.entries(grouped).map(([section, items]) => (
                         <div key={section} className="space-y-3">
                           <h4 className="text-xs font-bold uppercase tracking-wider flex items-center gap-2" style={{ color: '#c9a84c' }}>
-                            <Layout className="w-3.5 h-3.5" />{section}
+                            <ClipboardList className="w-3.5 h-3.5" />{section}
                             <span className="ml-auto font-normal normal-case text-muted-foreground">{items.length} item{items.length !== 1 ? 's' : ''}</span>
                           </h4>
                           <div className="grid gap-3 pl-4 border-l-2" style={{ borderColor: '#e8d5a3' }}>
@@ -1108,16 +1134,6 @@ export function ExamDialog({
                                     </div>
                                   </div>
                                   <p className="text-xs text-muted-foreground mb-2 leading-relaxed">{item.description}</p>
-
-                                  {item.marking_guide && item.marking_guide !== 'No marking guide provided.' && (
-                                    <div className="mt-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-md p-3">
-                                      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 flex items-center gap-1.5">
-                                        <FileCheck2 className="w-3 h-3" /> Proposed Marking Guide
-                                      </p>
-                                      <p className="text-xs text-slate-700 dark:text-slate-300 whitespace-pre-wrap">{item.marking_guide}</p>
-                                    </div>
-                                  )}
-
                                   <div className="flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-muted-foreground mt-3">
                                     <span><strong>{item.marks}</strong> marks</span>
                                     <span>Bloom: <strong>{item.bloom_level}</strong></span>
@@ -1148,6 +1164,16 @@ export function ExamDialog({
 
         </DialogContent>
       </Dialog>
+
+      {/* ── Blueprint preview dialog ── */}
+      <BlueprintPreviewDialog
+        open={previewOpen}
+        originalHtml={previewOriginal}
+        revisedHtml={previewRevised}
+        onDownload={handlePreviewDownload}
+        onClose={() => setPreviewOpen(false)}
+        isDownloading={isDownloading}
+      />
 
       <InlineClassDialog open={inlineClassOpen} onOpenChange={setInlineClassOpen} existingClasses={classList} onClassReady={handleClassReady} />
 
