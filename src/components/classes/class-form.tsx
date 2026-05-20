@@ -22,6 +22,7 @@ import { Class }    from '@/lib/types'
 const formSchema = z.object({
   name:        z.string().min(1, 'Class name is required'),
   description: z.string().optional(),
+  grade_level: z.string().optional().or(z.literal('')), 
 })
 
 export type ClassData = z.infer<typeof formSchema>

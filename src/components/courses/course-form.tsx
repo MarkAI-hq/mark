@@ -30,8 +30,7 @@ const formSchema = z.object({
   code:        z.string().min(1, 'Course Code is required'),
   subject_id:  z.string({ required_error: 'Please select a subject.' }),
   description: z.string().optional(),
-  grade_level: z.string().optional(),
-})
+  grade_level: z.string().max(100, 'Grade level must be 100 characters or less').optional(),})
 
 export type CourseData = z.infer<typeof formSchema>
 
