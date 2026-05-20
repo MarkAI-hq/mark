@@ -4,38 +4,28 @@
 
 import { useState, useTransition, useCallback } from 'react'
 import Image from 'next/image'
-import { useRouter }         from 'next/navigation'
-import { useForm }           from 'react-hook-form'
-import { zodResolver }       from '@hookform/resolvers/zod'
-import { z }                 from 'zod'
-import { toast }             from 'sonner'
+import { useRouter } from 'next/navigation'
+import { toast } from 'sonner'
 import {
   ArrowRight, ArrowLeft, CheckCircle2, Users,
-  BarChart2, FileText, Brain,
+  BarChart2, FileText, Brain, BookOpen, GraduationCap,
 } from 'lucide-react'
 
-import { Button }   from '@/components/ui/button'
-import { Input }    from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
-import {
-  Form, FormControl, FormField,
-  FormItem, FormLabel, FormMessage,
-} from '@/components/ui/form'
-import { cn }                  from '@/lib/utils'
-import { createClass }         from '@/lib/actions/classes'
-import { createSubject }       from '@/lib/actions/subjects'
-import {
-  saveOrganizationSetup,
-  completeOnboarding,
-}                              from '@/lib/actions/onboarding'
+import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
+import { createClass } from '@/lib/actions/classes'
+import { createSubject } from '@/lib/actions/subjects'
+import { saveOrganizationSetup, completeOnboarding } from '@/lib/actions/onboarding'
 import { StudentImportDialog } from '@/components/students/student-import-dialog'
 
+// ── Static config ──────────────────────────────────────────────────────────
+
 const SCHOOL_TYPES = [
-  { value: 'primary',  label: 'Primary School', sub: 'P1 – P7'          },
-  { value: 'o-level',  label: 'O-Level',         sub: 'S1 – S4'          },
-  { value: 'a-level',  label: 'A-Level',          sub: 'S5 – S6'          },
-  { value: 'combined', label: 'Combined',         sub: 'P1 – S6'          },
-  { value: 'other',    label: 'Other',            sub: 'College / Training'},
+  { value: 'primary',  label: 'Primary School', sub: 'P1 – P7'           },
+  { value: 'o-level',  label: 'O-Level',         sub: 'S1 – S4'           },
+  { value: 'a-level',  label: 'A-Level',          sub: 'S5 – S6'           },
+  { value: 'combined', label: 'Combined',         sub: 'P1 – S6'           },
+  { value: 'other',    label: 'Other',            sub: 'College / Training' },
 ] as const
 
 const EDUCATION_SYSTEMS = [
@@ -45,34 +35,71 @@ const EDUCATION_SYSTEMS = [
   { value: 'other',     label: 'Other / Custom'              },
 ] as const
 
-const DEFAULT_SUBJECTS = [
-  'Mathematics',     'English',            'Biology',
-  'Chemistry',       'Physics',            'History',
-  'Geography',       'Literature',         'Economics',
-  'Computer Science','Agriculture',        'Art & Design',
-  'Music',           'Physical Education', 'French',
-  'Kiswahili',       'Commerce',           'Religious Education',
-  'Entrepreneurship',
-]
+// ── Default classes per school type ───────────────────────────────────────
+
+const DEFAULT_CLASSES: Record<string, string[]> = {
+  primary:  ['P1', 'P2', 'P3', 'P4', 'P5', 'P6', 'P7'],
+  'o-level': ['S1', 'S2', 'S3', 'S4'],
+  'a-level': ['S5', 'S6'],
+  combined:  ['P1', 'P2', 'P3', 'P4', 'P5', 'P6', 'P7', 'S1', 'S2', 'S3', 'S4', 'S5', 'S6'],
+  other:     [],
+}
+
+// ── Default subjects per school type × education system ────────────────────
+
+type SchoolTypeKey = 'primary' | 'o-level' | 'a-level' | 'combined' | 'other'
+type EduSystemKey  = 'uneb' | 'cambridge' | 'ib' | 'other'
+
+const DEFAULT_SUBJECTS: Record<SchoolTypeKey, Record<EduSystemKey, string[]>> = {
+  primary: {
+    uneb:      ['English', 'Mathematics', 'Science', 'Social Studies', 'Religious Education', 'Kiswahili', 'Local Language', 'Physical Education'],
+    cambridge: ['English', 'Mathematics', 'Science', 'ICT', 'Social Studies'],
+    ib:        ['English', 'Mathematics', 'Science', 'Individuals & Societies', 'Arts'],
+    other:     ['English', 'Mathematics', 'Science', 'Social Studies'],
+  },
+  'o-level': {
+    uneb:      ['Mathematics', 'English', 'Biology', 'Chemistry', 'Physics', 'History', 'Geography', 'Literature', 'Commerce', 'Agriculture', 'Religious Education', 'Computer Studies', 'Kiswahili', 'French', 'Physical Education'],
+    cambridge: ['Mathematics', 'English Language', 'English Literature', 'Biology', 'Chemistry', 'Physics', 'History', 'Geography', 'Economics', 'Computer Science', 'French', 'Physical Education'],
+    ib:        ['English Language & Literature', 'Mathematics', 'Physics', 'Chemistry', 'Biology', 'Economics', 'History', 'Geography', 'Visual Arts', 'French'],
+    other:     ['Mathematics', 'English', 'Science', 'Humanities', 'ICT'],
+  },
+  'a-level': {
+    uneb:      ['Mathematics', 'Physics', 'Chemistry', 'Biology', 'Economics', 'Geography', 'History', 'Literature', 'Divinity', 'Computer Studies', 'General Paper', 'Subsidiary Mathematics', 'Kiswahili', 'French'],
+    cambridge: ['Mathematics', 'Further Mathematics', 'Physics', 'Chemistry', 'Biology', 'Economics', 'History', 'Geography', 'English Literature', 'Computer Science'],
+    ib:        ['English Language & Literature', 'Mathematics', 'Physics', 'Chemistry', 'Biology', 'Economics', 'History', 'Geography', 'Visual Arts', 'French', 'Theory of Knowledge'],
+    other:     ['Mathematics', 'English', 'Sciences', 'Humanities', 'ICT'],
+  },
+  combined: {
+    uneb:      ['English', 'Mathematics', 'Science', 'Social Studies', 'Religious Education', 'Kiswahili', 'Biology', 'Chemistry', 'Physics', 'History', 'Geography', 'Literature', 'Commerce', 'Agriculture', 'Computer Studies', 'General Paper'],
+    cambridge: ['English', 'Mathematics', 'Science', 'ICT', 'Biology', 'Chemistry', 'Physics', 'History', 'Geography', 'Economics', 'Computer Science', 'French'],
+    ib:        ['English Language & Literature', 'Mathematics', 'Science', 'Individuals & Societies', 'Physics', 'Chemistry', 'Biology', 'Economics', 'History', 'Geography', 'Visual Arts'],
+    other:     ['English', 'Mathematics', 'Science', 'Social Studies', 'Humanities', 'ICT'],
+  },
+  other: {
+    uneb:      ['English', 'Mathematics', 'Science', 'Humanities', 'ICT'],
+    cambridge: ['English', 'Mathematics', 'Science', 'Humanities', 'ICT'],
+    ib:        ['English', 'Mathematics', 'Science', 'Humanities', 'ICT'],
+    other:     ['English', 'Mathematics', 'Science', 'Humanities', 'ICT'],
+  },
+}
 
 const WIZARD_STEPS = [
   { id: 1, label: 'School'   },
-  { id: 2, label: 'Subjects' },
-  { id: 3, label: 'Class'    },
-  { id: 4, label: 'Students' },
+  { id: 2, label: 'Students' },
 ]
 
 const FEATURES = [
-  { icon: Brain,    title: 'AI-Powered Grading',      sub: 'Grade entire classes in minutes with 97%+ accuracy.'          },
-  { icon: BarChart2, title: 'Deep Learning Analytics', sub: "Track every student's Bloom's taxonomy progression."          },
-  { icon: FileText,  title: 'Instant PDF Reports',     sub: 'Generate and export student performance reports in one click.' },
+  { icon: Brain,     title: 'AI-Powered Grading',      sub: 'Grade entire classes in minutes with 97%+ accuracy.'           },
+  { icon: BarChart2, title: 'Deep Learning Analytics',  sub: "Track every student's Bloom's taxonomy progression."           },
+  { icon: FileText,  title: 'Instant PDF Reports',      sub: 'Generate and export student performance reports in one click.' },
 ]
 
-const classSchema = z.object({
-  gradeLevel:  z.string().min(1, 'Grade level is required').max(100),
-  description: z.string().optional(),
-})
-type ClassData = z.infer<typeof classSchema>
+// ── Created entity summary ─────────────────────────────────────────────────
+
+interface CreatedClass {
+  class_id: string
+  name:     string
+}
 
 interface OnboardingWizardProps {
   adminName:  string
@@ -82,27 +109,21 @@ interface OnboardingWizardProps {
 export function OnboardingWizard({ adminName, schoolName }: OnboardingWizardProps) {
   const router = useRouter()
 
-  const [step, setStep]           = useState(1)
+  const [step,      setStep]      = useState(1)
   const [direction, setDirection] = useState<'fwd' | 'bck'>('fwd')
-  const [animKey, setAnimKey]     = useState(0)
+  const [animKey,   setAnimKey]   = useState(0)
   const [isPending, startT]       = useTransition()
 
   const [schoolType,      setSchoolType]      = useState('')
   const [educationSystem, setEducationSystem] = useState('')
 
-  const [subjects, setSubjects]       = useState<string[]>([])
-  const [allSubjects, setAllSubjects] = useState(DEFAULT_SUBJECTS)
-  const [customSubject, setCustom]    = useState('')
+  // What was auto-created after Step 1
+  const [createdClasses,  setCreatedClasses]  = useState<CreatedClass[]>([])
+  const [createdSubjects, setCreatedSubjects] = useState<string[]>([])
 
-  const classForm = useForm<ClassData>({
-    resolver: zodResolver(classSchema),
-    defaultValues: { gradeLevel: '', description: '' },
-  })
-  const [createdClassId,   setCreatedClassId]   = useState<string | null>(null)
-  const [createdClassName, setCreatedClassName] = useState('')
-
-  const [importOpen,    setImportOpen]    = useState(false)
-  const [studentsAdded, setStudentsAdded] = useState(false)
+  // Per-class import state: classId → open?
+  const [importOpen, setImportOpen] = useState<Record<string, boolean>>({})
+  const [imported,   setImported]   = useState<Record<string, boolean>>({})
 
   const navigate = useCallback((target: number, dir: 'fwd' | 'bck') => {
     setDirection(dir)
@@ -110,74 +131,72 @@ export function OnboardingWizard({ adminName, schoolName }: OnboardingWizardProp
     setStep(target)
   }, [])
 
-  const advance = () => navigate(step + 1, 'fwd')
   const retreat = () => navigate(step - 1, 'bck')
+
+  // ── Step 1 submit ──────────────────────────────────────────────────────
 
   const handleSaveSchool = () => {
     if (!schoolType || !educationSystem) {
       toast.error('Please select both a school type and education system.')
       return
     }
+
     startT(async () => {
-      const { error } = await saveOrganizationSetup({
+      // 1. Save org setup
+      const { error: orgError } = await saveOrganizationSetup({
         type:             schoolType,
         education_system: educationSystem,
       })
-      if (error) { toast.error(error.message); return }
-      advance()
-    })
-  }
+      if (orgError) { toast.error(orgError.message); return }
 
-  const handleSaveSubjects = () => {
-    startT(async () => {
-      if (subjects.length > 0) {
-        const results = await Promise.all(
-          subjects.map(name => createSubject({ name }))
+      // 2. Create subjects
+      const subjectNames =
+        DEFAULT_SUBJECTS[schoolType as SchoolTypeKey]?.[educationSystem as EduSystemKey] ?? []
+
+      if (subjectNames.length > 0) {
+        const subjectResults = await Promise.all(
+          subjectNames.map(name => createSubject({ name }))
         )
-        const failed = results.filter(r => r.error)
-        if (failed.length > 0) {
-          toast.error(`${failed.length} subject(s) failed to save.`)
-          return
+        const failedSubjects = subjectResults.filter(r => r.error)
+        if (failedSubjects.length > 0) {
+          toast.warning(`${failedSubjects.length} subject(s) failed to save — you can add them later.`)
+        }
+        setCreatedSubjects(subjectNames)
+      }
+
+      // 3. Create classes
+      const classNames = DEFAULT_CLASSES[schoolType] ?? []
+      const classResults = await Promise.allSettled(
+        classNames.map(name =>
+          createClass({ name, grade_level: name })
+        )
+      )
+
+      const created: CreatedClass[] = []
+      let classFailCount = 0
+      for (const result of classResults) {
+        if (result.status === 'fulfilled') {
+          created.push({ class_id: result.value.class_id, name: result.value.name })
+        } else {
+          classFailCount++
         }
       }
-      advance()
+      if (classFailCount > 0) {
+        toast.warning(`${classFailCount} class(es) failed to create — you can add them later.`)
+      }
+      setCreatedClasses(created)
+
+      navigate(2, 'fwd')
     })
   }
 
-  const handleCreateClass = (data: ClassData) => {
-    startT(async () => {
-      try {
-        const newClass = await createClass({
-          name: data.gradeLevel,
-          gradeLevel: data.gradeLevel,
-          description: data.description || null,
-        })
-        setCreatedClassId(newClass.class_id)
-        setCreatedClassName(newClass.name)
-        toast.success(`"${newClass.name}" created.`)
-        advance()
-      } catch (err) {
-        toast.error(err instanceof Error ? err.message : 'Failed to create class.')
-      }
-    })
-  }
+  // ── Step 2 finish ──────────────────────────────────────────────────────
 
   const handleFinish = () => {
     startT(async () => {
       await completeOnboarding()
       router.push('/dashboard')
     })
-  }
-
-  const toggleSubject = (s: string) =>
-    setSubjects(prev => prev.includes(s) ? prev.filter(x => x !== s) : [...prev, s])
-
-  const addCustomSubject = () => {
-    const val = customSubject.trim()
-    if (!val || allSubjects.includes(val)) return
-    setAllSubjects(prev => [...prev, val])
-    setSubjects(prev => [...prev, val])
-    setCustom('')
   }
 
   const animClass = direction === 'fwd' ? 'wiz-slide-fwd' : 'wiz-slide-bck'
@@ -244,6 +263,7 @@ export function OnboardingWizard({ adminName, schoolName }: OnboardingWizardProp
         {/* Right panel */}
         <div className="flex-1 bg-slate-50 flex flex-col">
 
+          {/* Mobile logo */}
           <div className="flex lg:hidden items-center gap-2.5 p-6 border-b bg-white">
             <Image
               src="/assets/images/markBlackBg.png"
@@ -254,6 +274,7 @@ export function OnboardingWizard({ adminName, schoolName }: OnboardingWizardProp
             />
           </div>
 
+          {/* Progress */}
           <div className="px-6 pt-8 pb-2 max-w-lg mx-auto w-full">
             <div className="flex items-center gap-2 mb-1.5">
               {WIZARD_STEPS.map(s => (
@@ -272,8 +293,12 @@ export function OnboardingWizard({ adminName, schoolName }: OnboardingWizardProp
             </p>
           </div>
 
+          {/* Step content */}
           <div className="flex-1 flex items-start justify-center px-6 py-8 overflow-hidden">
-            <div className="w-full max-w-lg bg-white rounded-2xl border border-slate-200 shadow-sm p-8" key={animKey}>
+            <div
+              className="w-full max-w-lg bg-white rounded-2xl border border-slate-200 shadow-sm p-8"
+              key={animKey}
+            >
               <div className={animClass}>
 
                 {step === 1 && (
@@ -290,36 +315,17 @@ export function OnboardingWizard({ adminName, schoolName }: OnboardingWizardProp
                 )}
 
                 {step === 2 && (
-                  <StepSubjects
-                    subjects={subjects}
-                    allSubjects={allSubjects}
-                    toggleSubject={toggleSubject}
-                    customSubject={customSubject}
-                    setCustomSubject={setCustom}
-                    addCustomSubject={addCustomSubject}
-                    onBack={retreat}
-                    onContinue={handleSaveSubjects}
-                    isPending={isPending}
-                  />
-                )}
-
-                {step === 3 && (
-                  <StepClass
-                    form={classForm}
-                    onBack={retreat}
-                    onSubmit={handleCreateClass}
-                    isPending={isPending}
-                  />
-                )}
-
-                {step === 4 && (
                   <StepStudents
-                    classId={createdClassId}
-                    className={createdClassName}
+                    createdClasses={createdClasses}
+                    createdSubjectCount={createdSubjects.length}
                     importOpen={importOpen}
-                    setImportOpen={setImportOpen}
-                    studentsAdded={studentsAdded}
-                    onImportSuccess={() => setStudentsAdded(true)}
+                    setImportOpen={(classId, open) =>
+                      setImportOpen(prev => ({ ...prev, [classId]: open }))
+                    }
+                    imported={imported}
+                    onImportSuccess={classId =>
+                      setImported(prev => ({ ...prev, [classId]: true }))
+                    }
                     onBack={retreat}
                     onFinish={handleFinish}
                     isPending={isPending}
@@ -330,11 +336,12 @@ export function OnboardingWizard({ adminName, schoolName }: OnboardingWizardProp
             </div>
           </div>
         </div>
-
       </div>
     </>
   )
 }
+
+// ── Step 1: School ─────────────────────────────────────────────────────────
 
 function StepSchool({
   adminName, schoolName,
@@ -351,6 +358,12 @@ function StepSchool({
   onContinue:         () => void
   isPending:          boolean
 }) {
+  // Preview what will be created
+  const previewClasses  = schoolType ? (DEFAULT_CLASSES[schoolType] ?? []) : []
+  const previewSubjects = (schoolType && educationSystem)
+    ? (DEFAULT_SUBJECTS[schoolType as SchoolTypeKey]?.[educationSystem as EduSystemKey] ?? [])
+    : []
+
   return (
     <div className="space-y-7">
       <div>
@@ -358,12 +371,15 @@ function StepSchool({
         <p className="text-slate-500 mt-1.5 text-sm leading-relaxed">
           Let's set up{' '}
           <span className="text-slate-800 font-medium">{schoolName}</span>.
-          This takes about 2 minutes.
+          This takes about a minute.
         </p>
       </div>
 
+      {/* School type */}
       <div>
-        <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">School type</p>
+        <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">
+          School type
+        </p>
         <div className="grid grid-cols-2 gap-2">
           {SCHOOL_TYPES.map(t => (
             <button
@@ -389,8 +405,11 @@ function StepSchool({
         </div>
       </div>
 
+      {/* Education system */}
       <div>
-        <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Education system</p>
+        <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">
+          Education system
+        </p>
         <div className="grid grid-cols-2 gap-2">
           {EDUCATION_SYSTEMS.map(e => (
             <button
@@ -410,236 +429,179 @@ function StepSchool({
         </div>
       </div>
 
+      {/* Live preview of what will be created */}
+      {(previewClasses.length > 0 || previewSubjects.length > 0) && (
+        <div className="rounded-xl border border-slate-100 bg-slate-50 p-4 space-y-3">
+          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+            We'll set up for you
+          </p>
+          {previewClasses.length > 0 && (
+            <div className="flex items-start gap-2.5">
+              <GraduationCap className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
+              <div>
+                <p className="text-xs font-medium text-slate-700">
+                  {previewClasses.length} classes
+                </p>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  {previewClasses.join(', ')}
+                </p>
+              </div>
+            </div>
+          )}
+          {previewSubjects.length > 0 && (
+            <div className="flex items-start gap-2.5">
+              <BookOpen className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
+              <div>
+                <p className="text-xs font-medium text-slate-700">
+                  {previewSubjects.length} subjects
+                </p>
+                <p className="text-xs text-slate-400 mt-0.5 leading-relaxed">
+                  {previewSubjects.join(', ')}
+                </p>
+              </div>
+            </div>
+          )}
+          <p className="text-xs text-slate-400 pt-1">
+            You can edit or add to these anytime from your dashboard.
+          </p>
+        </div>
+      )}
+
       <Button
         onClick={onContinue}
         disabled={isPending || !schoolType || !educationSystem}
         size="lg"
         className="w-full bg-slate-900 hover:bg-slate-800 text-white"
       >
-        {isPending ? 'Saving…' : 'Continue'}
+        {isPending ? 'Setting up your school…' : 'Continue'}
         {!isPending && <ArrowRight className="ml-2 h-4 w-4" />}
       </Button>
     </div>
   )
 }
 
-function StepSubjects({
-  subjects, allSubjects, toggleSubject,
-  customSubject, setCustomSubject, addCustomSubject,
-  onBack, onContinue, isPending,
-}: {
-  subjects:         string[]
-  allSubjects:      string[]
-  toggleSubject:    (s: string) => void
-  customSubject:    string
-  setCustomSubject: (v: string) => void
-  addCustomSubject: () => void
-  onBack:           () => void
-  onContinue:       () => void
-  isPending:        boolean
-}) {
-  return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold text-slate-900">Which subjects do you teach?</h2>
-        <p className="text-slate-500 mt-1.5 text-sm">Select all that apply. You can update this anytime.</p>
-      </div>
-
-      <div className="flex flex-wrap gap-2">
-        {allSubjects.map(s => (
-          <button
-            key={s}
-            type="button"
-            onClick={() => toggleSubject(s)}
-            className={cn(
-              'px-3.5 py-1.5 rounded-full text-sm font-medium border transition-all duration-150 cursor-pointer',
-              subjects.includes(s)
-                ? 'border-amber-400 bg-amber-50 text-amber-700'
-                : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300',
-            )}
-          >
-            {s}
-          </button>
-        ))}
-      </div>
-
-      <div className="flex gap-2">
-        <Input
-          value={customSubject}
-          onChange={e => setCustomSubject(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addCustomSubject())}
-          placeholder="Add a subject…"
-        />
-        <Button type="button" variant="outline" onClick={addCustomSubject} className="shrink-0">
-          Add
-        </Button>
-      </div>
-
-      {subjects.length > 0 && (
-        <p className="text-xs text-slate-400">
-          {subjects.length} subject{subjects.length !== 1 ? 's' : ''} selected
-        </p>
-      )}
-
-      <div className="flex gap-3">
-        <Button type="button" variant="outline" onClick={onBack} size="lg" className="flex-1">
-          <ArrowLeft className="mr-2 h-4 w-4" /> Back
-        </Button>
-        <Button
-          onClick={onContinue}
-          disabled={isPending}
-          size="lg"
-          className="flex-1 bg-slate-900 hover:bg-slate-800 text-white"
-        >
-          {isPending ? 'Creating subjects…' : subjects.length === 0 ? 'Skip' : 'Continue'}
-          {!isPending && <ArrowRight className="ml-2 h-4 w-4" />}
-        </Button>
-      </div>
-    </div>
-  )
-}
-
-function StepClass({
-  form, onBack, onSubmit, isPending,
-}: {
-  form:      ReturnType<typeof useForm<ClassData>>
-  onBack:    () => void
-  onSubmit:  (data: ClassData) => void
-  isPending: boolean
-}) {
-  return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold text-slate-900">Create your first class.</h2>
-        <p className="text-slate-500 mt-1.5 text-sm">
-          e.g.{' '}
-          <span className="text-slate-700">"Form 4 East"</span>
-          {' '}or{' '}
-          <span className="text-slate-700">"S3 Science A"</span>
-        </p>
-      </div>
-
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-          <FormField
-            control={form.control}
-            name="gradeLevel"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Class Name</FormLabel>
-                <FormControl>
-                  <Input placeholder="e.g. Form 4 East" autoFocus {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="description"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>
-                  Description
-                  <span className="ml-1.5 text-xs text-muted-foreground font-normal">(optional)</span>
-                </FormLabel>
-                <FormControl>
-                  <Textarea
-                    placeholder="A brief description of this class."
-                    className="resize-none"
-                    rows={3}
-                    {...field}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <div className="flex gap-3 pt-2">
-            <Button type="button" variant="outline" onClick={onBack} size="lg" className="flex-1">
-              <ArrowLeft className="mr-2 h-4 w-4" /> Back
-            </Button>
-            <Button
-              type="submit"
-              disabled={isPending}
-              size="lg"
-              className="flex-1 bg-slate-900 hover:bg-slate-800 text-white"
-            >
-              {isPending ? 'Creating…' : 'Create Class'}
-              {!isPending && <ArrowRight className="ml-2 h-4 w-4" />}
-            </Button>
-          </div>
-        </form>
-      </Form>
-    </div>
-  )
-}
+// ── Step 2: Students ───────────────────────────────────────────────────────
 
 function StepStudents({
-  classId, className,
-  importOpen, setImportOpen,
-  studentsAdded, onImportSuccess,
-  onBack, onFinish, isPending,
+  createdClasses,
+  createdSubjectCount,
+  importOpen,
+  setImportOpen,
+  imported,
+  onImportSuccess,
+  onBack,
+  onFinish,
+  isPending,
 }: {
-  classId:         string | null
-  className:       string
-  importOpen:      boolean
-  setImportOpen:   (v: boolean) => void
-  studentsAdded:   boolean
-  onImportSuccess: () => void
-  onBack:          () => void
-  onFinish:        () => void
-  isPending:       boolean
+  createdClasses:     CreatedClass[]
+  createdSubjectCount: number
+  importOpen:         Record<string, boolean>
+  setImportOpen:      (classId: string, open: boolean) => void
+  imported:           Record<string, boolean>
+  onImportSuccess:    (classId: string) => void
+  onBack:             () => void
+  onFinish:           () => void
+  isPending:          boolean
 }) {
+  const totalImported = Object.values(imported).filter(Boolean).length
+
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold text-slate-900">
-          Add students to{' '}
-          <span className="text-amber-600">{className}</span>.
-        </h2>
+        <h2 className="text-2xl font-bold text-slate-900">Your school is ready.</h2>
         <p className="text-slate-500 mt-1.5 text-sm leading-relaxed">
-          Import from a CSV. PINs are auto-generated and shown on a printable credential sheet — shown once only.
+          We've created your classes and subjects. Now add students — or skip and do it later.
         </p>
       </div>
 
-      {studentsAdded ? (
-        <div className="flex items-start gap-3 p-4 rounded-xl border border-emerald-200 bg-emerald-50">
-          <CheckCircle2 className="h-5 w-5 text-emerald-600 mt-0.5 shrink-0" />
-          <div>
-            <p className="text-emerald-800 font-semibold text-sm">Students imported successfully.</p>
-            <p className="text-emerald-600 text-xs mt-0.5 leading-relaxed">
-              PINs have been generated. Hand out the credential sheet and you're done.
-            </p>
+      {/* Confirmation banner */}
+      <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 space-y-2">
+        <div className="flex items-center gap-2">
+          <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+          <p className="text-sm font-semibold text-emerald-800">Default configuration created</p>
+        </div>
+        <ul className="text-xs text-emerald-700 space-y-0.5 pl-6 list-disc">
+          {createdClasses.length > 0 && (
+            <li>{createdClasses.length} classes: {createdClasses.map(c => c.name).join(', ')}</li>
+          )}
+          {createdSubjectCount > 0 && (
+            <li>{createdSubjectCount} subjects added to your curriculum</li>
+          )}
+        </ul>
+        <p className="text-xs text-emerald-600 pl-0">
+          You can rename, delete, or add more from the dashboard anytime.
+        </p>
+      </div>
+
+      {/* Class list for import */}
+      {createdClasses.length > 0 ? (
+        <div className="space-y-2">
+          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+            Add students by class
+          </p>
+          <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
+            {createdClasses.map(cls => (
+              <div
+                key={cls.class_id}
+                className="flex items-center justify-between px-4 py-3 rounded-xl border border-slate-200 bg-white"
+              >
+                <div className="flex items-center gap-2.5">
+                  {imported[cls.class_id] ? (
+                    <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
+                  ) : (
+                    <div className="h-4 w-4 rounded-full border-2 border-slate-200 shrink-0" />
+                  )}
+                  <span className="text-sm font-medium text-slate-800">{cls.name}</span>
+                  {imported[cls.class_id] && (
+                    <span className="text-xs text-emerald-600">Students added</span>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setImportOpen(cls.class_id, true)}
+                  className={cn(
+                    'text-xs font-medium px-3 py-1.5 rounded-lg transition-colors',
+                    imported[cls.class_id]
+                      ? 'text-slate-400 hover:text-slate-600'
+                      : 'text-amber-700 bg-amber-50 hover:bg-amber-100',
+                  )}
+                >
+                  {imported[cls.class_id] ? 'Re-import' : 'Import CSV'}
+                </button>
+
+                <StudentImportDialog
+                  open={!!importOpen[cls.class_id]}
+                  onOpenChange={open => setImportOpen(cls.class_id, open)}
+                  classId={cls.class_id}
+                  onImportSuccess={() => onImportSuccess(cls.class_id)}
+                />
+              </div>
+            ))}
           </div>
+          {totalImported > 0 && (
+            <p className="text-xs text-slate-400 pt-1">
+              {totalImported} of {createdClasses.length} classes have students.
+            </p>
+          )}
         </div>
       ) : (
-        <button
-          type="button"
-          onClick={() => classId && setImportOpen(true)}
-          disabled={!classId}
-          className={cn(
-            'w-full p-6 rounded-xl border-2 border-dashed text-left transition-all duration-150',
-            classId
-              ? 'border-slate-200 hover:border-amber-300 hover:bg-amber-50/50 cursor-pointer'
-              : 'border-slate-100 opacity-40 cursor-not-allowed',
-          )}
-        >
-          <div className="flex items-center gap-3 mb-2">
-            <div className="h-9 w-9 rounded-lg bg-amber-100 flex items-center justify-center">
-              <Users className="h-5 w-5 text-amber-600" />
-            </div>
-            <span className="text-slate-800 font-semibold">Import from CSV</span>
-          </div>
-          <p className="text-slate-400 text-sm leading-relaxed pl-12">
-            Upload a spreadsheet with student names. PINs are auto-generated and shown on a printable sheet.
+        <div className="flex items-center gap-3 p-4 rounded-xl border border-slate-100 bg-slate-50">
+          <Users className="h-5 w-5 text-slate-400 shrink-0" />
+          <p className="text-sm text-slate-500">
+            You can add students and classes from your dashboard after setup.
           </p>
-        </button>
+        </div>
       )}
 
-      <div className="flex gap-3">
-        <Button type="button" variant="outline" onClick={onBack} size="lg" className="flex-1">
+      <div className="flex gap-3 pt-2">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={onBack}
+          size="lg"
+          className="flex-1"
+          disabled={isPending}
+        >
           <ArrowLeft className="mr-2 h-4 w-4" /> Back
         </Button>
         <Button
@@ -650,21 +612,12 @@ function StepStudents({
         >
           {isPending
             ? 'Almost there…'
-            : studentsAdded
+            : totalImported > 0
             ? 'Go to Dashboard'
             : 'Skip, go to Dashboard'}
           {!isPending && <ArrowRight className="ml-2 h-4 w-4" />}
         </Button>
       </div>
-
-      {classId && (
-        <StudentImportDialog
-          open={importOpen}
-          onOpenChange={setImportOpen}
-          classId={classId}
-          onImportSuccess={onImportSuccess}
-        />
-      )}
     </div>
   )
 }
