@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useId } from "react";
 import {
   Paperclip, ArrowUp, RotateCcw, Sparkles, Plus, X,
   FileText, Image as ImageIcon, PanelRightClose, PanelRightOpen,
-  ChevronRight, ClipboardList, BarChart2, BookOpen, Brain, Send
+  ChevronRight, ClipboardList, BarChart2, BookOpen, Brain, Send,
+  AlertCircle,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -32,7 +33,6 @@ interface UploadedFile {
   size: number;
   type: string;
   previewUrl?: string;
-  // FIX 1: Track upload state per file
   uploadState?: "pending" | "uploading" | "done" | "error";
   uploadedUrl?: string;
 }
@@ -98,17 +98,28 @@ function formatTime(d: Date) {
   return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
 
-// FIX 1: Upload a single file and return its URL
 async function uploadFile(file: File): Promise<string> {
   const formData = new FormData();
   formData.append("file", file);
-  const res = await fetch("/api/upload", {
-    method: "POST",
-    body: formData,
-  });
+  const res = await fetch("/api/upload", { method: "POST", body: formData });
   if (!res.ok) throw new Error(`Upload failed: ${res.statusText}`);
   const data = await res.json();
   return data.url as string;
+}
+
+/** Extract the first balanced JSON object from a string */
+function extractJson(str: string): string | null {
+  const start = str.indexOf("{");
+  if (start === -1) return null;
+  let depth = 0;
+  for (let i = start; i < str.length; i++) {
+    if (str[i] === "{") depth++;
+    else if (str[i] === "}") {
+      depth--;
+      if (depth === 0) return str.slice(start, i + 1);
+    }
+  }
+  return null;
 }
 
 const SUGGESTIONS = [
@@ -122,13 +133,18 @@ const SUGGESTIONS = [
 
 const ARTIFACT_ICONS: Record<ArtifactType, React.ReactNode> = {
   assessment: <ClipboardList className="w-4 h-4" />,
-  report: <BarChart2 className="w-4 h-4" />,
-  reteach_plan: <BookOpen className="w-4 h-4" />,
-  results: <BarChart2 className="w-4 h-4" />,
-  audit: <ClipboardList className="w-4 h-4" />,
-  generic: <Brain className="w-4 h-4" />,
-  form: <ClipboardList className="w-4 h-4" />,
+  report:     <BarChart2    className="w-4 h-4" />,
+  reteach_plan:<BookOpen    className="w-4 h-4" />,
+  results:    <BarChart2    className="w-4 h-4" />,
+  audit:      <ClipboardList className="w-4 h-4" />,
+  generic:    <Brain        className="w-4 h-4" />,
+  form:       <ClipboardList className="w-4 h-4" />,
 };
+
+// ── Regex patterns for server directives ──────────────────────────────────────
+// Handles ARTIFACT:, CONFIRM:, NEXT: (all optionally wrapped in __)
+const ARTIFACT_RE = /(?:^|\n)(?:__)?ARTIFACT(?:__)?\s*:\s*(\{[\s\S]*)/;
+const CONFIRM_RE  = /(?:^|\n)(?:__)?(?:CONFIRM|NEXT)(?:__)?\s*:\s*(\{[\s\S]*)/;
 
 // ── Small Components ──────────────────────────────────────────────────────────
 
@@ -146,25 +162,24 @@ function TypingDots() {
   );
 }
 
-// FIX 1: PendingFileCard now shows upload state
 function PendingFileCard({ file, onRemove }: { file: UploadedFile; onRemove?: () => void }) {
   const isImage = file.type.startsWith("image/");
   const isPdf = file.type === "application/pdf";
 
-  const stateIndicator = () => {
+  const StateOverlay = () => {
     if (file.uploadState === "uploading") return (
-      <div className="absolute inset-0 bg-background/70 rounded-xl flex items-center justify-center">
+      <div className="absolute inset-0 bg-background/70 rounded-xl flex items-center justify-center backdrop-blur-[1px]">
         <span className="w-5 h-5 border-2 border-muted-foreground/30 border-t-foreground rounded-full animate-spin" />
       </div>
     );
     if (file.uploadState === "done") return (
-      <div className="absolute top-1 left-1 w-5 h-5 rounded-full bg-green-500 flex items-center justify-center">
-        <span className="text-white text-[10px]">✓</span>
+      <div className="absolute top-1.5 left-1.5 w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center shadow-sm">
+        <span className="text-white text-[10px] font-bold">✓</span>
       </div>
     );
     if (file.uploadState === "error") return (
-      <div className="absolute top-1 left-1 w-5 h-5 rounded-full bg-red-500 flex items-center justify-center">
-        <span className="text-white text-[10px]">✕</span>
+      <div className="absolute top-1.5 left-1.5 w-5 h-5 rounded-full bg-red-500 flex items-center justify-center shadow-sm">
+        <span className="text-white text-[10px] font-bold">✕</span>
       </div>
     );
     return null;
@@ -188,12 +203,13 @@ function PendingFileCard({ file, onRemove }: { file: UploadedFile; onRemove?: ()
             </span>
           </div>
         )}
-        {stateIndicator()}
+        <StateOverlay />
       </div>
       <p className="text-[10px] text-muted-foreground truncate mt-1 px-0.5">{file.name}</p>
       {onRemove && (
         <button
           onClick={onRemove}
+          aria-label="Remove file"
           className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-foreground text-background flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
         >
           <X className="w-3 h-3" />
@@ -232,9 +248,13 @@ function ChatFileCard({ file, inUserBubble = false }: { file: UploadedFile; inUs
   );
 }
 
-// ── Artifact chip ─────────────────────────────────────────────────────────────
+// ── Artifact Chip ─────────────────────────────────────────────────────────────
 
-function ArtifactChip({ artifact, onClick, isActive }: { artifact: ArtifactPayload; onClick: () => void; isActive?: boolean }) {
+function ArtifactChip({ artifact, onClick, isActive }: {
+  artifact: ArtifactPayload;
+  onClick: () => void;
+  isActive?: boolean;
+}) {
   return (
     <button
       onClick={onClick}
@@ -271,24 +291,35 @@ function ArtifactPanel({
 
   const renderContent = () => {
     switch (artifact.type) {
-      case "assessment":
-        return <AssessmentView data={data} />;
-      case "audit":
-        return <AuditView data={data} />;
-      case "results":
-        return <ResultsView data={data} />;
-      case "reteach_plan":
-        return <ReteachView data={data} />;
-      case "form":
-        return <FormView data={data} onSendMessage={onSendMessage} />;
+      case "assessment":   return <AssessmentView data={data} />;
+      case "audit":        return <AuditView data={data} />;
+      case "results":      return <ResultsView data={data} />;
+      case "reteach_plan": return <ReteachView data={data} />;
+      case "form":         return <FormView data={data} onSendMessage={onSendMessage} />;
       case "report":
       case "generic":
       default:
         return (
-          <div className="px-6 py-4">
-            <pre className="text-xs bg-muted/50 rounded-lg p-4 overflow-auto whitespace-pre-wrap">
-              {typeof data === "string" ? data : JSON.stringify(data, null, 2)}
-            </pre>
+          <div className="flex flex-col items-center justify-center py-16 px-6 gap-4 text-center">
+            <div className="w-14 h-14 rounded-2xl bg-muted flex items-center justify-center">
+              <AlertCircle className="w-6 h-6 text-muted-foreground" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-foreground">Preview unavailable</p>
+              <p className="text-xs text-muted-foreground mt-1 max-w-[200px] leading-relaxed">
+                This artifact type ({artifact.type}) doesn't have a visual renderer yet.
+              </p>
+            </div>
+            {typeof data === "object" && (
+              <details className="w-full text-left">
+                <summary className="text-xs text-muted-foreground cursor-pointer hover:text-foreground transition-colors">
+                  View raw data
+                </summary>
+                <pre className="mt-2 text-[11px] bg-muted/50 rounded-lg p-3 overflow-auto whitespace-pre-wrap text-foreground/70">
+                  {JSON.stringify(data, null, 2)}
+                </pre>
+              </details>
+            )}
           </div>
         );
     }
@@ -308,6 +339,7 @@ function ArtifactPanel({
         </div>
         <button
           onClick={onClose}
+          aria-label="Close panel"
           className="w-7 h-7 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-all"
         >
           <X className="w-4 h-4" />
@@ -323,44 +355,40 @@ function ArtifactPanel({
 // ── Form View ─────────────────────────────────────────────────────────────────
 
 function FormView({ data, onSendMessage }: { data: any; onSendMessage: (msg: string) => void }) {
-  // FIX 2: Separate visible fields from hidden fields
   const allFields: any[] = data.fields ?? [];
   const visibleFields = allFields.filter((f) => f.type !== "hidden");
-  const hiddenFields = allFields.filter((f) => f.type === "hidden");
+  const hiddenFields  = allFields.filter((f) => f.type === "hidden");
 
-  // Pre-populate values with hidden field defaults
   const initialValues: Record<string, any> = {};
   hiddenFields.forEach((f) => { initialValues[f.id] = f.value ?? ""; });
 
-  const [values, setValues] = useState<Record<string, any>>(initialValues);
+  const [values, setValues]         = useState<Record<string, any>>(initialValues);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [submitted, setSubmitted]   = useState(false);
+  const [errors, setErrors]         = useState<Record<string, string>>({});
 
   const validate = () => {
     const errs: Record<string, string> = {};
     visibleFields.forEach((f) => {
-      if (f.required && !values[f.id]) {
-        errs[f.id] = `${f.label} is required`;
-      }
+      if (f.required && !values[f.id]) errs[f.id] = `${f.label} is required`;
     });
     setErrors(errs);
     return Object.keys(errs).length === 0;
+  };
+
+  const setField = (id: string, value: any) => {
+    setValues((v) => ({ ...v, [id]: value }));
+    if (errors[id]) setErrors((e) => { const n = { ...e }; delete n[id]; return n; });
   };
 
   const handleSubmit = async () => {
     if (!validate()) return;
     setIsSubmitting(true);
     try {
-      // FIX 2: Include ALL values (visible + hidden) in the submitted message
       const allValues = { ...values };
       hiddenFields.forEach((f) => { allValues[f.id] = f.value ?? ""; });
-
-      const formSummary = allFields
-        .map((f) => `${f.label}: ${allValues[f.id] ?? "not provided"}`)
-        .join(", ");
-      const msg = `${data.action ?? "submit_form"} | ${formSummary}`;
-      onSendMessage(msg);
+      const formSummary = allFields.map((f) => `${f.label}: ${allValues[f.id] ?? "not provided"}`).join(", ");
+      onSendMessage(`${data.action ?? "submit_form"} | ${formSummary}`);
       setSubmitted(true);
     } finally {
       setIsSubmitting(false);
@@ -389,10 +417,7 @@ function FormView({ data, onSendMessage }: { data: any; onSendMessage: (msg: str
           {field.type === "text" && (
             <input
               value={values[field.id] ?? ""}
-              onChange={(e) => {
-                setValues((v) => ({ ...v, [field.id]: e.target.value }));
-                if (errors[field.id]) setErrors((e) => { const n = { ...e }; delete n[field.id]; return n; });
-              }}
+              onChange={(e) => setField(field.id, e.target.value)}
               placeholder={field.placeholder}
               className={`w-full bg-muted/40 border rounded-xl px-3 py-2.5 text-sm outline-none focus:border-[#c9a84c]/60 focus:bg-background transition-all ${errors[field.id] ? "border-red-400" : "border-border"}`}
             />
@@ -401,10 +426,7 @@ function FormView({ data, onSendMessage }: { data: any; onSendMessage: (msg: str
           {field.type === "select" && (
             <select
               value={values[field.id] ?? ""}
-              onChange={(e) => {
-                setValues((v) => ({ ...v, [field.id]: e.target.value }));
-                if (errors[field.id]) setErrors((e) => { const n = { ...e }; delete n[field.id]; return n; });
-              }}
+              onChange={(e) => setField(field.id, e.target.value)}
               className={`w-full bg-muted/40 border rounded-xl px-3 py-2.5 text-sm outline-none focus:border-[#c9a84c]/60 focus:bg-background transition-all appearance-none cursor-pointer ${errors[field.id] ? "border-red-400" : "border-border"}`}
             >
               <option value="">Select {field.label}…</option>
@@ -417,10 +439,7 @@ function FormView({ data, onSendMessage }: { data: any; onSendMessage: (msg: str
           {field.type === "textarea" && (
             <textarea
               value={values[field.id] ?? ""}
-              onChange={(e) => {
-                setValues((v) => ({ ...v, [field.id]: e.target.value }));
-                if (errors[field.id]) setErrors((e) => { const n = { ...e }; delete n[field.id]; return n; });
-              }}
+              onChange={(e) => setField(field.id, e.target.value)}
               placeholder={field.placeholder}
               rows={3}
               className={`w-full bg-muted/40 border rounded-xl px-3 py-2.5 text-sm outline-none focus:border-[#c9a84c]/60 focus:bg-background transition-all resize-none ${errors[field.id] ? "border-red-400" : "border-border"}`}
@@ -431,24 +450,17 @@ function FormView({ data, onSendMessage }: { data: any; onSendMessage: (msg: str
             <div className="flex items-center gap-3">
               <button
                 type="button"
-                onClick={() => setValues((v) => ({ ...v, [field.id]: !v[field.id] }))}
+                onClick={() => setField(field.id, !values[field.id])}
                 className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${values[field.id] ? "bg-[#c9a84c]" : "bg-muted border border-border"}`}
               >
-                <span
-                  className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow-sm transition-transform duration-200 ${values[field.id] ? "translate-x-5" : "translate-x-0"}`}
-                />
+                <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow-sm transition-transform duration-200 ${values[field.id] ? "translate-x-5" : "translate-x-0"}`} />
               </button>
               <span className="text-xs text-muted-foreground">{values[field.id] ? "Enabled" : "Disabled"}</span>
             </div>
           )}
 
-          {errors[field.id] && (
-            <p className="text-[11px] text-red-400">{errors[field.id]}</p>
-          )}
-
-          {field.hint && (
-            <p className="text-[11px] text-muted-foreground">{field.hint}</p>
-          )}
+          {errors[field.id] && <p className="text-[11px] text-red-400">{errors[field.id]}</p>}
+          {field.hint && <p className="text-[11px] text-muted-foreground">{field.hint}</p>}
         </div>
       ))}
 
@@ -459,22 +471,16 @@ function FormView({ data, onSendMessage }: { data: any; onSendMessage: (msg: str
         className="w-full mt-2 bg-[#c9a84c] text-white rounded-xl py-2.5 text-sm font-semibold hover:opacity-90 active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-60"
       >
         {isSubmitting ? (
-          <>
-            <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-            Submitting…
-          </>
+          <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />Submitting…</>
         ) : (
-          <>
-            <Send className="w-3.5 h-3.5" />
-            {data.submitLabel ?? "Submit"}
-          </>
+          <><Send className="w-3.5 h-3.5" />{data.submitLabel ?? "Submit"}</>
         )}
       </button>
     </div>
   );
 }
 
-// ── Artifact content renderers ────────────────────────────────────────────────
+// ── Artifact content views ────────────────────────────────────────────────────
 
 function AssessmentView({ data }: { data: any }) {
   const questions = data.questions ?? [];
@@ -489,9 +495,7 @@ function AssessmentView({ data }: { data: any }) {
       {questions.length > 0 ? questions.map((q: any, i: number) => (
         <div key={i} className="rounded-xl border border-border bg-muted/20 p-4">
           <div className="flex items-start gap-3">
-            <span className="w-6 h-6 rounded-full bg-[#c9a84c]/10 text-[#c9a84c] text-xs font-bold flex items-center justify-center flex-shrink-0 mt-0.5">
-              {i + 1}
-            </span>
+            <span className="w-6 h-6 rounded-full bg-[#c9a84c]/10 text-[#c9a84c] text-xs font-bold flex items-center justify-center flex-shrink-0 mt-0.5">{i + 1}</span>
             <div className="flex-1 min-w-0">
               <p className="text-sm text-foreground leading-relaxed">{q.question ?? q.text ?? q.content}</p>
               {q.marks && <p className="text-[11px] text-muted-foreground mt-1">{q.marks} mark{q.marks > 1 ? "s" : ""}</p>}
@@ -499,9 +503,7 @@ function AssessmentView({ data }: { data: any }) {
                 <ul className="mt-2 space-y-1">
                   {q.options.map((opt: string, j: number) => (
                     <li key={j} className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <span className="w-4 h-4 rounded border border-border flex items-center justify-center text-[10px] flex-shrink-0">
-                        {String.fromCharCode(65 + j)}
-                      </span>
+                      <span className="w-4 h-4 rounded border border-border flex items-center justify-center text-[10px] flex-shrink-0">{String.fromCharCode(65 + j)}</span>
                       {opt}
                     </li>
                   ))}
@@ -519,10 +521,10 @@ function AssessmentView({ data }: { data: any }) {
 
 function AuditView({ data }: { data: any }) {
   const passed = data.passed ?? data.pass;
-  const score = data.score ?? data.audit_score;
-  const feedback = Array.isArray(data.feedback) ? data.feedback : data.feedback ? [data.feedback] : [];
+  const score  = data.score ?? data.audit_score;
+  const feedback    = Array.isArray(data.feedback) ? data.feedback : data.feedback ? [data.feedback] : [];
   const suggestions = Array.isArray(data.suggestions) ? data.suggestions : data.suggestions ? [data.suggestions] : [];
-  const categories = data.categories ?? data.criteria ?? [];
+  const categories  = data.categories ?? data.criteria ?? [];
 
   return (
     <div className="px-5 py-4 space-y-4">
@@ -536,16 +538,11 @@ function AuditView({ data }: { data: any }) {
               Audit {passed ? "Passed" : "Failed"}
             </p>
             {score !== undefined && (
-              <div className="mt-1.5">
-                <div className="flex items-center gap-2">
-                  <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
-                    <div
-                      className={`h-full rounded-full transition-all ${passed ? "bg-green-500" : "bg-red-400"}`}
-                      style={{ width: `${Math.min(score, 100)}%` }}
-                    />
-                  </div>
-                  <span className="text-xs font-semibold text-foreground">{score}%</span>
+              <div className="mt-1.5 flex items-center gap-2">
+                <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
+                  <div className={`h-full rounded-full transition-all ${passed ? "bg-green-500" : "bg-red-400"}`} style={{ width: `${Math.min(score, 100)}%` }} />
                 </div>
+                <span className="text-xs font-semibold text-foreground">{score}%</span>
               </div>
             )}
           </div>
@@ -555,22 +552,18 @@ function AuditView({ data }: { data: any }) {
       {categories.length > 0 && (
         <div className="space-y-2">
           <p className="text-xs font-semibold text-foreground uppercase tracking-wider">Criteria</p>
-          <div className="space-y-2">
-            {categories.map((cat: any, i: number) => {
-              const catPassed = cat.passed ?? cat.pass ?? cat.status === "pass";
-              return (
-                <div key={i} className="flex items-center gap-3 rounded-lg bg-muted/30 px-3 py-2.5 border border-border">
-                  <span className="text-sm flex-shrink-0">{catPassed ? "✅" : "⚠️"}</span>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-medium text-foreground truncate">{cat.name ?? cat.title ?? cat.category}</p>
-                    {cat.score !== undefined && (
-                      <p className="text-[11px] text-muted-foreground">{cat.score}%</p>
-                    )}
-                  </div>
+          {categories.map((cat: any, i: number) => {
+            const catPassed = cat.passed ?? cat.pass ?? cat.status === "pass";
+            return (
+              <div key={i} className="flex items-center gap-3 rounded-lg bg-muted/30 px-3 py-2.5 border border-border">
+                <span className="text-sm flex-shrink-0">{catPassed ? "✅" : "⚠️"}</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-medium text-foreground truncate">{cat.name ?? cat.title ?? cat.category}</p>
+                  {cat.score !== undefined && <p className="text-[11px] text-muted-foreground">{cat.score}%</p>}
                 </div>
-              );
-            })}
-          </div>
+              </div>
+            );
+          })}
         </div>
       )}
 
@@ -603,14 +596,14 @@ function AuditView({ data }: { data: any }) {
 
 function ResultsView({ data }: { data: any }) {
   const students = data.students ?? data.results ?? [];
-  const avg = data.average ?? data.class_average;
+  const avg      = data.average ?? data.class_average;
 
   const getGradeColor = (grade: string) => {
     if (!grade) return "text-muted-foreground";
     const g = grade.toUpperCase();
     if (g === "A" || g === "A+") return "text-green-500";
-    if (g === "B") return "text-blue-500";
-    if (g === "C") return "text-yellow-500";
+    if (g === "B")               return "text-blue-500";
+    if (g === "C")               return "text-yellow-500";
     if (g === "D" || g === "F") return "text-red-500";
     return "text-foreground";
   };
@@ -689,9 +682,7 @@ function ReteachView({ data }: { data: any }) {
       {topics.length > 0 ? topics.map((t: any, i: number) => (
         <div key={i} className="rounded-xl border border-border p-4 space-y-2 hover:border-[#c9a84c]/30 transition-colors">
           <div className="flex items-center gap-2">
-            <span className="w-5 h-5 rounded-full bg-[#c9a84c]/10 text-[#c9a84c] text-[10px] font-bold flex items-center justify-center flex-shrink-0">
-              {i + 1}
-            </span>
+            <span className="w-5 h-5 rounded-full bg-[#c9a84c]/10 text-[#c9a84c] text-[10px] font-bold flex items-center justify-center flex-shrink-0">{i + 1}</span>
             <p className="text-sm font-semibold text-foreground">{t.topic ?? t.title}</p>
           </div>
           {t.description && <p className="text-xs text-muted-foreground pl-7 leading-relaxed">{t.description}</p>}
@@ -720,43 +711,39 @@ function TracyMarkdown({ content }: { content: string }) {
     <ReactMarkdown
       remarkPlugins={[remarkGfm]}
       components={{
-        table: ({ children }) => (
+        table:      ({ children }) => (
           <div className="overflow-x-auto my-3 rounded-lg border border-border">
             <table className="min-w-full text-xs border-collapse">{children}</table>
           </div>
         ),
-        thead: ({ children }) => <thead className="bg-[#c9a84c]/10">{children}</thead>,
-        th: ({ children }) => <th className="px-3 py-2 text-left font-semibold text-foreground border-b border-border whitespace-nowrap">{children}</th>,
-        td: ({ children }) => <td className="px-3 py-2 border-b border-border last:border-b-0 text-foreground/80">{children}</td>,
-        tr: ({ children }) => <tr className="even:bg-muted/20 hover:bg-muted/30 transition-colors">{children}</tr>,
-        strong: ({ children }) => <strong className="font-semibold text-foreground">{children}</strong>,
-        em: ({ children }) => <em className="italic text-foreground/80">{children}</em>,
-        ul: ({ children }) => <ul className="list-none space-y-1 my-2 pl-1">{children}</ul>,
-        ol: ({ children }) => <ol className="list-decimal list-inside space-y-1 my-2">{children}</ol>,
-        li: ({ children }) => (
+        thead:      ({ children }) => <thead className="bg-[#c9a84c]/10">{children}</thead>,
+        th:         ({ children }) => <th className="px-3 py-2 text-left font-semibold text-foreground border-b border-border whitespace-nowrap">{children}</th>,
+        td:         ({ children }) => <td className="px-3 py-2 border-b border-border last:border-b-0 text-foreground/80">{children}</td>,
+        tr:         ({ children }) => <tr className="even:bg-muted/20 hover:bg-muted/30 transition-colors">{children}</tr>,
+        strong:     ({ children }) => <strong className="font-semibold text-foreground">{children}</strong>,
+        em:         ({ children }) => <em className="italic text-foreground/80">{children}</em>,
+        ul:         ({ children }) => <ul className="list-none space-y-1 my-2 pl-1">{children}</ul>,
+        ol:         ({ children }) => <ol className="list-decimal list-inside space-y-1 my-2">{children}</ol>,
+        li:         ({ children }) => (
           <li className="flex items-start gap-2 text-sm text-foreground/80 leading-relaxed">
             <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-[#c9a84c]/60 flex-shrink-0" />
             <span>{children}</span>
           </li>
         ),
-        h1: ({ children }) => <h1 className="text-base font-bold text-foreground mt-4 mb-2 pb-1 border-b border-border">{children}</h1>,
-        h2: ({ children }) => <h2 className="text-sm font-bold text-foreground mt-3 mb-1.5">{children}</h2>,
-        h3: ({ children }) => <h3 className="text-sm font-semibold text-[#c9a84c] mt-2 mb-1">{children}</h3>,
-        code: ({ children, className }) => {
+        h1:         ({ children }) => <h1 className="text-base font-bold text-foreground mt-4 mb-2 pb-1 border-b border-border">{children}</h1>,
+        h2:         ({ children }) => <h2 className="text-sm font-bold text-foreground mt-3 mb-1.5">{children}</h2>,
+        h3:         ({ children }) => <h3 className="text-sm font-semibold text-[#c9a84c] mt-2 mb-1">{children}</h3>,
+        code:       ({ children, className }) => {
           const isBlock = className?.includes("language-");
-          if (isBlock) return (
-            <pre className="bg-muted/80 rounded-lg p-3 my-2 overflow-x-auto">
-              <code className="text-xs font-mono text-foreground/90">{children}</code>
-            </pre>
-          );
-          return <code className="bg-muted px-1.5 py-0.5 rounded text-xs font-mono text-foreground/90">{children}</code>;
+          return isBlock
+            ? <pre className="bg-muted/80 rounded-lg p-3 my-2 overflow-x-auto"><code className="text-xs font-mono text-foreground/90">{children}</code></pre>
+            : <code className="bg-muted px-1.5 py-0.5 rounded text-xs font-mono text-foreground/90">{children}</code>;
         },
-        p: ({ children }) => <p className="mb-2 last:mb-0 leading-relaxed text-sm text-foreground/90">{children}</p>,
+        p:          ({ children }) => <p className="mb-2 last:mb-0 leading-relaxed text-sm text-foreground/90">{children}</p>,
         blockquote: ({ children }) => <blockquote className="border-l-2 border-[#c9a84c] pl-3 my-2 text-muted-foreground italic text-sm">{children}</blockquote>,
-        hr: () => <hr className="border-border my-3" />,
-        a: ({ href, children }) => (
-          <a href={href} target="_blank" rel="noopener noreferrer"
-            className="text-[#c9a84c] underline underline-offset-2 hover:opacity-80 transition-opacity">{children}</a>
+        hr:         () => <hr className="border-border my-3" />,
+        a:          ({ href, children }) => (
+          <a href={href} target="_blank" rel="noopener noreferrer" className="text-[#c9a84c] underline underline-offset-2 hover:opacity-80 transition-opacity">{children}</a>
         ),
       }}
     >
@@ -778,9 +765,9 @@ function MessageBubble({
   onArtifactClick?: (a: ArtifactPayload) => void;
   isArtifactActive?: boolean;
 }) {
-  const isUser = message.role === "user";
+  const isUser        = message.role === "user";
   const hasAttachments = message.attachments && message.attachments.length > 0;
-  const hasContent = message.isLoading || !!message.content;
+  const hasContent    = message.isLoading || !!message.content;
 
   return (
     <div className={`flex w-full ${isUser ? "justify-end" : "justify-start"}`}>
@@ -799,7 +786,7 @@ function MessageBubble({
               <div className="bg-[#c9a84c] text-white rounded-2xl rounded-br-sm shadow-sm px-4 py-2.5 flex flex-col gap-2">
                 {hasAttachments && (
                   <div className="flex flex-wrap gap-2">
-                    {message.attachments!.map((f) => <ChatFileCard key={f.id} file={f} inUserBubble={true} />)}
+                    {message.attachments!.map((f) => <ChatFileCard key={f.id} file={f} inUserBubble />)}
                   </div>
                 )}
                 {hasContent && (
@@ -813,7 +800,7 @@ function MessageBubble({
             <>
               {hasAttachments && (
                 <div className="flex flex-wrap gap-2">
-                  {message.attachments!.map((f) => <ChatFileCard key={f.id} file={f} inUserBubble={false} />)}
+                  {message.attachments!.map((f) => <ChatFileCard key={f.id} file={f} />)}
                 </div>
               )}
               {hasContent && (
@@ -822,11 +809,7 @@ function MessageBubble({
                 </div>
               )}
               {artifact && onArtifactClick && (
-                <ArtifactChip
-                  artifact={artifact}
-                  onClick={() => onArtifactClick(artifact)}
-                  isActive={isArtifactActive}
-                />
+                <ArtifactChip artifact={artifact} onClick={() => onArtifactClick(artifact)} isActive={isArtifactActive} />
               )}
             </>
           )}
@@ -841,10 +824,7 @@ function MessageBubble({
 
 function ConfirmationTray({ payload, onSelect }: { payload: ConfirmationPayload; onSelect: (v: string) => void }) {
   return (
-    <div
-      className="mb-2 bg-background border border-[#c9a84c]/30 rounded-2xl shadow-lg overflow-hidden"
-      style={{ animation: "slideUp 0.18s ease" }}
-    >
+    <div className="mb-2 bg-background border border-[#c9a84c]/30 rounded-2xl shadow-lg overflow-hidden" style={{ animation: "slideUp 0.18s ease" }}>
       <div className="px-4 pt-3 pb-2 flex items-center gap-2 border-b border-border/50">
         <Sparkles className="w-3.5 h-3.5 text-[#c9a84c]" />
         <span className="text-xs font-semibold text-[#c9a84c] uppercase tracking-wider">Tracy</span>
@@ -877,29 +857,34 @@ function ConfirmationTray({ payload, onSelect }: { payload: ConfirmationPayload;
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
 export default function TracyPage() {
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [input, setInput] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const [pendingFiles, setPendingFiles] = useState<UploadedFile[]>([]);
+  const [messages,            setMessages]            = useState<Message[]>([]);
+  const [input,               setInput]               = useState("");
+  const [isLoading,           setIsLoading]           = useState(false);
+  const [pendingFiles,        setPendingFiles]        = useState<UploadedFile[]>([]);
   const [pendingFileContents, setPendingFileContents] = useState<Record<string, string>>({});
-  const [isDragging, setIsDragging] = useState(false);
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [firstName, setFirstName] = useState("there");
-  const [authReady, setAuthReady] = useState(false);
-  const [confirmation, setConfirmation] = useState<ConfirmationPayload | null>(null);
+  const [isDragging,          setIsDragging]          = useState(false);
+  const [isMenuOpen,          setIsMenuOpen]          = useState(false);
+  const [firstName,           setFirstName]           = useState("there");
+  const [authReady,           setAuthReady]           = useState(false);
+  const [confirmation,        setConfirmation]        = useState<ConfirmationPayload | null>(null);
 
-  const [artifacts, setArtifacts] = useState<Record<string, ArtifactPayload>>({});
+  const [artifacts,     setArtifacts]     = useState<Record<string, ArtifactPayload>>({});
   const [activeArtifact, setActiveArtifact] = useState<ArtifactPayload | null>(null);
-  const [panelOpen, setPanelOpen] = useState(false);
+  const [panelOpen,     setPanelOpen]     = useState(false);
+
+  // FIX: Use a key to force ResizablePanelGroup remount when panel opens/closes
+  // so defaultSize values are correctly applied on each state change.
+  const panelGroupKey = panelOpen ? "split" : "full";
 
   const fileObjectsRef = useRef<Record<string, File>>({});
-  const bottomRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLTextAreaElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const menuRef = useRef<HTMLDivElement>(null);
-  const sessionId = useRef(`session_${Date.now()}`);
-  const retryCount = useRef(0);
+  const bottomRef      = useRef<HTMLDivElement>(null);
+  const inputRef       = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef   = useRef<HTMLInputElement>(null);
+  const menuRef        = useRef<HTMLDivElement>(null);
+  const sessionId      = useRef(`session_${Date.now()}`);
+  const retryCount     = useRef(0);
 
+  // Close menu on outside click
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) setIsMenuOpen(false);
@@ -908,6 +893,7 @@ export default function TracyPage() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // Auth / name detection
   useEffect(() => {
     let attempts = 0;
     const maxAttempts = 20;
@@ -928,11 +914,13 @@ export default function TracyPage() {
     checkAuth();
   }, []);
 
+  // Auto-scroll
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
 
+  // Textarea auto-resize
   useEffect(() => {
     const el = inputRef.current;
-    if (!el) return;
+    if (!el || !input) return;
     el.style.height = "auto";
     el.style.height = `${Math.min(el.scrollHeight, 160)}px`;
   }, [input]);
@@ -947,7 +935,7 @@ export default function TracyPage() {
     setTimeout(() => setActiveArtifact(null), 250);
   }, []);
 
-  // FIX 1: Upload files immediately on add, track state per file
+  // Add files with eager upload
   const addFiles = useCallback((files: FileList | File[]) => {
     const allowedTypes = [
       "application/pdf", "image/png", "image/jpeg", "image/jpg", "image/webp",
@@ -959,22 +947,14 @@ export default function TracyPage() {
       if (!allowedTypes.includes(file.type) && !file.name.endsWith(".csv")) return;
       if (file.size > 10 * 1024 * 1024) return;
 
-      const fileId = `f_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+      const fileId     = `f_${Date.now()}_${Math.random().toString(36).slice(2)}`;
       const previewUrl = file.type.startsWith("image/") ? URL.createObjectURL(file) : undefined;
       fileObjectsRef.current[fileId] = file;
 
-      const newFile: UploadedFile = {
-        id: fileId,
-        name: file.name,
-        size: file.size,
-        type: file.type,
-        previewUrl,
-        uploadState: "pending",
-      };
-
+      const newFile: UploadedFile = { id: fileId, name: file.name, size: file.size, type: file.type, previewUrl, uploadState: "pending" };
       setPendingFiles((prev) => [...prev, newFile]);
 
-      // Handle CSV content extraction
+      // CSV text extraction
       if (file.type === "text/csv" || file.name.endsWith(".csv")) {
         const reader = new FileReader();
         reader.onload = (e) => {
@@ -984,31 +964,33 @@ export default function TracyPage() {
         reader.readAsText(file);
       }
 
-      // Upload PDF and images immediately, track progress on the card
+      // Eager upload for PDF/images
       if (file.type === "application/pdf" || file.type.startsWith("image/")) {
-        setPendingFiles((prev) =>
-          prev.map((f) => f.id === fileId ? { ...f, uploadState: "uploading" } : f)
-        );
+        setPendingFiles((prev) => prev.map((f) => f.id === fileId ? { ...f, uploadState: "uploading" } : f));
         uploadFile(file)
           .then((url) => {
-            setPendingFiles((prev) =>
-              prev.map((f) => f.id === fileId ? { ...f, uploadState: "done", uploadedUrl: url } : f)
-            );
+            setPendingFiles((prev) => prev.map((f) => f.id === fileId ? { ...f, uploadState: "done", uploadedUrl: url } : f));
           })
           .catch(() => {
-            setPendingFiles((prev) =>
-              prev.map((f) => f.id === fileId ? { ...f, uploadState: "error" } : f)
-            );
+            setPendingFiles((prev) => prev.map((f) => f.id === fileId ? { ...f, uploadState: "error" } : f));
+          })
+          .finally(() => {
+            // FIX: Clean up fileObjectsRef after upload attempt
+            delete fileObjectsRef.current[fileId];
           });
       }
     });
   }, []);
 
-  const clearChat = () => {
-    // FIX 3: Revoke all object URLs before clearing
-    pendingFiles.forEach((f) => {
+  const revokeAndClearFiles = useCallback((files: UploadedFile[]) => {
+    files.forEach((f) => {
       if (f.previewUrl) URL.revokeObjectURL(f.previewUrl);
+      delete fileObjectsRef.current[f.id];
     });
+  }, []);
+
+  const clearChat = useCallback(() => {
+    revokeAndClearFiles(pendingFiles);
     setMessages([]);
     setPendingFiles([]);
     setPendingFileContents({});
@@ -1016,16 +998,16 @@ export default function TracyPage() {
     setArtifacts({});
     closePanel();
     setIsMenuOpen(false);
-    retryCount.current = 0;
-    sessionId.current = `session_${Date.now()}`;
+    retryCount.current  = 0;
+    sessionId.current   = `session_${Date.now()}`;
     setTimeout(() => inputRef.current?.focus(), 50);
-  };
+  }, [pendingFiles, closePanel, revokeAndClearFiles]);
 
   const send = useCallback(async (text?: string, isRetry = false) => {
     const content = (text ?? input).trim();
     if ((!content && pendingFiles.length === 0) || isLoading) return;
 
-    const snapshotFiles = [...pendingFiles];
+    const snapshotFiles    = [...pendingFiles];
     const snapshotContents = { ...pendingFileContents };
 
     let fileDataContext = "";
@@ -1035,10 +1017,10 @@ export default function TracyPage() {
     });
 
     const userMsg: Message = {
-      id: `u_${Date.now()}`,
-      role: "user",
-      content: content || (snapshotFiles.length > 0 ? "Please process these files." : ""),
-      timestamp: new Date(),
+      id:          `u_${Date.now()}`,
+      role:        "user",
+      content:     content || (snapshotFiles.length > 0 ? "Please process these files." : ""),
+      timestamp:   new Date(),
       attachments: snapshotFiles.length > 0 ? snapshotFiles : undefined,
     };
 
@@ -1049,10 +1031,9 @@ export default function TracyPage() {
         { id: `l_${Date.now()}`, role: "tracy", content: "", timestamp: new Date(), isLoading: true },
       ]);
       setInput("");
-      // FIX 3: Revoke object URLs for files being sent
-      snapshotFiles.forEach((f) => {
-        if (f.previewUrl) URL.revokeObjectURL(f.previewUrl);
-      });
+      // Reset textarea height
+      if (inputRef.current) { inputRef.current.style.height = "auto"; }
+      revokeAndClearFiles(snapshotFiles);
       setPendingFiles([]);
       setPendingFileContents({});
     }
@@ -1060,8 +1041,7 @@ export default function TracyPage() {
     setIsLoading(true);
 
     try {
-      // FIX 1: Collect already-uploaded URLs (uploaded eagerly in addFiles)
-      // Fall back to uploading now if somehow still pending
+      // Collect uploaded URLs (already eager-uploaded, fall back to now)
       const uploadedParts: string[] = [];
       for (const f of snapshotFiles) {
         if (f.type === "application/pdf" || f.type.startsWith("image/")) {
@@ -1076,20 +1056,16 @@ export default function TracyPage() {
         }
       }
 
-      // FIX 1: Inject attached file URLs into the payload message only (not shown in UI)
-      const attachedFilesBlock = uploadedParts.length > 0
-        ? `\n\n[ATTACHED FILES: ${uploadedParts.join(", ")}]`
-        : "";
-
-      const finalPayloadMessage = `${userMsg.content}${fileDataContext}${attachedFilesBlock}`;
-      const attachmentsMeta = snapshotFiles.map(({ name, type, size }) => ({ name, type, size }));
+      const attachedFilesBlock   = uploadedParts.length > 0 ? `\n\n[ATTACHED FILES: ${uploadedParts.join(", ")}]` : "";
+      const finalPayloadMessage  = `${userMsg.content}${fileDataContext}${attachedFilesBlock}`;
+      const attachmentsMeta      = snapshotFiles.map(({ name, type, size }) => ({ name, type, size }));
 
       const res = await fetch("/api/tracy", {
-        method: "POST",
+        method:  "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          message: finalPayloadMessage,
-          sessionId: sessionId.current,
+        body:    JSON.stringify({
+          message:     finalPayloadMessage,
+          sessionId:   sessionId.current,
           attachments: attachmentsMeta.length > 0 ? attachmentsMeta : undefined,
         }),
       });
@@ -1104,27 +1080,9 @@ export default function TracyPage() {
 
       retryCount.current = 0;
       const reply: string = data.reply || data.error || "I hit a snag. Please try again.";
-
       const trimmed = reply.trim();
 
-      // FIX: Extract first balanced JSON object only, not everything after the colon
-      function extractJson(str: string): string | null {
-        const start = str.indexOf("{");
-        if (start === -1) return null;
-        let depth = 0;
-        for (let i = start; i < str.length; i++) {
-          if (str[i] === "{") depth++;
-          else if (str[i] === "}") {
-            depth--;
-            if (depth === 0) return str.slice(start, i + 1);
-          }
-        }
-        return null;
-      }
-
-      const ARTIFACT_RE = /(?:^|\n)(?:__)?ARTIFACT(?:__)?\s*:\s*(\{[\s\S]*)/;
-      const CONFIRM_RE  = /(?:^|\n)(?:__)?CONFIRM(?:__)?\s*:\s*(\{[\s\S]*)/;
-
+      // FIX: Handle CONFIRM:, NEXT:, and __NEXT__: prefixes uniformly
       const confirmMatch = trimmed.match(CONFIRM_RE);
       if (confirmMatch) {
         const json = extractJson(confirmMatch[1]);
@@ -1144,17 +1102,15 @@ export default function TracyPage() {
         if (json) {
           try {
             const rawArtifact = JSON.parse(json);
-            const artifactId = `art_${Date.now()}`;
+            const artifactId  = `art_${Date.now()}`;
             const artifact: ArtifactPayload = { id: artifactId, ...rawArtifact };
-            const beforeTag = trimmed.slice(0, trimmed.search(ARTIFACT_RE)).trim();
-            const fallback = rawArtifact.summary ?? `Here's the ${(rawArtifact.type as string)?.replace("_", " ") ?? "result"} — click to view.`;
-            const bubbleText = beforeTag || fallback;
+            const beforeTag   = trimmed.slice(0, trimmed.search(ARTIFACT_RE)).trim();
+            const fallback    = rawArtifact.summary ?? `Here's the ${(rawArtifact.type as string)?.replace("_", " ") ?? "result"} — click to view.`;
+            const bubbleText  = beforeTag || fallback;
 
             setArtifacts((prev) => ({ ...prev, [artifactId]: artifact }));
             setMessages((prev) =>
-              prev.map((m) =>
-                m.isLoading ? { ...m, content: bubbleText, isLoading: false, artifactId } : m
-              )
+              prev.map((m) => m.isLoading ? { ...m, content: bubbleText, isLoading: false, artifactId } : m)
             );
             openArtifact(artifact);
             return;
@@ -1173,7 +1129,7 @@ export default function TracyPage() {
       setIsLoading(false);
       inputRef.current?.focus();
     }
-  }, [input, pendingFiles, pendingFileContents, isLoading, openArtifact]);
+  }, [input, pendingFiles, pendingFileContents, isLoading, openArtifact, revokeAndClearFiles]);
 
   const handleConfirmationSelect = useCallback((value: string) => {
     setConfirmation(null);
@@ -1184,8 +1140,26 @@ export default function TracyPage() {
     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); }
   };
 
-  const isEmpty = messages.length === 0;
+  const removeFile = useCallback((fileId: string) => {
+    setPendingFiles((prev) => {
+      const file = prev.find((f) => f.id === fileId);
+      if (file?.previewUrl) URL.revokeObjectURL(file.previewUrl);
+      delete fileObjectsRef.current[fileId];
+      return prev.filter((f) => f.id !== fileId);
+    });
+    setPendingFileContents((prev) => {
+      const u = { ...prev }; delete u[fileId]; return u;
+    });
+  }, []);
+
+  const isEmpty      = messages.length === 0;
   const hasArtifacts = Object.keys(artifacts).length > 0;
+
+  // FIX: Compute the last artifact for the "Show panel" fallback
+  const lastArtifact = Object.values(artifacts).at(-1);
+
+  // Whether toolbar controls (attach, plus menu) should be disabled
+  const controlsDisabled = isLoading || !!confirmation;
 
   return (
     <>
@@ -1214,36 +1188,35 @@ export default function TracyPage() {
           <div className="absolute inset-2 z-40 border-2 border-dashed border-[#c9a84c]/50 rounded-2xl pointer-events-none" />
         )}
 
-        <ResizablePanelGroup direction="horizontal" className="flex-1 min-h-0">
-          <ResizablePanel
-            defaultSize={panelOpen ? 50 : 100}
-            minSize={30}
-            className="flex flex-col min-h-0"
-          >
+        {/* FIX: key forces full remount of the panel group when split state changes,
+            so defaultSize is correctly applied every time. */}
+        <ResizablePanelGroup key={panelGroupKey} direction="horizontal" className="flex-1 min-h-0">
+          <ResizablePanel defaultSize={panelOpen ? 50 : 100} minSize={30} className="flex flex-col min-h-0">
             <div className="flex flex-col h-full min-h-0">
+              {/* Panel toggle — only show when there is at least one artifact */}
               {hasArtifacts && (
                 <div className="flex justify-end px-4 pt-2.5 pb-0 flex-shrink-0">
                   <button
                     onClick={() => {
                       if (panelOpen) {
                         closePanel();
-                      } else if (activeArtifact) {
-                        setPanelOpen(true);
                       } else {
-                        const last = Object.values(artifacts).at(-1);
-                        if (last) openArtifact(last);
+                        // FIX: reopen with active or last artifact
+                        const target = activeArtifact ?? lastArtifact;
+                        if (target) openArtifact(target);
                       }
                     }}
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-muted-foreground hover:text-foreground hover:bg-muted border border-border transition-all"
                   >
                     {panelOpen
                       ? <><PanelRightClose className="w-3.5 h-3.5" /> Hide panel</>
-                      : <><PanelRightOpen className="w-3.5 h-3.5" /> Show panel</>
+                      : <><PanelRightOpen  className="w-3.5 h-3.5" /> Show panel</>
                     }
                   </button>
                 </div>
               )}
 
+              {/* Message list */}
               <div className="flex-1 overflow-y-auto min-h-0">
                 <div className="max-w-2xl mx-auto px-4 sm:px-6 py-10">
                   {isEmpty ? (
@@ -1260,12 +1233,23 @@ export default function TracyPage() {
                       <p className="text-muted-foreground text-sm mb-12 max-w-xs leading-relaxed">
                         I'm Tracy. What are we doing today?
                       </p>
+                      {/* FIX: show 4 on mobile, 6 on sm+ (no invisible buttons causing layout shift) */}
                       <div className="grid grid-cols-2 gap-3 w-full max-w-lg">
-                        {SUGGESTIONS.slice(0, 6).map((s, i) => (
+                        {SUGGESTIONS.slice(0, 4).map((s) => (
                           <button
                             key={s.label}
                             onClick={() => setInput(s.label)}
-                            className={`flex items-start gap-3 text-left px-4 py-3.5 rounded-xl border border-border bg-card hover:bg-muted/40 hover:border-[#c9a84c]/30 transition-all text-sm text-muted-foreground hover:text-foreground ${i >= 4 ? "hidden sm:flex" : "flex"}`}
+                            className="flex items-start gap-3 text-left px-4 py-3.5 rounded-xl border border-border bg-card hover:bg-muted/40 hover:border-[#c9a84c]/30 transition-all text-sm text-muted-foreground hover:text-foreground"
+                          >
+                            <span className="text-base flex-shrink-0">{s.icon}</span>
+                            <span className="leading-snug">{s.label}</span>
+                          </button>
+                        ))}
+                        {SUGGESTIONS.slice(4, 6).map((s) => (
+                          <button
+                            key={s.label}
+                            onClick={() => setInput(s.label)}
+                            className="hidden sm:flex items-start gap-3 text-left px-4 py-3.5 rounded-xl border border-border bg-card hover:bg-muted/40 hover:border-[#c9a84c]/30 transition-all text-sm text-muted-foreground hover:text-foreground"
                           >
                             <span className="text-base flex-shrink-0">{s.icon}</span>
                             <span className="leading-snug">{s.label}</span>
@@ -1290,6 +1274,7 @@ export default function TracyPage() {
                 </div>
               </div>
 
+              {/* Input bar */}
               <div className="flex-shrink-0 px-4 sm:px-6 pb-6 pt-2">
                 <div className="max-w-2xl mx-auto">
                   {confirmation && (
@@ -1299,38 +1284,26 @@ export default function TracyPage() {
                   {pendingFiles.length > 0 && (
                     <div className="flex gap-3 mb-3 px-1 overflow-x-auto pb-1">
                       {pendingFiles.map((f) => (
-                        <PendingFileCard
-                          key={f.id}
-                          file={f}
-                          onRemove={() => {
-                            // FIX 3: Revoke object URL on removal
-                            if (f.previewUrl) URL.revokeObjectURL(f.previewUrl);
-                            setPendingFiles((prev) => prev.filter((p) => p.id !== f.id));
-                            setPendingFileContents((prev) => {
-                              const u = { ...prev };
-                              delete u[f.id];
-                              return u;
-                            });
-                          }}
-                        />
+                        <PendingFileCard key={f.id} file={f} onRemove={() => removeFile(f.id)} />
                       ))}
                     </div>
                   )}
 
                   <div className="flex items-end gap-2 bg-muted/40 border border-border rounded-2xl px-3 py-3 focus-within:border-[#c9a84c]/40 focus-within:bg-background transition-all shadow-sm">
+                    {/* Plus / new-chat menu */}
                     <div className="relative" ref={menuRef}>
                       <button
                         type="button"
-                        onClick={() => setIsMenuOpen(!isMenuOpen)}
-                        className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all flex-shrink-0 ${
+                        onClick={() => !controlsDisabled && setIsMenuOpen(!isMenuOpen)}
+                        disabled={controlsDisabled}
+                        className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all flex-shrink-0 disabled:opacity-40 disabled:cursor-not-allowed ${
                           isMenuOpen ? "bg-[#c9a84c] text-white shadow-md" : "text-muted-foreground hover:text-foreground hover:bg-muted"
                         }`}
                       >
                         <Plus className={`w-5 h-5 transition-transform duration-200 ${isMenuOpen ? "rotate-45" : ""}`} />
                       </button>
                       {isMenuOpen && (
-                        <div className="absolute bottom-full left-0 mb-3 w-40 bg-background border border-border rounded-xl shadow-xl p-1.5 z-50"
-                          style={{ animation: "slideUp 0.15s ease" }}>
+                        <div className="absolute bottom-full left-0 mb-3 w-40 bg-background border border-border rounded-xl shadow-xl p-1.5 z-50" style={{ animation: "slideUp 0.15s ease" }}>
                           <button
                             onClick={clearChat}
                             className="w-full flex items-center gap-2.5 px-3 py-2.5 text-xs font-medium text-muted-foreground hover:text-[#c9a84c] hover:bg-[#c9a84c]/5 rounded-lg transition-colors"
@@ -1349,17 +1322,18 @@ export default function TracyPage() {
                       onKeyDown={handleKeyDown}
                       placeholder="Ask Tracy anything…"
                       rows={1}
-                      // FIX: Disable input while confirmation is active
-                      disabled={isLoading || !!confirmation}
-                      className="flex-1 bg-transparent border-none outline-none resize-none text-sm text-foreground placeholder:text-muted-foreground/50 leading-relaxed min-h-[24px] max-h-[160px] py-1.5 disabled:opacity-50"
+                      disabled={controlsDisabled}
+                      className="flex-1 bg-transparent border-none outline-none resize-none text-sm text-foreground placeholder:text-muted-foreground/50 leading-relaxed min-h-[24px] max-h-[160px] py-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
                     />
 
                     <div className="flex items-center gap-1.5 flex-shrink-0">
+                      {/* Attach — FIX: disabled during confirmation / loading */}
                       <button
                         type="button"
-                        onClick={() => fileInputRef.current?.click()}
+                        onClick={() => !controlsDisabled && fileInputRef.current?.click()}
+                        disabled={controlsDisabled}
                         title="Attach file (PDF, CSV, Image)"
-                        className="w-9 h-9 rounded-xl flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-all"
+                        className="w-9 h-9 rounded-xl flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-all disabled:opacity-40 disabled:cursor-not-allowed"
                       >
                         <Paperclip className="w-4 h-4" />
                       </button>
@@ -1371,6 +1345,8 @@ export default function TracyPage() {
                         className="hidden"
                         onChange={(e) => e.target.files && addFiles(e.target.files)}
                       />
+
+                      {/* Send */}
                       <button
                         type="button"
                         onClick={() => send()}
@@ -1387,13 +1363,14 @@ export default function TracyPage() {
                   </div>
 
                   <p className="text-[10px] text-muted-foreground/40 text-center mt-3 uppercase tracking-widest font-medium">
-                    Enter to send · drag & drop files
+                    Enter to send · drag &amp; drop files
                   </p>
                 </div>
               </div>
             </div>
           </ResizablePanel>
 
+          {/* Artifact panel — only mounted when open and an artifact is selected */}
           {panelOpen && activeArtifact && (
             <>
               <ResizableHandle withHandle className="w-1 bg-border hover:bg-[#c9a84c]/30 transition-colors data-[resize-handle-active]:bg-[#c9a84c]/50" />
