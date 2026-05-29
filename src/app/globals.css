@@ -9,6 +9,18 @@ body {
 
 @layer base {
   :root {
+    /* Tracy design tokens — mirrors Claude's CDS token structure */
+    --tracy-brand:         45 65% 54%;
+    --tracy-brand-dim:     45 65% 54%;
+    --tracy-bg-surface:    0 0% 8%;
+    --tracy-bg-hover:      0 0% 11%;
+    --tracy-border:        0 0% 22%;
+    --tracy-text:          0 0% 93%;
+    --tracy-text-muted:    0 0% 55%;
+    --tracy-radius:        0.375rem;
+    --tracy-ring:          45 65% 54%;
+    --tracy-error:         0 70% 60%;
+
     --background: 0 0% 100%;
     --foreground: 0 0% 3.9%;
     --card: 0 0% 100%;

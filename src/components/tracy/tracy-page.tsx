@@ -500,6 +500,9 @@ function FormView({ data, onSendMessage }: { data: any; onSendMessage: (msg: str
 
   const initialValues: Record<string, any> = {};
   hiddenFields.forEach((f) => { initialValues[f.id] = f.value ?? ""; });
+  visibleFields.forEach((f) => {
+    if (f.type === "multiselect") initialValues[f.id] = Array.isArray(f.default) ? f.default : [];
+  });
 
   const [values, setValues]             = useState<Record<string, any>>(initialValues);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -509,7 +512,9 @@ function FormView({ data, onSendMessage }: { data: any; onSendMessage: (msg: str
   const validate = () => {
     const errs: Record<string, string> = {};
     visibleFields.forEach((f) => {
-      if (f.required && !values[f.id]) errs[f.id] = `${f.label} is required`;
+      const v = values[f.id];
+      const empty = Array.isArray(v) ? v.length === 0 : !v;
+      if (f.required && empty) errs[f.id] = `${f.label} is required`;
     });
     setErrors(errs);
     return Object.keys(errs).length === 0;
@@ -520,13 +525,26 @@ function FormView({ data, onSendMessage }: { data: any; onSendMessage: (msg: str
     if (errors[id]) setErrors((e) => { const n = { ...e }; delete n[id]; return n; });
   };
 
+  const toggleMultiselect = (id: string, value: string) => {
+    setValues((prev) => {
+      const current: string[] = Array.isArray(prev[id]) ? prev[id] : [];
+      const next = current.includes(value) ? current.filter((v) => v !== value) : [...current, value];
+      return { ...prev, [id]: next };
+    });
+    if (errors[id]) setErrors((e) => { const n = { ...e }; delete n[id]; return n; });
+  };
+
   const handleSubmit = async () => {
     if (!validate()) return;
     setIsSubmitting(true);
     try {
       const allValues = { ...values };
       hiddenFields.forEach((f) => { allValues[f.id] = f.value ?? ""; });
-      const formSummary = allFields.map((f) => `${f.label}: ${allValues[f.id] ?? "not provided"}`).join(", ");
+      const formSummary = allFields.map((f) => {
+        const v = allValues[f.id];
+        const display = Array.isArray(v) ? v.join(", ") : (v ?? "not provided");
+        return `${f.label}: ${display}`;
+      }).join(", ");
       onSendMessage(`__FORM_SUBMIT__:{"action":"${data.action ?? "submit_form"}","values":${JSON.stringify(allValues)}}\n\n${formSummary}`);
       setSubmitted(true);
     } finally {
@@ -534,12 +552,16 @@ function FormView({ data, onSendMessage }: { data: any; onSendMessage: (msg: str
     }
   };
 
+  // shared input classes using --tracy-* tokens
+  const inputBase = "w-full bg-[hsl(var(--tracy-bg-surface))] border border-[hsl(var(--tracy-border))] rounded-[var(--tracy-radius)] px-3 py-2 text-sm text-[hsl(var(--tracy-text))] outline-none transition-all placeholder:text-[hsl(var(--tracy-text-muted))] hover:border-[hsl(var(--tracy-brand)/0.4)] focus:border-[hsl(var(--tracy-brand)/0.6)] focus:ring-2 focus:ring-[hsl(var(--tracy-ring)/0.2)]";
+  const inputError = "border-[hsl(var(--tracy-error))]";
+
   if (submitted) {
     return (
       <div className="flex flex-col items-center justify-center py-16 px-6 gap-4">
-        <div className="w-14 h-14 rounded-full bg-green-500/10 flex items-center justify-center text-2xl">✅</div>
-        <p className="text-sm font-semibold text-foreground">Submitted!</p>
-        <p className="text-xs text-muted-foreground text-center">Tracy is processing your request. Check the chat for updates.</p>
+        <div className="w-14 h-14 rounded-full bg-[hsl(var(--tracy-brand)/0.1)] flex items-center justify-center text-2xl">✅</div>
+        <p className="text-sm font-semibold text-[hsl(var(--tracy-text))]">Submitted!</p>
+        <p className="text-xs text-[hsl(var(--tracy-text-muted))] text-center">Tracy is processing your request. Check the chat for updates.</p>
       </div>
     );
   }
@@ -548,9 +570,9 @@ function FormView({ data, onSendMessage }: { data: any; onSendMessage: (msg: str
     <div className="px-5 py-5 space-y-5">
       {visibleFields.map((field: any) => (
         <div key={field.id} className="space-y-1.5">
-          <label className="text-xs font-semibold text-foreground uppercase tracking-wider flex items-center gap-1">
+          <label className="text-[11px] font-semibold uppercase tracking-widest text-[hsl(var(--tracy-text-muted))] flex items-center gap-1">
             {field.label}
-            {field.required && <span className="text-[#c9a84c]">*</span>}
+            {field.required && <span className="text-[hsl(var(--tracy-brand))]">*</span>}
           </label>
 
           {field.type === "text" && (
@@ -558,7 +580,7 @@ function FormView({ data, onSendMessage }: { data: any; onSendMessage: (msg: str
               value={values[field.id] ?? ""}
               onChange={(e) => setField(field.id, e.target.value)}
               placeholder={field.placeholder}
-              className={`w-full bg-muted/40 border rounded-xl px-3 py-2.5 text-sm outline-none focus:border-[#c9a84c]/60 focus:bg-background transition-all ${errors[field.id] ? "border-red-400" : "border-border"}`}
+              className={`${inputBase} ${errors[field.id] ? inputError : ""}`}
             />
           )}
 
@@ -566,7 +588,7 @@ function FormView({ data, onSendMessage }: { data: any; onSendMessage: (msg: str
             <select
               value={values[field.id] ?? ""}
               onChange={(e) => setField(field.id, e.target.value)}
-              className={`w-full bg-muted/40 border rounded-xl px-3 py-2.5 text-sm outline-none focus:border-[#c9a84c]/60 focus:bg-background transition-all appearance-none cursor-pointer ${errors[field.id] ? "border-red-400" : "border-border"}`}
+              className={`${inputBase} appearance-none cursor-pointer ${errors[field.id] ? inputError : ""}`}
             >
               <option value="">Select {field.label}…</option>
               {field.options?.map((opt: any) => (
@@ -581,8 +603,35 @@ function FormView({ data, onSendMessage }: { data: any; onSendMessage: (msg: str
               onChange={(e) => setField(field.id, e.target.value)}
               placeholder={field.placeholder}
               rows={3}
-              className={`w-full bg-muted/40 border rounded-xl px-3 py-2.5 text-sm outline-none focus:border-[#c9a84c]/60 focus:bg-background transition-all resize-none ${errors[field.id] ? "border-red-400" : "border-border"}`}
+              className={`${inputBase} resize-none ${errors[field.id] ? inputError : ""}`}
             />
+          )}
+
+          {field.type === "multiselect" && (
+            <div className={`grid grid-cols-2 gap-1.5 ${errors[field.id] ? "ring-1 ring-[hsl(var(--tracy-error))] rounded-[var(--tracy-radius)]" : ""}`}>
+              {field.options?.map((opt: any) => {
+                const checked = (Array.isArray(values[field.id]) ? values[field.id] : []).includes(opt.value);
+                return (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => toggleMultiselect(field.id, opt.value)}
+                    className={`flex items-center gap-2 px-3 py-2 rounded-[var(--tracy-radius)] border text-sm text-left transition-all ${
+                      checked
+                        ? "bg-[hsl(var(--tracy-brand)/0.15)] border-[hsl(var(--tracy-brand)/0.4)] text-[hsl(var(--tracy-brand))]"
+                        : "bg-[hsl(var(--tracy-bg-surface))] border-[hsl(var(--tracy-border))] text-[hsl(var(--tracy-text-muted))] hover:border-[hsl(var(--tracy-brand)/0.4)] hover:text-[hsl(var(--tracy-text))]"
+                    }`}
+                  >
+                    <div className={`w-3.5 h-3.5 rounded-sm border flex items-center justify-center flex-shrink-0 transition-all ${
+                      checked ? "bg-[hsl(var(--tracy-brand))] border-[hsl(var(--tracy-brand))]" : "border-[hsl(var(--tracy-border))]"
+                    }`}>
+                      {checked && <Check className="w-2 h-2 text-white" />}
+                    </div>
+                    {opt.label}
+                  </button>
+                );
+              })}
+            </div>
           )}
 
           {field.type === "toggle" && (
@@ -590,16 +639,20 @@ function FormView({ data, onSendMessage }: { data: any; onSendMessage: (msg: str
               <button
                 type="button"
                 onClick={() => setField(field.id, !values[field.id])}
-                className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${values[field.id] ? "bg-[#c9a84c]" : "bg-muted border border-border"}`}
+                className={`relative w-10 h-[22px] rounded-full transition-colors flex-shrink-0 ${
+                  values[field.id]
+                    ? "bg-[hsl(var(--tracy-brand))]"
+                    : "bg-[hsl(var(--tracy-bg-hover))] border border-[hsl(var(--tracy-border))]"
+                }`}
               >
-                <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow-sm transition-transform duration-200 ${values[field.id] ? "translate-x-5" : "translate-x-0"}`} />
+                <span className={`absolute top-0.5 w-[18px] h-[18px] rounded-full bg-white shadow-sm transition-all duration-150 ${values[field.id] ? "left-[calc(100%-20px)]" : "left-0.5"}`} />
               </button>
-              <span className="text-xs text-muted-foreground">{values[field.id] ? "Enabled" : "Disabled"}</span>
+              <span className="text-xs text-[hsl(var(--tracy-text-muted))]">{values[field.id] ? "Enabled" : "Disabled"}</span>
             </div>
           )}
 
-          {errors[field.id] && <p className="text-[11px] text-red-400">{errors[field.id]}</p>}
-          {field.hint && <p className="text-[11px] text-muted-foreground">{field.hint}</p>}
+          {errors[field.id] && <p className="text-[11px] text-[hsl(var(--tracy-error))] mt-0.5">{errors[field.id]}</p>}
+          {field.hint && <p className="text-[11px] text-[hsl(var(--tracy-text-muted))]">{field.hint}</p>}
         </div>
       ))}
 
@@ -607,7 +660,7 @@ function FormView({ data, onSendMessage }: { data: any; onSendMessage: (msg: str
         type="button"
         onClick={handleSubmit}
         disabled={isSubmitting}
-        className="w-full mt-2 bg-[#c9a84c] text-white rounded-xl py-2.5 text-sm font-semibold hover:opacity-90 active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-60"
+        className="w-full mt-3 bg-[hsl(var(--tracy-brand))] text-white rounded-[var(--tracy-radius)] py-2.5 text-sm font-semibold hover:opacity-90 active:scale-[0.99] transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed focus:ring-2 focus:ring-[hsl(var(--tracy-ring)/0.3)] focus:outline-none"
       >
         {isSubmitting ? (
           <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />Submitting…</>
@@ -957,8 +1010,11 @@ function MessageBubble({
   const hasContent    = message.isLoading || !!message.content;
   const [copied, setCopied] = useState(false);
 
+  const FORM_SUBMIT_RE = /^__FORM_SUBMIT__:\{[\s\S]*?\}\n\n/;
+  const visibleContent = isUser ? message.content.replace(FORM_SUBMIT_RE, "") : message.content;
+
   const handleCopy = () => {
-    navigator.clipboard.writeText(message.content).then(() => {
+    navigator.clipboard.writeText(visibleContent).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
     });
@@ -987,7 +1043,7 @@ function MessageBubble({
                 {hasContent && (
                   message.isLoading
                     ? <TypingDots />
-                    : <p className="whitespace-pre-wrap break-words text-sm">{message.content}</p>
+                    : <p className="whitespace-pre-wrap break-words text-sm">{visibleContent}</p>
                 )}
               </div>
             )
