@@ -590,7 +590,7 @@ export default function ProofOfLearningRecord({
         <div className="text-center py-4">
           <div className="inline-flex items-center gap-2 text-xs text-muted-foreground">
             <CheckCircle className="w-3.5 h-3.5 text-emerald-500" />
-            Verified by Mirror Teaching Intelligence ·{" "}
+            Verified by Mirror Learning Intelligence ·{" "}
             {formatDate(data.generatedAt)}
           </div>
         </div>

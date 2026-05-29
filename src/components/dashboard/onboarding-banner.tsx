@@ -193,7 +193,7 @@ export function OnboardingBanner({ stats, role = 'Admin', userId, schoolName }: 
             <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-5">
               <div className="flex-1" style={{ animation: 'mirrorSlideUp 0.45s ease 0.05s both' }}>
                 <p className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: '#C9A84C' }}>
-                  Welcome to Mark-AI
+                  Welcome to Mirror Intelligence
                 </p>
                 <h3
                   className="text-lg font-semibold leading-snug mb-1.5"

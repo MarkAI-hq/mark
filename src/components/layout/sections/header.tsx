@@ -1,86 +1,112 @@
+"use client";
+
+import { useRef } from "react";
 import Image from "next/image";
+import { ArrowRight, Users } from "lucide-react";
+import { motion, useInView } from "framer-motion";
+
+const ease = [0.22, 1, 0.36, 1] as const;
 
 export default function Header() {
+  const ref = useRef(null);
+  const inView = useInView(ref, { once: true, margin: "-80px" });
+
   return (
-    <>
-      <section className="overflow-hidden m-4 min-w-10 dark:min-w-14 dark:m-4 lg:pt-[16px] dark:lg:pt-[16px] lg:pb-[0px]">
-        <div className="container mx-auto">
-          <div className="flex flex-wrap items-center justify-between -mx-4">
-            <div className="w-full px-4 lg:w-7/12">
-              <div className="flex items-center -mx-3 sm:-mx-4 dark:sm:-mx-4 dark:-mx-3">
-                <div className="w-full px-3 sm:px-4 xl:w-1/2">
-                  <div className="py-3 sm:py-4">
-                    <Image
-                      src="/assets/images/school.jpg"
-                      alt="African kids studying under a tree while seated on ground"
-                      className="w-full rounded-2xl shadow-xl"
-                      width={1200}
-                      height={500}  
-                    />
-                  </div>
-                  <div className="py-3 sm:py-4">
-                    <Image
-                      src="/assets/images/graduand.jpg"
-                      alt="A young lady in a gown graduating"
-                      className="w-full rounded-2xl shadow-md dark:shadow-xl"
-                      width={1200}
-                      height={500}
-                    />
-                  </div>
-                </div>
-                <div className="w-full px-3 sm:px-4 xl:w-1/2">
-                  <div className="relative z-9 my-4">
-                    <Image
-                      src="/assets/images/enstein.jpg"
-                      alt="Albert Enstein"
-                      className="w-full rounded-2xl shadow-xl"
-                      width={1200}
-                      height={500}
-                    />
-                    <span className="absolute -right-7 -bottom-7 z-[-1]">
-                      <svg
-                        width={134}
-                        height={106}
-                        viewBox="0 0 134 106"
-                        fill="none"
-                        xmlns="http://www.w3.org/2000/svg"
-                      >
-                      </svg>
-                    </span>
-                  </div>
-                </div>
+    <section ref={ref} className="relative overflow-hidden py-24 sm:py-32 px-4">
+      {/* Subtle background */}
+      <div className="pointer-events-none absolute inset-0 bg-muted/20 dark:bg-white/[0.02]" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_60%_50%_at_80%_50%,hsl(42_75%_33%/0.06),transparent)]" />
+
+      <div className="relative mx-auto max-w-6xl">
+        <div className="grid grid-cols-1 items-center gap-12 lg:grid-cols-2 lg:gap-20">
+
+          {/* Image collage */}
+          <motion.div
+            initial={{ opacity: 0, x: -32 }}
+            animate={inView ? { opacity: 1, x: 0 } : {}}
+            transition={{ duration: 0.8, ease }}
+            className="grid grid-cols-2 gap-4"
+          >
+            <div className="space-y-4">
+              <div className="overflow-hidden rounded-2xl aspect-[4/5] shadow-lg">
+                <Image
+                  src="/assets/images/school.jpg"
+                  alt="Students learning"
+                  width={600}
+                  height={750}
+                  sizes="(max-width: 1024px) 50vw, 25vw"
+                  className="h-full w-full object-cover transition-transform duration-700 hover:scale-105"
+                />
+              </div>
+              <div className="overflow-hidden rounded-2xl aspect-[4/3] shadow-md">
+                <Image
+                  src="/assets/images/graduand.jpg"
+                  alt="Graduate"
+                  width={600}
+                  height={450}
+                  sizes="(max-width: 1024px) 50vw, 25vw"
+                  className="h-full w-full object-cover transition-transform duration-700 hover:scale-105"
+                />
               </div>
             </div>
-            <div className="w-full px-4 lg:w-1/2 xl:w-5/12 pb-3 " >
-              <div className="mt-10 lg:mt-0">
-                <span className="block mb-4 text-lg font-semibold text-primary dark:text-gray-300">
-                  Tomorrow&apos;s Education is Personalized!
-                </span>
-                <h2 className="mb-5 text-3xl font-bold sm:text-[40px]/[48px] text-transparent px-2 bg-gradient-to-r from-[#926C15] to-primary bg-clip-text">
-                  Will you join us in shaping the future of education?
-                </h2>
-                <p className="mb-5 text-base text-body-color dark:text-gray-500">
-                  Are you an expert STEM educator, curriculum designer, or learning scientist 
-                  with a unique approach to teaching? Mark AI invites you to share your wisdom and be an architect of tomorrow&apos;s education.
-                </p>
-                <p className="mb-8 text-base text-body-color dark:text-gray-500">
-                   We&#39;re working towards a shared vision of putting an intelligent personalized
-                   teacher in every learner&#39;s pocket beginning with STEM subjects. 
-                   This will bridge the teacher:student gap, address poor performances, and the misalignments between industry requirements
-                   and curricula creating a new generation of people ready to transform the world.
-                </p>
-                <a
-                  href="mailto:founding@mirror.education ?subject=How%20Can%20We%20Collaborate?"
-                  target="_blank"
-                  rel="noopener"
-                  className="px-6 py-3 text-lg font-medium text-center text-white bg-black dark:bg-white dark:hover:bg-[#926C15] dark:text-black dark:hover:text-white hover:bg-[#926C15] rounded-md ">
-                  Join Us
-                </a>
+            <div className="pt-10">
+              <div className="overflow-hidden rounded-2xl aspect-[3/4] shadow-xl">
+                <Image
+                  src="/assets/images/enstein.jpg"
+                  alt="Einstein"
+                  width={600}
+                  height={800}
+                  sizes="(max-width: 1024px) 50vw, 25vw"
+                  className="h-full w-full object-cover transition-transform duration-700 hover:scale-105"
+                />
               </div>
             </div>
-          </div>
+          </motion.div>
+
+          {/* Content */}
+          <motion.div
+            initial={{ opacity: 0, x: 32 }}
+            animate={inView ? { opacity: 1, x: 0 } : {}}
+            transition={{ duration: 0.8, delay: 0.1, ease }}
+            className="space-y-6"
+          >
+            <div className="inline-flex items-center gap-2 rounded-full border border-[#926C15]/40 bg-[#926C15]/6 px-4 py-1.5 text-sm font-medium text-[#926C15]">
+              <Users className="h-3.5 w-3.5" />
+              Built with and for educators
+            </div>
+
+            <h2 className="text-4xl font-black tracking-tight leading-[1.08] sm:text-5xl">
+              Will you help us{" "}
+              <span className="bg-gradient-to-br from-[#926C15] via-[#C09020] to-[#D4AA30] bg-clip-text text-transparent">
+                close the loop
+              </span>{" "}
+              in every classroom?
+            </h2>
+
+            <p className="text-base leading-relaxed text-muted-foreground">
+              Mirror is built on teaching science, not just language models. We partner
+              with expert educators, curriculum designers, and learning scientists to
+              encode real pedagogical intelligence into every part of the platform.
+            </p>
+
+            <p className="text-base leading-relaxed text-muted-foreground">
+              If you have a framework for diagnosing student thinking, a marking methodology
+              that works, or a unique approach to intervention — we want to build it into Mirror
+              so every teacher on the platform benefits from your expertise.
+            </p>
+
+            <button
+              data-cal-link="tusii-mirror/30min"
+              data-cal-namespace="30min"
+              data-cal-config='{"layout":"month_view","useSlotsViewOnSmallScreen":"true"}'
+              className="group inline-flex items-center gap-2.5 rounded-xl bg-[#926C15] px-8 py-3.5 text-sm font-bold text-white shadow-lg shadow-[#926C15]/25 transition-all duration-300 hover:bg-[#7A5A10] hover:shadow-xl hover:shadow-[#926C15]/35 hover:-translate-y-1 active:translate-y-0"
+            >
+              Join Us
+              <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
+            </button>
+          </motion.div>
         </div>
-      </section>
-    </>
+      </div>
+    </section>
   );
-};
+}

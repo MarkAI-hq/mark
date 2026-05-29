@@ -13,6 +13,7 @@ const nextConfig: NextConfig = {
   output: 'standalone',
 
   images: {
+    formats: ['image/avif', 'image/webp'],
     remotePatterns: [
       { protocol: 'http',  hostname: 'localhost',                port: '3000' },
       { protocol: 'https', hostname: '**.cloudflarestorage.com', port: '' },

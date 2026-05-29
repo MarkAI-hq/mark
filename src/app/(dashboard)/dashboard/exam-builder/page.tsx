@@ -64,7 +64,7 @@ export default function ExamBuilderLandingPage() {
                 <div className="space-y-1.5">
                   <h2 className="text-base font-semibold text-white">Exam Studio</h2>
                   <p className="text-sm text-amber-100 leading-relaxed">
-                    Upload syllabus or notes — MarkAI builds your exam instantly.
+                    Upload syllabus or notes — Mirror Intelligence builds your exam instantly.
                   </p>
                 </div>
                 <div className="flex items-center gap-1.5 text-sm font-medium text-white group-hover:gap-2.5 transition-all">
@@ -120,7 +120,7 @@ export default function ExamBuilderLandingPage() {
               {
                 step: '03',
                 title: 'Grade & analyse',
-                desc: 'Upload student scripts — MarkAI grades instantly and generates per-student analytics.',
+                desc: 'Upload student scripts — Mirror Intelligence grades instantly and generates per-student analytics.',
                 color: 'text-emerald-600 dark:text-emerald-400 bg-emerald-500/10',
               },
             ].map(({ step, title, desc, color }) => (

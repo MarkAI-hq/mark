@@ -185,7 +185,7 @@ export function GenerationConfigForm({
       <div className="mb-6 p-4 bg-blue-50 border-l-4 border-blue-500 rounded-r-lg">
         <h4 className="font-bold text-blue-800 flex items-center gap-2">
           <Sparkles size={16} />
-          MarkAI Analysis ({Math.round((aiResult?.confidence || 0) * 100)}% Confidence)
+          Mirror Intelligence Analysis ({Math.round((aiResult?.confidence || 0) * 100)}% Confidence)
         </h4>
         <p className="text-sm text-blue-700 mt-1">
           {aiResult?.reasoning || 'Content analyzed successfully. Review the configuration below.'}
@@ -228,7 +228,7 @@ export function GenerationConfigForm({
                 <FormItem>
                   <FormLabel>Topic <span className="text-muted-foreground font-normal">(optional)</span></FormLabel>
                   <FormControl><Input placeholder="e.g. Location of Our District" {...field} /></FormControl>
-                  <FormDescription className="text-xs">If blank, MarkAI infers topics from the uploaded content.</FormDescription>
+                  <FormDescription className="text-xs">If blank, Mirror Intelligence infers topics from the uploaded content.</FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
@@ -332,7 +332,7 @@ export function GenerationConfigForm({
                     {...field}
                   />
                 </FormControl>
-                <FormDescription className="text-xs">Free-text guidance passed directly to MarkAI when building the paper.</FormDescription>
+                <FormDescription className="text-xs">Free-text guidance passed directly to Mirror Intelligence when building the paper.</FormDescription>
                 <FormMessage />
               </FormItem>
             )}
@@ -348,7 +348,7 @@ export function GenerationConfigForm({
               <span className="flex items-center gap-2">
                 <Settings2 size={15} className="text-gray-500" />
                 Advanced: Define Section Structure
-                <span className="text-xs font-normal text-muted-foreground">— leave collapsed to let MarkAI decide</span>
+                <span className="text-xs font-normal text-muted-foreground">— leave collapsed to let Mirror Intelligence decide</span>
               </span>
               {showAdvanced ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
             </button>

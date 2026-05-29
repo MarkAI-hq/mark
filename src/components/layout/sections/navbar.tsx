@@ -1,71 +1,64 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import { Menu } from "lucide-react";
 import Link from "next/link";
+import { cn } from "@/lib/utils";
 
 import {
-  Sheet, SheetContent,
+  Sheet,
+  SheetContent,
   SheetFooter,
   SheetHeader,
   SheetTitle,
-  SheetTrigger
+  SheetTrigger,
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import {
-  NavigationMenu,
-  NavigationMenuContent,
-  NavigationMenuItem,
-  NavigationMenuLink,
-  NavigationMenuList
-} from "@/components/ui/navigation-menu";
 import { ThemeToggle } from "../theme-toggle";
 
-interface RouteProps {
-  href: string;
-  label: string;
-}
-
-interface FeatureProps {
-  title: string;
-  description: string;
-  href: string;
-}
-
-const routeList: RouteProps[] = [
-  {
-    href: "mailto:founding@mirror.education ?subject=Mark%20AI",
-    label: "Demo",
-  },
-  {
-    href: "/register",
-    label: "Start for free",
-  },
-  {
-    href: "/login",
-    label: "Login",
-  },
-   {
-    href: "#faq",
-    label: "FAQ",
-  },
+type RouteItem = { href: string; label: string; cal?: boolean };
+const routeList: RouteItem[] = [
+  { href: "", label: "Demo", cal: true },
+  { href: "/register", label: "Start for free" },
+  { href: "/login", label: "Login" },
+  { href: "#faq", label: "FAQ" },
 ];
 
-const featureList: FeatureProps[] = [];
+const calAttrs = {
+  "data-cal-link": "tusii-mirror/30min",
+  "data-cal-namespace": "30min",
+  "data-cal-config": '{"layout":"month_view","useSlotsViewOnSmallScreen":"true"}',
+};
 
 export const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => setScrolled(window.scrollY > 20);
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   return (
-    <header className="shadow-inner bg-opacity-15  w-[90%] md:w-[70%] lg:w-[75%] lg:max-w-screen-xl top-5 mx-auto sticky border border-secondary z-40 rounded-2xl flex justify-between items-center p-2 bg-card mx-auto">
-      <Link href="/" className="font-bold text-lg flex items-center">
+    <header
+      className={cn(
+        "sticky top-5 mx-auto z-40 flex items-center justify-between px-3 py-2 transition-all duration-300",
+        "w-[92%] md:w-[72%] lg:w-[76%] lg:max-w-screen-xl",
+        "rounded-2xl",
+        scrolled
+          ? "border border-[#926C15]/20 bg-background/90 shadow-md shadow-black/5 backdrop-blur-xl"
+          : "border border-border bg-card/80 backdrop-blur-sm"
+      )}
+    >
+      <Link href="/" className="flex items-center">
         <Image
           src="/assets/images/markWhiteBg.png"
-          alt="Mark AI Logo"
-          width={150}
-          height={50}
+          alt="Mirror Intelligence"
+          width={130}
+          height={42}
           priority
           className="dark:invert"
         />
@@ -75,47 +68,57 @@ export const Navbar = () => {
       <div className="flex items-center lg:hidden">
         <Sheet open={isOpen} onOpenChange={setIsOpen}>
           <SheetTrigger asChild>
-            <Menu
-              onClick={() => setIsOpen(!isOpen)}
-              className="cursor-pointer lg:hidden"
-            />
+            <Button variant="ghost" size="icon" className="h-9 w-9">
+              <Menu className="h-4 w-4" />
+            </Button>
           </SheetTrigger>
 
           <SheetContent
             side="left"
-            className="flex flex-col justify-between rounded-tr-2xl rounded-br-2xl bg-card border-secondary "
+            className="flex flex-col justify-between rounded-tr-2xl rounded-br-2xl bg-card border-border"
           >
             <div>
-              <SheetHeader className="mb-4 ml-4">
+              <SheetHeader className="mb-6 ml-4">
                 <SheetTitle className="flex items-center">
                   <Image
                     src="/assets/images/markWhiteBg.png"
-                    alt="Mark AI Logo"
-                    width={150}
-                    height={50}
+                    alt="Mirror Intelligence"
+                    width={130}
+                    height={42}
                     priority
                     className="dark:invert"
                   />
                 </SheetTitle>
               </SheetHeader>
 
-              <div className="flex flex-col gap-2">
-                {routeList.map(({ href, label }) => (
-                  <Button
-                    key={href}
-                    onClick={() => setIsOpen(false)}
-                    asChild
-                    variant="ghost"
-                    className="justify-start text-base hover:bg-[#926C15] hover:text-white"
-                  >
-                    <Link href={href}>{label}</Link>
-                  </Button>
-                ))}
+              <div className="flex flex-col gap-1 px-1">
+                {routeList.map(({ href, label, cal }) =>
+                  cal ? (
+                    <button
+                      key={label}
+                      {...calAttrs}
+                      onClick={() => setIsOpen(false)}
+                      className="justify-start w-full rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-[#926C15] hover:bg-[#926C15]/8"
+                    >
+                      {label}
+                    </button>
+                  ) : (
+                    <Button
+                      key={href}
+                      onClick={() => setIsOpen(false)}
+                      asChild
+                      variant="ghost"
+                      className="justify-start text-sm font-medium text-muted-foreground hover:text-[#926C15] hover:bg-[#926C15]/8"
+                    >
+                      <Link href={href}>{label}</Link>
+                    </Button>
+                  )
+                )}
               </div>
             </div>
 
             <SheetFooter className="flex-col sm:flex-col justify-start items-start">
-              <Separator className="mb-2" />
+              <Separator className="mb-3" />
               <ThemeToggle />
             </SheetFooter>
           </SheetContent>
@@ -123,41 +126,28 @@ export const Navbar = () => {
       </div>
 
       {/* Desktop */}
-      <NavigationMenu className="hidden lg:block mx-auto">
-        <NavigationMenuList>
-          <NavigationMenuItem>
-            <NavigationMenuContent>
-              <div className="grid w-[600px] grid-cols-2 gap-5 p-4">
-                <ul className="flex flex-col gap-2">
-                  {featureList.map(({ title, description }) => (
-                    <li
-                      key={title}
-                      className="rounded-md p-3 text-sm hover:bg-muted"
-                    >
-                      <p className="mb-1 font-semibold leading-none text-foreground">
-                        {title}
-                      </p>
-                      <p className="line-clamp-2 text-muted-foreground">
-                        {description}
-                      </p>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </NavigationMenuContent>
-          </NavigationMenuItem>
+      <nav className="hidden lg:flex items-center gap-0.5">
+        {routeList.map(({ href, label, cal }) =>
+          cal ? (
+            <button
+              key={label}
+              {...calAttrs}
+              className="rounded-lg px-3.5 py-2 text-sm font-medium text-muted-foreground transition-all duration-200 hover:bg-[#926C15]/8 hover:text-[#926C15]"
+            >
+              {label}
+            </button>
+          ) : (
+            <Link
+              key={href}
+              href={href}
+              className="rounded-lg px-3.5 py-2 text-sm font-medium text-muted-foreground transition-all duration-200 hover:bg-[#926C15]/8 hover:text-[#926C15]"
+            >
+              {label}
+            </Link>
+          )
+        )}
+      </nav>
 
-          <NavigationMenuItem>
-            {routeList.map(({ href, label }) => (
-              <NavigationMenuLink key={href} asChild>
-                <Link href={href} className="text-base px-2 hover:bg-[#926C15] hover:text-white hover:rounded-md py-1">
-                  {label}
-                </Link>
-              </NavigationMenuLink>
-            ))}
-          </NavigationMenuItem>
-        </NavigationMenuList>
-      </NavigationMenu>
       <div className="hidden lg:flex">
         <ThemeToggle />
       </div>

@@ -62,11 +62,12 @@ export interface RedesignResponse {
 // Positions are character offsets into documentContent.
 
 export interface DiffInsertion {
-  id:      string;
-  from:    number;
-  content: string;
+  id:         string;
+  from:       number;
+  content:    string;
+  dimension?: string;
   /** The RedesignSuggestion that generated this insertion */
-  source:  RedesignSuggestion;
+  source:     RedesignSuggestion;
 }
 
 export interface DiffDeletion {

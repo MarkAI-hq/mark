@@ -1,105 +1,66 @@
 // src/app/(auth)/register/page.tsx
 import { Metadata } from 'next'
-import Image from 'next/image'
-import { BarChart2, Brain, FileText } from 'lucide-react'
+import { Sparkles, ArrowLeft } from 'lucide-react'
 import { SignupForm } from '@/components/auth/signup-form'
+import { RegisterLeftPanel } from '@/components/auth/register-left-panel'
 import Link from 'next/link'
 
 export const metadata: Metadata = {
-  title:       'Get Started — Mark',
+  title:       'Get Started — Mirror Intelligence',
   description: 'Create your school account',
 }
-
-const FEATURES = [
-  {
-    icon:  Brain,
-    title: 'AI-Powered Grading',
-    desc:  'Grade entire classes in minutes with 97%+ accuracy.',
-  },
-  {
-    icon:  BarChart2,
-    title: 'Deep Learning Analytics',
-    desc:  "Track every student's Bloom's taxonomy progression.",
-  },
-  {
-    icon:  FileText,
-    title: 'Instant PDF Reports',
-    desc:  'Generate and export student performance reports in one click.',
-  },
-]
 
 export default function RegisterPage() {
   return (
     <div className="min-h-screen grid lg:grid-cols-2">
 
-      {/* ── Left panel ──────────────────────────────────────────────── */}
-      <div className="hidden lg:flex flex-col gap-8 bg-slate-900 p-16 text-white">
-        <div className="flex items-center gap-3">
-        <Link href="/">
-          <Image
-            src="/assets/images/markBlackBg.png"
-            alt="Mark logo"
-            width={200}
-            height={100}
-            className="rounded-lg"
-          />
-        </Link>
-        </div>
-
-        <div className="space-y-10">
-          <div className="space-y-3">
-            <h1 className="text-4xl font-bold leading-tight">
-              The Learning Intelligence platform for schools.
-            </h1>
-            <p className="text-slate-400 text-lg leading-relaxed max-w-sm">
-              Join hundreds of teachers saving hours every week while giving students deeper actionable feedback.
-            </p>
-          </div>
-
-          <div className="space-y-5">
-            {FEATURES.map(({ icon: Icon, title, desc }) => (
-              <div key={title} className="flex items-start gap-3.5">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white/10">
-                  <Icon className="h-4 w-4 text-amber-400" />
-                </div>
-                <div>
-                  <p className="text-sm font-semibold">{title}</p>
-                  <p className="text-xs text-slate-400 mt-0.5 leading-relaxed">{desc}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <p className="text-xs text-slate-500">
-          © {new Date().getFullYear()} Mark. All rights reserved.
-        </p>
-      </div>
+      <RegisterLeftPanel />
 
       {/* ── Right panel — form ───────────────────────────────────────── */}
-      <div className="flex flex-col justify-center items-center px-8 py-16 sm:px-16 lg:px-24 bg-slate-50">
+      <div className="relative flex flex-col items-center justify-center min-h-screen px-6 py-16 sm:px-10 bg-background">
 
-        {/* Mobile logo */}
-        <div className="flex items-center gap-2.5 mb-8 lg:hidden self-start">
-          <Image
-            src="/assets/images/markBlackBg.png"
-            alt="Mark logo"
-            width={28}
-            height={28}
-            className="rounded-lg"
-          />
+        {/* Top navigation */}
+        <div className="absolute top-6 left-6 right-6 flex items-center justify-between">
+          <Link
+            href="/"
+            className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-[#926C15] transition-colors"
+          >
+            <ArrowLeft className="h-3.5 w-3.5" />
+            Back to home
+          </Link>
+          <p className="text-sm text-muted-foreground">
+            Have an account?{' '}
+            <Link href="/login" className="font-semibold text-[#926C15] hover:underline underline-offset-2">
+              Sign in
+            </Link>
+          </p>
         </div>
 
-        {/* Card */}
-        <div className="w-full max-w-sm bg-white rounded-2xl border border-slate-200 shadow-sm px-8 py-10 space-y-8">
-          <div className="space-y-1.5">
-            <h2 className="text-2xl font-bold text-slate-900">Create your account</h2>
-            <p className="text-sm text-slate-500">
-              Set up your school in under 2 minutes. No credit card required.
+        {/* Form section */}
+        <div className="w-full max-w-md">
+
+          {/* Heading */}
+          <div className="mb-8">
+            <div className="inline-flex items-center gap-2 rounded-full border border-[#926C15]/30 bg-[#926C15]/6 px-3.5 py-1 text-xs font-semibold text-[#926C15] mb-5">
+              <Sparkles className="h-3 w-3" />
+              Free to start · No credit card required
+            </div>
+            <h1 className="text-3xl font-black tracking-tighter text-foreground leading-tight">
+              Set up your school<br />in under 2 minutes.
+            </h1>
+            <p className="text-sm text-muted-foreground mt-2">
+              Join hundreds of schools already on Mirror Intelligence.
             </p>
           </div>
 
-          <SignupForm />
+          {/* Card with gold top accent */}
+          <div>
+            <div className="h-0.5 rounded-t-2xl bg-gradient-to-r from-[#926C15] via-[#C09020] to-[#D4AA30]" />
+            <div className="bg-card rounded-b-2xl border border-t-0 border-border/60 shadow-xl shadow-black/5 px-8 py-8">
+              <SignupForm />
+            </div>
+          </div>
+
         </div>
 
       </div>

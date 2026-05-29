@@ -2,11 +2,8 @@
 
 import { fetcher } from '@/lib/fetch'
 import type { ServerActionResponse } from '@/lib/types'
+import type { AssessmentDiff } from '@/components/editor/types'
 
-/**
- * Matches the RedesignItem structure defined in the
- * database and backend DTOs.
- */
 export interface RedesignItem {
   section_label:           string;
   dimension:               string;
@@ -33,6 +30,16 @@ export interface AuditHistoryEntry {
   created_at:    string;
 }
 
+export interface RedesignVariation {
+  id:               'conservative' | 'comprehensive';
+  label:            string;
+  description:      string;
+  diff:             AssessmentDiff;
+  projected_score:  number;
+  projected_status: 'passed' | 'flagged';
+  change_count:     number;
+}
+
 export async function getLatestAudit(assessmentId: string): Promise<ServerActionResponse<any>> {
   return fetcher(`/assessments/${assessmentId}/audit`, { cache: 'no-store' });
 }
@@ -48,7 +55,7 @@ export async function overrideAudit(assessmentId: string, reason: string): Promi
   });
 }
 
-export async function getRedesignSuggestions(assessmentId: string): Promise<ServerActionResponse<any>> {
+export async function getRedesignSuggestions(assessmentId: string): Promise<ServerActionResponse<{ variations: RedesignVariation[] }>> {
   return fetcher(`/assessments/${assessmentId}/audit/redesign-suggestions`, {
     method: 'POST',
   });
@@ -56,7 +63,7 @@ export async function getRedesignSuggestions(assessmentId: string): Promise<Serv
 
 export async function saveRedesignItems(
   assessmentId: string,
-  items: RedesignItem[]
+  items: RedesignItem[],
 ): Promise<ServerActionResponse<any>> {
   return fetcher(`/assessments/${assessmentId}/audit/redesign-items`, {
     method: 'POST',
@@ -78,5 +85,12 @@ export async function reuploadAssessment(assessmentId: string, formData: FormDat
 export async function triggerAudit(assessmentId: string): Promise<ServerActionResponse<any>> {
   return fetcher(`/assessments/${assessmentId}/audit`, {
     method: 'POST',
+  });
+}
+
+export async function confirmRedesign(assessmentId: string, html: string): Promise<ServerActionResponse<any>> {
+  return fetcher(`/assessments/${assessmentId}/audit/redesign/confirm`, {
+    method: 'POST',
+    body: JSON.stringify({ html }),
   });
 }

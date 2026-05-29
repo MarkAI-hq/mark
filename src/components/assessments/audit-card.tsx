@@ -3,7 +3,7 @@
 import {
   ShieldCheck, AlertTriangle, CheckCircle2,
   XCircle, BookOpen, Target, Microscope,
-  MessageSquare, BarChart3, Hash, Layers
+  MessageSquare, Hash, Layers, HelpCircle, Wrench,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -39,6 +39,7 @@ interface AuditCardProps {
   auditMode?: string;
   previousFindings?: AuditFinding[];
   cycleCount?: number;
+  onFixDimension?: (dimension: string) => void;
 }
 
 // ── Config ─────────────────────────────────────────────────────────────────
@@ -306,6 +307,36 @@ function FindingDetail({ finding }: { finding: AuditFinding }) {
   }
 }
 
+// ── Score gauge ────────────────────────────────────────────────────────────
+
+function ScoreGauge({ score, color }: { score: number; color: string }) {
+  const r    = 26;
+  const circ = 2 * Math.PI * r;
+  const dash = (score / 100) * circ;
+
+  return (
+    <div className="relative w-16 h-16 shrink-0">
+      <svg className="w-full h-full" viewBox="0 0 70 70">
+        <circle cx="35" cy="35" r={r} fill="none" stroke="#f0e8d5" strokeWidth="5" />
+        <circle
+          cx="35" cy="35" r={r}
+          fill="none"
+          stroke={color}
+          strokeWidth="5"
+          strokeLinecap="round"
+          strokeDasharray={`${dash} ${circ}`}
+          transform="rotate(-90 35 35)"
+          style={{ transition: 'stroke-dasharray 1s ease' }}
+        />
+      </svg>
+      <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+        <span className="text-[15px] font-black tabular-nums leading-none" style={{ color }}>{score}</span>
+        <span className="text-[7px] text-muted-foreground font-bold leading-none">/100</span>
+      </div>
+    </div>
+  );
+}
+
 // ── Diff badge ─────────────────────────────────────────────────────────────
 
 type DiffStatus = 'resolved' | 'still_failing' | 'new' | null;
@@ -405,7 +436,7 @@ function DiffSummaryStrip({
 
 // ── Main Component ─────────────────────────────────────────────────────────
 
-export function AuditCard({ overallScore, findings, status, previousFindings, cycleCount }: AuditCardProps) {
+export function AuditCard({ overallScore, findings, status, previousFindings, cycleCount, onFixDimension }: AuditCardProps) {
   const isFlagged   = status === 'flagged' || status === 'failed';
   const passedCount = findings.filter(f => f.status === 'passed').length;
   const flaggedCount = findings.filter(f => f.status === 'flagged').length;
@@ -440,13 +471,10 @@ export function AuditCard({ overallScore, findings, status, previousFindings, cy
           </div>
         </div>
 
-        {/* Score dial */}
-        <div className="flex flex-col items-end">
-          <div className="flex items-baseline gap-1">
-            <span className="text-3xl font-black tabular-nums" style={{ color: scoreColor }}>{overallScore}</span>
-            <span className="text-xs text-muted-foreground font-bold">/100</span>
-          </div>
-          <div className="flex items-center gap-2 mt-1">
+        {/* Score gauge */}
+        <div className="flex flex-col items-end gap-1">
+          <ScoreGauge score={overallScore} color={scoreColor} />
+          <div className="flex items-center gap-2">
             {passedCount > 0 && (
               <span className="text-[9px] font-bold text-green-600 flex items-center gap-0.5">
                 <CheckCircle2 className="w-2.5 h-2.5" />{passedCount} passed
@@ -524,9 +552,25 @@ export function AuditCard({ overallScore, findings, status, previousFindings, cy
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-xs font-black text-foreground">
-                            {config?.label ?? finding.dimension.replace(/_/g, ' ')}
-                          </span>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="flex items-center gap-1 cursor-default">
+                                  <span className="text-xs font-black text-foreground">
+                                    {config?.label ?? finding.dimension.replace(/_/g, ' ')}
+                                  </span>
+                                  {config?.description && (
+                                    <HelpCircle className="w-3 h-3 text-muted-foreground/50 shrink-0" />
+                                  )}
+                                </span>
+                              </TooltipTrigger>
+                              {config?.description && (
+                                <TooltipContent className="text-[11px] max-w-[220px] bg-[#1e1c1a] text-white border-[#c9a84c]/40 p-3 leading-relaxed">
+                                  {config.description}
+                                </TooltipContent>
+                              )}
+                            </Tooltip>
+                          </TooltipProvider>
                           <Badge
                             className={cn(
                               'text-[8px] font-black uppercase px-1.5 py-0 h-4 border-none',
@@ -564,6 +608,20 @@ export function AuditCard({ overallScore, findings, status, previousFindings, cy
 
                     {/* Rich detail panel */}
                     <FindingDetail finding={finding} />
+
+                    {/* Fix this button — only for flagged findings */}
+                    {isBad && onFixDimension && (
+                      <div className="mt-3 pt-3 border-t border-amber-200/60">
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); onFixDimension(finding.dimension); }}
+                          className="inline-flex items-center gap-1.5 text-[11px] font-black text-amber-700 hover:text-amber-800 transition-colors"
+                        >
+                          <Wrench className="w-3 h-3" />
+                          Fix this →
+                        </button>
+                      </div>
+                    )}
                   </AccordionContent>
                 </AccordionItem>
               );

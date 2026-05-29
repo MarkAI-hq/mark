@@ -233,7 +233,7 @@ export function OnboardingWizard({ adminName, schoolName }: OnboardingWizardProp
           <div className="space-y-10">
             <div className="space-y-3">
               <h1 className="text-4xl font-bold leading-tight">
-                The Learning Intelligence platform for schools.
+                Mirror Intelligence for schools.
               </h1>
               <p className="text-slate-400 text-lg leading-relaxed max-w-sm">
                 Join hundreds of teachers saving hours every week while giving students deeper actionable feedback.

@@ -15,8 +15,8 @@ import { AuthInitializer } from '@/components/auth/auth-initializer';
 // --- END NEW IMPORTS ---
 
 export const metadata: Metadata = {
-  title: 'Mark AI: Learning Improvement System',
-  description: 'AI Powered Learning Intelligence and Improvement System.',
+  title: 'Mirror Intelligence',
+  description: 'Teaching Intelligence, Learning Intelligence, and School Insights — in one closed-loop platform.',
 };
 
 export default async function RootLayout({

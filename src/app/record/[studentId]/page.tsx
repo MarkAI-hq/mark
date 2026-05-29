@@ -10,7 +10,7 @@ import PublicRecord from "@/components/record/public-record";
 
 export const metadata: Metadata = {
   title: "Proof of Learning · Mirror",
-  description: "Verified learning record powered by Mirror Teaching Intelligence",
+  description: "Verified learning record powered by Mirror Learning Intelligence",
 };
 
 export default function PublicRecordPage() {

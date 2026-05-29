@@ -8,8 +8,8 @@ import { DeletionMark }        from './extensions/DeletionMark';
 import { ImageSuggestionNode } from './extensions/ImageSuggestionNode';
 import { useSuggestions }      from './hooks/useSuggestions';
 import { useApplyDiff }        from './hooks/useApplyDiff';
-import type { AssessmentDiff, SuggestionRecord, DiffInsertion, ImageCandidate } from './types';
-import { CheckCheck, X, BookOpen, Tag, Brain, AlignLeft, Image as ImageIcon, Sparkles } from 'lucide-react';
+import type { AssessmentDiff, SuggestionRecord, DiffInsertion } from './types';
+import { CheckCheck, X, BookOpen, Tag, Brain, AlignLeft, Image as ImageIcon, Sparkles, Filter } from 'lucide-react';
 import { Badge }  from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn }     from '@/lib/utils';
@@ -22,16 +22,26 @@ export interface MirrorEditorHandle {
   getAcceptedImages: () => Array<{ image_url: string | null; position: number }>;
 }
 
+const DIMENSION_LABELS: Record<string, string> = {
+  blooms:        "Bloom's Taxonomy",
+  kusa:          'KUSA Framework',
+  topics:        'Syllabus Coverage',
+  command_words: 'Command Words',
+  marks:         'Mark Allocation',
+};
+
 interface MirrorEditorProps {
-  diff:        AssessmentDiff;
-  onConfirm?:  (html: string, acceptedImages: Array<{ image_url: string | null; position: number }>) => void;
-  className?:  string;
+  diff:              AssessmentDiff;
+  onConfirm?:        (html: string, acceptedImages: Array<{ image_url: string | null; position: number }>) => void;
+  className?:        string;
   /** Optional renderer for per-suggestion metadata. Defaults to GroundingTrace. */
-  renderMeta?: (insertion: DiffInsertion) => React.ReactNode;
+  renderMeta?:       (insertion: DiffInsertion) => React.ReactNode;
   /** Optional label overrides for action_type badges */
-  actionLabels?: Record<string, string>;
+  actionLabels?:     Record<string, string>;
   /** Label for the confirm button */
-  confirmLabel?: string;
+  confirmLabel?:     string;
+  /** When set, surfaces suggestions for this dimension first and shows a filter chip */
+  filterDimension?:  string;
 }
 
 // ── Grounding trace card (default meta renderer) ──────────────────────────────
@@ -153,7 +163,7 @@ function SuggestionCard({
 function ImagePanel({ diff }: { diff: AssessmentDiff }) {
   const [accepted, setAccepted] = useState<Set<string>>(new Set());
 
-  if (!diff.imageSuggestions.length) return null;
+  if (!diff.imageSuggestions?.length) return null;
 
   return (
     <div className="border-t border-border mt-3 pt-3">
@@ -161,7 +171,7 @@ function ImagePanel({ diff }: { diff: AssessmentDiff }) {
         <ImageIcon className="w-3 h-3" />Visual suggestions
       </p>
       <div className="space-y-2">
-        {diff.imageSuggestions.map(img => (
+        {(diff.imageSuggestions ?? []).map(img => (
           <div key={img.id} className="rounded-md border border-border p-2">
             {img.needs_ai_generation && (
               <div className="flex items-center gap-1.5 text-[10px] text-amber-600 mb-1.5">
@@ -223,6 +233,7 @@ export const MirrorEditor = forwardRef<MirrorEditorHandle, MirrorEditorProps>(
     renderMeta,
     actionLabels,
     confirmLabel = 'Confirm & export',
+    filterDimension,
   }, ref) {
     const [activeId, setActiveId] = useState<string | null>(null);
 
@@ -232,8 +243,8 @@ export const MirrorEditor = forwardRef<MirrorEditorHandle, MirrorEditorProps>(
     );
 
     const initialSuggestions: SuggestionRecord[] = useMemo(() => [
-      ...diff.insertions.map(i => ({ id: i.id, type: 'insertion' as const, status: 'pending' as const })),
-      ...diff.deletions.map(d => ({ id: d.id, type: 'deletion' as const, status: 'pending' as const })),
+      ...(diff.insertions ?? []).map(i => ({ id: i.id, type: 'insertion' as const, status: 'pending' as const })),
+      ...(diff.deletions ?? []).map(d => ({ id: d.id, type: 'deletion' as const, status: 'pending' as const })),
     ], []);
 
     const editor = useEditor({
@@ -257,9 +268,18 @@ export const MirrorEditor = forwardRef<MirrorEditorHandle, MirrorEditorProps>(
 
     const insertionById = useMemo(() => {
       const map = new Map<string, DiffInsertion>();
-      diff.insertions.forEach(i => map.set(i.id, i));
+      (diff.insertions ?? []).forEach(i => map.set(i.id, i));
       return map;
     }, [diff.insertions]);
+
+    // When a dimension filter is active, sort matching suggestions to the top
+    const sortedSuggestions = filterDimension
+      ? [...suggestions].sort((a, b) => {
+          const aMatch = insertionById.get(a.id)?.dimension === filterDimension ? -1 : 0;
+          const bMatch = insertionById.get(b.id)?.dimension === filterDimension ? -1 : 0;
+          return aMatch - bMatch;
+        })
+      : suggestions;
 
     // ── Collect accepted images from editor nodes ──────────────────────────
     const collectAcceptedImages = (): Array<{ image_url: string | null; position: number }> => {
@@ -359,6 +379,15 @@ export const MirrorEditor = forwardRef<MirrorEditorHandle, MirrorEditorProps>(
               </div>
             )}
           </div>
+          {filterDimension && (
+            <div className="px-3 py-1.5 border-b bg-amber-50 flex items-center gap-1.5 shrink-0">
+              <Filter className="w-2.5 h-2.5 text-amber-600 shrink-0" />
+              <span className="text-[10px] text-amber-700 font-semibold flex-1 truncate">
+                {DIMENSION_LABELS[filterDimension] ?? filterDimension}
+              </span>
+              <span className="text-[9px] text-amber-500">fixes first</span>
+            </div>
+          )}
 
           <div className="flex-1 overflow-y-auto px-3 py-3 space-y-2">
             {suggestions.length === 0 && (
@@ -368,7 +397,7 @@ export const MirrorEditor = forwardRef<MirrorEditorHandle, MirrorEditorProps>(
               </div>
             )}
 
-            {suggestions.map(s => (
+            {sortedSuggestions.map(s => (
               <SuggestionCard
                 key={s.id}
                 suggestion={s}

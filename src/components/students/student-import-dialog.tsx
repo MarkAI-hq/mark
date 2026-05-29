@@ -82,7 +82,10 @@ export function StudentImportDialog({
         const failureCount = data.failed.length
 
         if (successCount === 0) {
-          toast.error('Import Failed', { description: 'No students were imported.' })
+          const firstError = data.failed?.[0]?.error
+          toast.error('Import Failed', {
+            description: firstError ?? 'Check your CSV format — ensure a "name" column exists.',
+          })
           return
         }
 
@@ -223,7 +226,7 @@ export function StudentImportDialog({
               <div className="bg-slate-900 px-4 py-3">
                 <h1 className="text-white font-bold text-sm">Student Login Credentials</h1>
                 <p className="text-slate-400 text-xs mt-0.5">
-                  Mark-AI Labs — Generated {new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}
+                  Mirror Intelligence Labs — Generated {new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}
                   {' '}— Keep confidential
                 </p>
               </div>

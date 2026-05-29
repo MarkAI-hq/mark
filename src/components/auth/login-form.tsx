@@ -138,7 +138,7 @@ export function LoginForm() {
           name="email"
           render={({ field }) => (
             <FormItem>
-              <FormLabel className="text-slate-700">Email</FormLabel>
+              <FormLabel className="text-foreground">Email</FormLabel>
               <FormControl>
                 <Input placeholder="you@school.com" type="email" {...field} />
               </FormControl>
@@ -153,10 +153,10 @@ export function LoginForm() {
           render={({ field }) => (
             <FormItem>
               <div className="flex items-center justify-between">
-                <FormLabel className="text-slate-700">Password</FormLabel>
+                <FormLabel className="text-foreground">Password</FormLabel>
                 <Link
                   href="/forgot-password"
-                  className="text-xs text-slate-500 hover:text-slate-900 transition-colors"
+                  className="text-xs text-muted-foreground hover:text-[#926C15] transition-colors"
                 >
                   Forgot password?
                 </Link>
@@ -171,15 +171,15 @@ export function LoginForm() {
 
         <Button
           type="submit"
-          className="w-full bg-slate-900 hover:bg-slate-700 text-white mt-2"
+          className="w-full bg-[#926C15] hover:bg-[#7A5A10] text-white shadow-lg shadow-[#926C15]/25 mt-2"
           disabled={form.formState.isSubmitting}
         >
           {form.formState.isSubmitting ? 'Signing in...' : 'Sign in'}
         </Button>
 
-        <p className="text-center text-sm text-slate-500">
-          Don't have an account?{' '}
-          <Link href="/register" className="font-medium text-slate-900 hover:underline">
+        <p className="text-center text-sm text-muted-foreground">
+          Don&apos;t have an account?{' '}
+          <Link href="/register" className="font-medium text-[#926C15] hover:underline">
             Get started
           </Link>
         </p>

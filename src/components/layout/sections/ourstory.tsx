@@ -1,9 +1,13 @@
 'use client';
 
-import React from "react";
+import { useRef } from "react";
+import { motion, useInView } from "framer-motion";
 import { Timeline } from "@/components/ui/timeline";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
+import { ArrowRight } from "lucide-react";
+
+const ease = [0.22, 1, 0.36, 1] as const;
 
 interface CardData {
   src: string;
@@ -20,34 +24,42 @@ interface GroupData {
   cards: CardData[];
 }
 
-function Card({ card }: { card: CardData }) {
+function Card({ card, index }: { card: CardData; index: number }) {
+  const ref = useRef(null);
+  const inView = useInView(ref, { once: true, margin: "-60px" });
+
   return (
-    <div className="relative h-80 w-full rounded-lg overflow-hidden shadow-[0_0_24px_rgba(34,_42,_53,_0.06),_0_1px_1px_rgba(0,_0,_0,_0.05),_0_0_0_1px_rgba(34,_42,_53,_0.04),_0_0_4px_rgba(34,_42,_53,_0.08),_0_16px_68px_rgba(47,_48,_55,_0.05),_0_1px_0_rgba(255,_255,_255,_0.1)_inset] md:h-80 lg:h-80">
-      <Image
-        src={card.src}
-        alt={card.alt}
-        fill
-        className="object-cover"
-      />
-      <div className="absolute bottom-0 w-full h-2/2 bg-white bg-opacity-60 backdrop-blur-md p-6 dark:bg-neutral-900 dark:bg-opacity-60">
-        <p className="text-sm text-neutral-900 dark:text-neutral-200">{card.description}</p>
+    <motion.div
+      ref={ref}
+      initial={{ opacity: 0, y: 24 }}
+      animate={inView ? { opacity: 1, y: 0 } : {}}
+      transition={{ duration: 0.6, delay: index * 0.08, ease }}
+      className="group relative overflow-hidden rounded-2xl border border-border bg-card transition-all duration-300 hover:border-[#926C15]/35 hover:shadow-lg hover:shadow-[#926C15]/6"
+    >
+      <div className="relative h-52 overflow-hidden">
+        <Image
+          src={card.src}
+          alt={card.alt}
+          fill
+          sizes="(max-width: 768px) 100vw, 50vw"
+          className="object-cover transition-transform duration-700 group-hover:scale-105"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
+      </div>
+      <div className="p-5 space-y-4">
+        <p className="text-sm text-muted-foreground leading-relaxed">{card.description}</p>
         <a href={card.buttonLink} target="_blank" rel="noopener noreferrer">
-          <Button variant="default" className="mt-4 flex items-center gap-2 hover:bg-[#926C15] hover:text-white">
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 gap-1.5 border-[#926C15]/30 text-xs text-[#926C15] transition-all duration-200 hover:bg-[#926C15] hover:text-white hover:border-[#926C15]"
+          >
             {card.buttonText}
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              strokeWidth={2}
-              stroke="currentColor"
-              className="h-4 w-4"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-            </svg>
+            <ArrowRight className="h-3 w-3" />
           </Button>
         </a>
       </div>
-    </div>
+    </motion.div>
   );
 }
 
@@ -55,79 +67,40 @@ export function OurStory() {
   const groups: GroupData[] = [
     {
       heading: "The Problem We're Solving",
-      subheading: "The One-Size-Fits-All Challenge.",
-      subtitle: "Education strives for personalization, yet struggles to deliver it at scale.",
+      subheading: "The teaching loop is broken everywhere.",
+      subtitle: "Teachers grade. Platforms report. But nobody closes the loop — nobody tells you why a student failed, or exactly what to do next.",
       cards: [
         {
           src: "/assets/images/teacheroverloads.jpeg",
           alt: "Teacher Overload",
           description:
-            "Teacher Overload: Educators are burdened with differentiation, constantly adapting for diverse needs without sufficient tools or time.",
-          buttonText: "Solve Challenge",
-          buttonLink: "/signup",
+            "Teacher Overload: Educators spend more time marking than teaching. Grading a single class set takes hours — leaving no time for the intervention that actually moves scores.",
+          buttonText: "See how Mirror helps",
+          buttonLink: "/register",
         },
         {
           src: "/assets/images/innovationtrapped.jpg",
-          alt: "Innovation Trapped",
+          alt: "Grading Without Diagnosis",
           description:
-            "Innovation Trapped: Groundbreaking pedagogical approaches often remain confined to research papers or individual classrooms, unable to scale their impact.",
-          buttonText: "Read More",
+            "Grading Without Diagnosis: A score tells you what happened. Mirror tells you why — the specific thinking error behind every wrong answer, classified and mapped to Bloom's taxonomy so you know exactly what to do next.",
+          buttonText: "Learn more",
           buttonLink: "#",
         },
         {
           src: "/assets/images/studentdisengagement.jpg",
-          alt: "Student Disengagement",
+          alt: "Students Left Behind",
           description:
-            "Student Disengagement: Generic curricula leave too many students feeling unseen, unchallenged, or left behind.",
-          buttonText: "Understand the Impact",
+            "Students Left Behind: When errors aren't diagnosed, the same gaps compound across every assessment. Students who needed early intervention fall further behind each term.",
+          buttonText: "Understand the impact",
           buttonLink: "#",
         },
         {
           src: "/assets/images/aiblackbox.jpg",
-          alt: "AI's Missing Link",
+          alt: "AI Built on Teaching Science",
           description:
-            'AI\'s Missing Link: Current EdTech AI often acts as a "black box," lacking the transparent, expert-driven pedagogical intelligence needed for true adaptive learning.',
-          buttonText: "Discover the Solution",
+            "AI Built on Teaching Science: Mirror's schema-enriched AI doesn't just process text — it understands student thinking. Every mark is justified against your marking scheme, with the specific cognitive error identified, classified, and mapped. That's pedagogy-first intelligence.",
+          buttonText: "Discover Mirror",
           buttonLink: "#",
-        },
-      ],
-    },
-    {
-      heading: "How Mark AI Works",
-      subheading: "Mark AI: Where Expert Pedagogy Meets Adaptive AI.",
-      subtitle: "We're creating an Ecosystem of Pedagogy and the Engine of Personalized Learning. Here's how it transforms learning:",
-      cards: [
-        {
-          src: "/assets/images/experts.jpg",
-          alt: "Mechanism One",
-          description:
-            "Expert Educators as Architects: Leading teachers, curriculum designers, and learning scientists contribute their unique pedagogical frameworks, learning pathways, and diagnostic strategies directly to Mark AI.",
-          buttonText: "Join our team",
-          buttonLink: "mailto:info@xrefracted.com?subject=Join Mark AI",
-        },
-        {
-          src: "/assets/images/pkgraph.png",
-          alt: "Mechanism Two",
-          description:
-            "Mark IPOS: Our advanced AI processes expert input, constructing a dynamic, interconnected brain that understands concepts, how best they're taught, what misconceptions arise, and how to adapt instruction.",
-          buttonText: "Learn About PKG",
-          buttonLink: "mailto:info@xrefracted.com?subject=Mark AI PKG Demo",
-        },
-        {
-          src: "/assets/images/dark.webp",
-          alt: "Mechanism Three",
-          description:
-            "Dynamic, Personalized Learning Journeys: Leverage Mark IPOS and real-time student data, to dynamically generate a unique adaptive learning path for each student.",
-          buttonText: "Get a Demo",
-          buttonLink: "mailto:info@xrefracted.com?subject=Mark AI PKG Demo",
-        },
-        {
-          src: "/assets/images/assessments.jpg",
-          alt: "Mechanism Four",
-          description:
-            "Intelligent Assessment & Feedback: Our robust assessment capabilities provide deep diagnostic insights to continuously refine learning pathways.",
-          buttonText: "Start for free",
-          buttonLink: "/signup",
         },
       ],
     },
@@ -140,15 +113,15 @@ export function OurStory() {
           title: heading,
           content: (
             <div>
-              <h2 className="mb-3 text-xl font-bold text-neutral-900 dark:text-neutral-300">
+              <h2 className="mb-2 text-xl font-bold text-foreground">
                 {subheading}
               </h2>
-              <h3 className="mb-8 text-md font-semibold text-neutral-500 dark:text-neutral-400">
+              <h3 className="mb-8 text-sm font-medium text-muted-foreground">
                 {subtitle}
               </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 {cards.map((card, i) => (
-                  <Card key={i} card={card} />
+                  <Card key={i} card={card} index={i} />
                 ))}
               </div>
             </div>

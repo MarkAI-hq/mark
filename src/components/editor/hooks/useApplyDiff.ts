@@ -25,51 +25,55 @@ export function useApplyDiff(editor: Editor | null, diff: AssessmentDiff | null)
     const { state } = editor;
     const tr = state.tr;
 
-    // Pass 1: deletion marks (no position change)
-    diff.deletions.forEach(({ id, from, to }) => {
-      const mark = state.schema.marks.deletion.create({ suggestionId: id });
-      tr.addMark(from, to, mark);
-    });
+    try {
+      // Pass 1: deletion marks (no position change)
+      (diff.deletions ?? []).forEach(({ id, from, to }) => {
+        const mark = state.schema.marks.deletion.create({ suggestionId: id });
+        tr.addMark(from, to, mark);
+      });
 
-    // Pass 2: insertions + image nodes, reverse position order
-    const ops: PendingOp[] = [
-      ...diff.insertions.map((i) => ({
-        kind: 'insertion' as const,
-        id: i.id,
-        position: i.from,
-        content: i.content,
-      })),
-      ...diff.imageSuggestions.map((s) => ({
-        kind:              'imageSuggestion' as const,
-        id:                s.id,
-        position:          s.position,
-        candidates:        s.candidates,
-        needsAiGeneration: s.needs_ai_generation,
-      })),
-    ];
+      // Pass 2: insertions + image nodes, reverse position order
+      const ops: PendingOp[] = [
+        ...(diff.insertions ?? []).map((i) => ({
+          kind: 'insertion' as const,
+          id: i.id,
+          position: i.from,
+          content: i.content,
+        })),
+        ...(diff.imageSuggestions ?? []).map((s) => ({
+          kind:              'imageSuggestion' as const,
+          id:                s.id,
+          position:          s.position,
+          candidates:        s.candidates,
+          needsAiGeneration: s.needs_ai_generation,
+        })),
+      ];
 
-    ops.sort((a, b) => b.position - a.position);
+      ops.sort((a, b) => b.position - a.position);
 
-    ops.forEach((op) => {
-      const pos = tr.mapping.map(op.position);
+      ops.forEach((op) => {
+        const pos = tr.mapping.map(op.position);
 
-      if (op.kind === 'insertion') {
-        const mark = state.schema.marks.insertion.create({ suggestionId: op.id });
-        const textNode = state.schema.text(op.content, [mark]);
-        tr.insert(pos, textNode);
-      } else {
-        const node = state.schema.nodes.imageSuggestion.create({
-          suggestionId:      op.id,
-          candidates:        op.candidates,
-          needsAiGeneration: op.needsAiGeneration,
-        });
-        tr.insert(pos, node);
-      }
-    });
+        if (op.kind === 'insertion') {
+          const mark = state.schema.marks.insertion.create({ suggestionId: op.id });
+          const textNode = state.schema.text(op.content, [mark]);
+          tr.insert(pos, textNode);
+        } else {
+          const node = state.schema.nodes.imageSuggestion.create({
+            suggestionId:      op.id,
+            candidates:        op.candidates,
+            needsAiGeneration: op.needsAiGeneration,
+          });
+          tr.insert(pos, node);
+        }
+      });
 
-    // Exclude from undo history — this is a programmatic initialisation step
-    tr.setMeta('addToHistory', false);
-    editor.view.dispatch(tr);
+      // Exclude from undo history — this is a programmatic initialisation step
+      tr.setMeta('addToHistory', false);
+      editor.view.dispatch(tr);
+    } catch (err) {
+      console.error('[useApplyDiff] Failed to apply diff to editor:', err);
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editor]); // intentionally runs only when editor becomes ready
 }

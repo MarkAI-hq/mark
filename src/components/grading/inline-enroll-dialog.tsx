@@ -215,7 +215,10 @@ function CsvTab({ classId, onSuccess }: { classId: string; onSuccess: (count: nu
       const { data, error } = await importStudentsFromFile(classId, formData)
       if (error) { toast.error('Import failed', { description: error.message }); return }
       if (!data || data.successful.length === 0) {
-        toast.error('No students were imported.')
+        const firstError = data?.failed?.[0]?.error
+        toast.error('No students were imported.', {
+          description: firstError ?? 'Check your CSV format — ensure a "name" column exists.',
+        })
         return
       }
       try {
@@ -323,7 +326,7 @@ function PinSheet({
         <div className="bg-slate-900 px-4 py-3">
           <h1 className="text-white font-bold text-sm">Student Login Credentials</h1>
           <p className="text-slate-400 text-xs mt-0.5">
-            Mark-AI Labs — {new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })} — Keep confidential
+            Mirror Intelligence Labs — {new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })} — Keep confidential
           </p>
         </div>
         <div className="max-h-64 overflow-y-auto">
