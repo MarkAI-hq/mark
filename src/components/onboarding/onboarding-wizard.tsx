@@ -14,7 +14,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { createClass } from '@/lib/actions/classes'
-import { createSubject } from '@/lib/actions/subjects'
+import { createSubjects } from '@/lib/actions/subjects'
 import { saveOrganizationSetup, completeOnboarding } from '@/lib/actions/onboarding'
 import { StudentImportDialog } from '@/components/students/student-import-dialog'
 
@@ -154,12 +154,11 @@ export function OnboardingWizard({ adminName, schoolName }: OnboardingWizardProp
         DEFAULT_SUBJECTS[schoolType as SchoolTypeKey]?.[educationSystem as EduSystemKey] ?? []
 
       if (subjectNames.length > 0) {
-        const subjectResults = await Promise.all(
-          subjectNames.map(name => createSubject({ name }))
+        const { error: subjectsError } = await createSubjects(
+          subjectNames.map(name => ({ name }))
         )
-        const failedSubjects = subjectResults.filter(r => r.error)
-        if (failedSubjects.length > 0) {
-          toast.warning(`${failedSubjects.length} subject(s) failed to save — you can add them later.`)
+        if (subjectsError) {
+          toast.warning(`Subjects could not be saved — you can add them later. (${subjectsError.message})`)
         }
         setCreatedSubjects(subjectNames)
       }

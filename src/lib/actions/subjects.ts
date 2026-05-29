@@ -35,6 +35,29 @@ export async function createSubject(data: {
   }
 }
 
+export async function createSubjects(
+  subjects: Array<{
+    name: string;
+    code?: string;
+    description?: string;
+  }>
+): Promise<ServerActionResponse<Subject[]>> {
+  try {
+    const response = await fetcher<Subject[]>('/academics/subjects/bulk', {
+      method: 'POST',
+      body: JSON.stringify({ subjects })
+    });
+
+    const createdSubjects = handleMutationResponse(response);
+    revalidatePath('/dashboard/subjects');
+    revalidatePath('/dashboard/exams');
+    return { data: createdSubjects, error: null };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'An unknown error occurred';
+    return { data: null, error: { message } };
+  }
+}
+
 export async function getSubjects(): Promise<ServerActionResponse<Subject[]>> {
   return await fetcher<Subject[]>('/academics/subjects', {
     cache: 'no-store'
