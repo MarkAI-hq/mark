@@ -1,14 +1,16 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback, useId } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import {
-  Paperclip, ArrowUp, RotateCcw, Sparkles, Plus, X,
+  Paperclip, ArrowUp, RotateCcw, Sparkles, X,
   FileText, Image as ImageIcon, PanelRightClose, PanelRightOpen,
-  ChevronRight, ClipboardList, BarChart2, BookOpen, Brain, Send,
-  AlertCircle,
+  ChevronRight, ClipboardList, BarChart2, BookOpen, Brain,
+  AlertCircle, Copy, Check, Square, ChevronDown, History,
+  PenSquare, PenLine, Trash2, Search, ExternalLink,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { toast } from "sonner";
 import {
   ResizablePanelGroup,
   ResizablePanel,
@@ -25,6 +27,7 @@ interface Message {
   isLoading?: boolean;
   attachments?: UploadedFile[];
   artifactId?: string;
+  nextOptions?: ConfirmationOption[];
 }
 
 interface UploadedFile {
@@ -57,6 +60,55 @@ interface ArtifactPayload {
   data: any;
 }
 
+interface ToolStatus {
+  name: string;
+  label: string;
+  status: "running" | "done" | "failed";
+}
+
+interface StoredConversation {
+  id: string;
+  title: string;
+  lastMessage: string;
+  createdAt: number;
+  updatedAt: number;
+  messages: Message[];
+  artifacts: Record<string, ArtifactPayload>;
+}
+
+// ── Constants ─────────────────────────────────────────────────────────────────
+
+const HISTORY_KEY = "tracy_history_v1";
+const MAX_HISTORY = 50;
+
+const STATIC_SUGGESTIONS = [
+  { label: "How did my class perform on the last assessment?", icon: "📊" },
+  { label: "Which students need intervention right now?", icon: "🎯" },
+  { label: "Show audit result for my latest assessment", icon: "✅" },
+  { label: "Generate a class progress report", icon: "📄" },
+  { label: "What are the most common mistakes in my class?", icon: "🔍" },
+  { label: "Predict national exam performance for my class", icon: "📈" },
+];
+
+const SUGGESTIONS_CACHE_KEY = "tracy_suggestions_v1";
+const SUGGESTIONS_TTL = 30 * 60 * 1000; // 30 minutes
+
+const ARTIFACT_ICONS: Record<ArtifactType, React.ReactNode> = {
+  assessment:  <ClipboardList className="w-4 h-4" />,
+  report:      <BarChart2     className="w-4 h-4" />,
+  reteach_plan:<BookOpen      className="w-4 h-4" />,
+  results:     <BarChart2     className="w-4 h-4" />,
+  audit:       <ClipboardList className="w-4 h-4" />,
+  generic:     <Brain         className="w-4 h-4" />,
+  form:        <ClipboardList className="w-4 h-4" />,
+};
+
+// ── Regex patterns ────────────────────────────────────────────────────────────
+
+const ARTIFACT_RE = /(?:^|\n)(?:__)?ARTIFACT(?:__)?\s*:\s*(\{[\s\S]*)/;
+const CONFIRM_RE  = /(?:^|\n)(?:__)?CONFIRM(?:__)?\s*:\s*(\{[\s\S]*)/;
+const NEXT_RE     = /(?:^|\n)(?:__)?NEXT(?:__)?\s*:\s*(\{[\s\S]*)/;
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function getGreeting() {
@@ -66,26 +118,21 @@ function getGreeting() {
   return "Good evening";
 }
 
-function getFirstName(cookieStr: string): string {
+function getFirstName(): string {
   try {
-    const ca = cookieStr.split(";");
-    for (let i = 0; i < ca.length; i++) {
-      let c = ca[i].trim();
-      if (c.indexOf("user=") === 0) {
-        const jsonStr = decodeURIComponent(c.substring("user=".length));
-        const userData = JSON.parse(jsonStr);
-        const fullName = userData.first_name || userData.name || userData.fullName || userData.displayName || userData.email || "";
-        if (fullName) return fullName.split(" ")[0];
-      }
-      if (c.indexOf("profile=") === 0) {
-        const jsonStr = decodeURIComponent(c.substring("profile=".length));
-        const userData = JSON.parse(jsonStr);
-        const fullName = userData.first_name || userData.name || "";
-        if (fullName) return fullName.split(" ")[0];
+    const ca = document.cookie.split(";");
+    for (const c of ca) {
+      const trimmed = c.trim();
+      for (const key of ["user=", "profile="]) {
+        if (trimmed.startsWith(key)) {
+          const obj = JSON.parse(decodeURIComponent(trimmed.slice(key.length)));
+          const name = obj.first_name || obj.name || obj.fullName || obj.email || "";
+          if (name) return name.split(" ")[0];
+        }
       }
     }
-    return "there";
-  } catch { return "there"; }
+  } catch { /* ignore */ }
+  return "there";
 }
 
 function formatFileSize(bytes: number) {
@@ -98,6 +145,19 @@ function formatTime(d: Date) {
   return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
 
+function relativeTime(ms: number): string {
+  const diff = Date.now() - ms;
+  const m = Math.floor(diff / 60000);
+  const h = Math.floor(diff / 3600000);
+  const d = Math.floor(diff / 86400000);
+  if (m < 1)  return "just now";
+  if (m < 60) return `${m}m ago`;
+  if (h < 24) return `${h}h ago`;
+  if (d === 1) return "Yesterday";
+  if (d < 7)  return `${d}d ago`;
+  return new Date(ms).toLocaleDateString([], { month: "short", day: "numeric" });
+}
+
 async function uploadFile(file: File): Promise<string> {
   const formData = new FormData();
   formData.append("file", file);
@@ -107,7 +167,6 @@ async function uploadFile(file: File): Promise<string> {
   return data.url as string;
 }
 
-/** Extract the first balanced JSON object from a string */
 function extractJson(str: string): string | null {
   const start = str.indexOf("{");
   if (start === -1) return null;
@@ -122,29 +181,40 @@ function extractJson(str: string): string | null {
   return null;
 }
 
-const SUGGESTIONS = [
-  { label: "How did my class perform on the last assessment?", icon: "📊" },
-  { label: "Which students need intervention right now?", icon: "🎯" },
-  { label: "Show audit result for my latest assessment", icon: "✅" },
-  { label: "Generate a class progress report", icon: "📄" },
-  { label: "What are the most common mistakes in my class?", icon: "🔍" },
-  { label: "Predict national exam performance for my class", icon: "📈" },
-];
+// ── localStorage helpers ──────────────────────────────────────────────────────
 
-const ARTIFACT_ICONS: Record<ArtifactType, React.ReactNode> = {
-  assessment: <ClipboardList className="w-4 h-4" />,
-  report:     <BarChart2    className="w-4 h-4" />,
-  reteach_plan:<BookOpen    className="w-4 h-4" />,
-  results:    <BarChart2    className="w-4 h-4" />,
-  audit:      <ClipboardList className="w-4 h-4" />,
-  generic:    <Brain        className="w-4 h-4" />,
-  form:       <ClipboardList className="w-4 h-4" />,
-};
+function loadHistory(): StoredConversation[] {
+  try {
+    const raw = localStorage.getItem(HISTORY_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch { return []; }
+}
 
-// ── Regex patterns for server directives ──────────────────────────────────────
-// Handles ARTIFACT:, CONFIRM:, NEXT: (all optionally wrapped in __)
-const ARTIFACT_RE = /(?:^|\n)(?:__)?ARTIFACT(?:__)?\s*:\s*(\{[\s\S]*)/;
-const CONFIRM_RE  = /(?:^|\n)(?:__)?(?:CONFIRM|NEXT)(?:__)?\s*:\s*(\{[\s\S]*)/;
+function saveHistory(conversations: StoredConversation[]) {
+  try {
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(conversations));
+  } catch { /* storage full — ignore */ }
+}
+
+function upsertConversation(
+  conversations: StoredConversation[],
+  entry: StoredConversation
+): StoredConversation[] {
+  const idx = conversations.findIndex((c) => c.id === entry.id);
+  const updated = idx >= 0
+    ? conversations.map((c, i) => (i === idx ? entry : c))
+    : [entry, ...conversations];
+  return updated.slice(0, MAX_HISTORY);
+}
+
+function serializeMessages(messages: Message[]): Message[] {
+  return messages
+    .filter((m) => !m.isLoading)
+    .map((m) => ({
+      ...m,
+      timestamp: m.timestamp instanceof Date ? m.timestamp : new Date(m.timestamp),
+    }));
+}
 
 // ── Small Components ──────────────────────────────────────────────────────────
 
@@ -248,6 +318,52 @@ function ChatFileCard({ file, inUserBubble = false }: { file: UploadedFile; inUs
   );
 }
 
+// ── Tool Status Display ───────────────────────────────────────────────────────
+
+function ToolStatusPanel({ tools }: { tools: ToolStatus[] }) {
+  const [expanded, setExpanded] = useState(false);
+  if (tools.length === 0) return null;
+
+  const running = tools.find((t) => t.status === "running");
+  const lastCompleted = [...tools].reverse().find((t) => t.status === "done" || t.status === "failed");
+  const summaryLabel = running?.label ?? lastCompleted?.label ?? "Working…";
+  // Strip trailing ellipsis for the summary line
+  const summary = summaryLabel.replace(/…$/, "");
+
+  return (
+    <div className="mt-1.5 mb-0.5">
+      <button
+        onClick={() => setExpanded((v) => !v)}
+        className="flex items-center gap-1.5 group text-left"
+      >
+        {running && (
+          <span className="w-2.5 h-2.5 border border-[#c9a84c]/40 border-t-[#c9a84c] rounded-full animate-spin flex-shrink-0" />
+        )}
+        <span className="text-xs italic text-[#c9a84c]/75 group-hover:text-[#c9a84c] transition-colors">
+          {summary}
+        </span>
+        <ChevronRight className={`w-3 h-3 text-[#c9a84c]/50 group-hover:text-[#c9a84c] transition-all flex-shrink-0 ${expanded ? "rotate-90" : ""}`} />
+      </button>
+      {expanded && (
+        <div className="mt-2 pl-3 border-l border-[#c9a84c]/20 space-y-1.5">
+          {tools.map((t, i) => (
+            <div key={i} className="flex items-center gap-2 text-[11px] text-muted-foreground">
+              <span className="flex-shrink-0">
+                {t.status === "running"
+                  ? <span className="w-2 h-2 border border-[#c9a84c]/50 border-t-[#c9a84c] rounded-full animate-spin inline-block" />
+                  : t.status === "done"
+                  ? <span className="text-emerald-500 text-[10px]">✓</span>
+                  : <span className="text-red-400 text-[10px]">✕</span>}
+              </span>
+              <span className={t.status === "running" ? "text-foreground/80" : ""}>{t.label}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Artifact Chip ─────────────────────────────────────────────────────────────
 
 function ArtifactChip({ artifact, onClick, isActive }: {
@@ -280,12 +396,16 @@ function ArtifactChip({ artifact, onClick, isActive }: {
 
 function ArtifactPanel({
   artifact,
+  allArtifacts,
   onClose,
   onSendMessage,
+  onSelectArtifact,
 }: {
   artifact: ArtifactPayload;
+  allArtifacts: ArtifactPayload[];
   onClose: () => void;
   onSendMessage: (msg: string) => void;
+  onSelectArtifact: (a: ArtifactPayload) => void;
 }) {
   const data = artifact.data ?? {};
 
@@ -299,51 +419,70 @@ function ArtifactPanel({
       case "report":
       case "generic":
       default:
-        return (
-          <div className="flex flex-col items-center justify-center py-16 px-6 gap-4 text-center">
-            <div className="w-14 h-14 rounded-2xl bg-muted flex items-center justify-center">
-              <AlertCircle className="w-6 h-6 text-muted-foreground" />
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-foreground">Preview unavailable</p>
-              <p className="text-xs text-muted-foreground mt-1 max-w-[200px] leading-relaxed">
-                This artifact type ({artifact.type}) doesn't have a visual renderer yet.
-              </p>
-            </div>
-            {typeof data === "object" && (
-              <details className="w-full text-left">
-                <summary className="text-xs text-muted-foreground cursor-pointer hover:text-foreground transition-colors">
-                  View raw data
-                </summary>
-                <pre className="mt-2 text-[11px] bg-muted/50 rounded-lg p-3 overflow-auto whitespace-pre-wrap text-foreground/70">
-                  {JSON.stringify(data, null, 2)}
-                </pre>
-              </details>
-            )}
-          </div>
-        );
+        return <ReportView data={data} />;
     }
   };
 
   return (
     <div className="flex flex-col h-full" style={{ animation: "slideInRight 0.22s ease" }}>
-      <div className="flex items-center gap-3 px-5 py-3.5 border-b border-border flex-shrink-0 bg-background">
-        <div className="w-7 h-7 rounded-lg bg-[#c9a84c]/10 flex items-center justify-center text-[#c9a84c]">
-          {ARTIFACT_ICONS[artifact.type]}
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-[10px] font-semibold text-[#c9a84c] uppercase tracking-wider">
-            {artifact.type.replace("_", " ")}
-          </p>
-          <p className="text-sm font-medium text-foreground truncate">{artifact.title}</p>
-        </div>
-        <button
-          onClick={onClose}
-          aria-label="Close panel"
-          className="w-7 h-7 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-all"
-        >
-          <X className="w-4 h-4" />
-        </button>
+      {/* Header with tab bar when multiple artifacts */}
+      <div className="flex-shrink-0 border-b border-border bg-background">
+        {allArtifacts.length > 1 ? (
+          <>
+            <div className="flex items-center gap-1 px-2 pt-2 overflow-x-auto scrollbar-hide">
+              {allArtifacts.map((a) => {
+                const isActive = a.id === artifact.id;
+                return (
+                  <button
+                    key={a.id}
+                    onClick={() => onSelectArtifact(a)}
+                    className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap flex-shrink-0 transition-all ${
+                      isActive
+                        ? "bg-[#c9a84c]/15 text-[#c9a84c] border border-[#c9a84c]/30"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted border border-transparent"
+                    }`}
+                  >
+                    <span className={isActive ? "text-[#c9a84c]" : "text-muted-foreground"}>
+                      {ARTIFACT_ICONS[a.type]}
+                    </span>
+                    <span className="max-w-[120px] truncate">{a.title}</span>
+                  </button>
+                );
+              })}
+            </div>
+            <div className="flex items-center gap-2 px-4 py-2">
+              <p className="text-[10px] font-semibold text-[#c9a84c] uppercase tracking-wider flex-1">
+                {artifact.type.replace("_", " ")}
+              </p>
+              <button
+                onClick={onClose}
+                aria-label="Close panel"
+                className="w-6 h-6 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-all"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </>
+        ) : (
+          <div className="flex items-center gap-3 px-5 py-3.5">
+            <div className="w-7 h-7 rounded-lg bg-[#c9a84c]/10 flex items-center justify-center text-[#c9a84c]">
+              {ARTIFACT_ICONS[artifact.type]}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-[10px] font-semibold text-[#c9a84c] uppercase tracking-wider">
+                {artifact.type.replace("_", " ")}
+              </p>
+              <p className="text-sm font-medium text-foreground truncate">{artifact.title}</p>
+            </div>
+            <button
+              onClick={onClose}
+              aria-label="Close panel"
+              className="w-7 h-7 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-all"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
       </div>
       <div className="flex-1 overflow-y-auto">
         {renderContent()}
@@ -362,10 +501,10 @@ function FormView({ data, onSendMessage }: { data: any; onSendMessage: (msg: str
   const initialValues: Record<string, any> = {};
   hiddenFields.forEach((f) => { initialValues[f.id] = f.value ?? ""; });
 
-  const [values, setValues]         = useState<Record<string, any>>(initialValues);
+  const [values, setValues]             = useState<Record<string, any>>(initialValues);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitted, setSubmitted]   = useState(false);
-  const [errors, setErrors]         = useState<Record<string, string>>({});
+  const [submitted, setSubmitted]       = useState(false);
+  const [errors, setErrors]             = useState<Record<string, string>>({});
 
   const validate = () => {
     const errs: Record<string, string> = {};
@@ -388,7 +527,7 @@ function FormView({ data, onSendMessage }: { data: any; onSendMessage: (msg: str
       const allValues = { ...values };
       hiddenFields.forEach((f) => { allValues[f.id] = f.value ?? ""; });
       const formSummary = allFields.map((f) => `${f.label}: ${allValues[f.id] ?? "not provided"}`).join(", ");
-      onSendMessage(`${data.action ?? "submit_form"} | ${formSummary}`);
+      onSendMessage(`__FORM_SUBMIT__:{"action":"${data.action ?? "submit_form"}","values":${JSON.stringify(allValues)}}\n\n${formSummary}`);
       setSubmitted(true);
     } finally {
       setIsSubmitting(false);
@@ -473,7 +612,7 @@ function FormView({ data, onSendMessage }: { data: any; onSendMessage: (msg: str
         {isSubmitting ? (
           <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />Submitting…</>
         ) : (
-          <><Send className="w-3.5 h-3.5" />{data.submitLabel ?? "Submit"}</>
+          data.submitLabel ?? "Submit"
         )}
       </button>
     </div>
@@ -704,6 +843,50 @@ function ReteachView({ data }: { data: any }) {
   );
 }
 
+function ReportView({ data }: { data: any }) {
+  if (!data || Object.keys(data).length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 px-6 gap-4 text-center">
+        <AlertCircle className="w-8 h-8 text-muted-foreground/40" />
+        <p className="text-sm text-muted-foreground">No data available for this artifact.</p>
+      </div>
+    );
+  }
+
+  const url = data.url ?? data.download_url ?? data.file_url ?? data.reportUrl;
+
+  return (
+    <div className="px-5 py-4 space-y-4">
+      {url && (
+        <a
+          href={url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-3 rounded-xl border border-[#c9a84c]/30 bg-[#c9a84c]/5 px-4 py-3 hover:bg-[#c9a84c]/10 transition-colors"
+        >
+          <FileText className="w-5 h-5 text-[#c9a84c] flex-shrink-0" />
+          <span className="text-sm font-medium text-foreground flex-1">Download Report</span>
+          <ExternalLink className="w-3.5 h-3.5 text-[#c9a84c]" />
+        </a>
+      )}
+      <div className="space-y-2">
+        {Object.entries(data)
+          .filter(([k]) => k !== "url" && k !== "download_url" && k !== "file_url" && k !== "reportUrl")
+          .map(([key, value]) => (
+            <div key={key} className="flex items-start gap-3 rounded-lg bg-muted/30 px-3 py-2.5 border border-border">
+              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide min-w-[80px] flex-shrink-0 mt-0.5">
+                {key.replace(/_/g, " ")}
+              </span>
+              <span className="text-xs text-foreground/80 break-words">
+                {typeof value === "object" ? JSON.stringify(value) : String(value)}
+              </span>
+            </div>
+          ))}
+      </div>
+    </div>
+  );
+}
+
 // ── Markdown renderer ─────────────────────────────────────────────────────────
 
 function TracyMarkdown({ content }: { content: string }) {
@@ -757,22 +940,34 @@ function TracyMarkdown({ content }: { content: string }) {
 function MessageBubble({
   message,
   artifact,
+  toolStatuses,
   onArtifactClick,
   isArtifactActive,
+  onSend,
 }: {
   message: Message;
   artifact?: ArtifactPayload;
+  toolStatuses?: ToolStatus[];
   onArtifactClick?: (a: ArtifactPayload) => void;
   isArtifactActive?: boolean;
+  onSend?: (text: string) => void;
 }) {
   const isUser        = message.role === "user";
   const hasAttachments = message.attachments && message.attachments.length > 0;
   const hasContent    = message.isLoading || !!message.content;
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(message.content).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    });
+  };
 
   return (
     <div className={`flex w-full ${isUser ? "justify-end" : "justify-start"}`}>
       <div
-        className={`flex gap-3 items-end ${isUser ? "flex-row-reverse" : "flex-row"} max-w-[80%] lg:max-w-[70%]`}
+        className={`flex gap-3 items-end ${isUser ? "flex-row-reverse" : "flex-row"} max-w-[80%] lg:max-w-[70%] group`}
         style={{ animation: "fadeUp 0.2s ease" }}
       >
         {!isUser && (
@@ -806,14 +1001,46 @@ function MessageBubble({
               {hasContent && (
                 <div className="rounded-2xl px-4 py-2.5 text-sm leading-relaxed bg-muted/50 border border-border text-foreground rounded-bl-sm">
                   {message.isLoading ? <TypingDots /> : <TracyMarkdown content={message.content} />}
+                  {/* Tool status inline for the loading message */}
+                  {message.isLoading && toolStatuses && toolStatuses.length > 0 && (
+                    <ToolStatusPanel tools={toolStatuses} />
+                  )}
                 </div>
+              )}
+              {/* Copy button — shown on hover */}
+              {!message.isLoading && message.content && (
+                <button
+                  onClick={handleCopy}
+                  aria-label="Copy message"
+                  className="flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] text-muted-foreground hover:text-foreground hover:bg-muted border border-transparent hover:border-border transition-all opacity-0 group-hover:opacity-100"
+                >
+                  {copied ? <Check className="w-3 h-3 text-emerald-500" /> : <Copy className="w-3 h-3" />}
+                  {copied ? "Copied" : "Copy"}
+                </button>
               )}
               {artifact && onArtifactClick && (
                 <ArtifactChip artifact={artifact} onClick={() => onArtifactClick(artifact)} isActive={isArtifactActive} />
               )}
+              {/* __NEXT__: inline suggestion chips */}
+              {message.nextOptions && message.nextOptions.length > 0 && onSend && (
+                <div className="flex flex-wrap gap-2 mt-1">
+                  {message.nextOptions.map((opt) => (
+                    <button
+                      key={opt.value}
+                      onClick={() => onSend(opt.value)}
+                      className="px-3 py-1.5 rounded-xl text-xs font-medium border border-[#c9a84c]/30 bg-[#c9a84c]/5 text-[#c9a84c] hover:bg-[#c9a84c]/15 hover:border-[#c9a84c]/50 transition-all"
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              )}
             </>
           )}
-          <span className="text-[10px] text-muted-foreground px-1">{formatTime(message.timestamp)}</span>
+          {/* Timestamp — visible on hover only */}
+          <span className="text-[10px] text-muted-foreground px-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            {formatTime(message.timestamp instanceof Date ? message.timestamp : new Date(message.timestamp))}
+          </span>
         </div>
       </div>
     </div>
@@ -854,6 +1081,173 @@ function ConfirmationTray({ payload, onSelect }: { payload: ConfirmationPayload;
   );
 }
 
+// ── Conversation Sidebar ──────────────────────────────────────────────────────
+
+function ConversationSidebar({
+  conversations,
+  activeId,
+  artifactCount,
+  onSelect,
+  onDelete,
+  onNewChat,
+  onOpenArtifacts,
+  onRename,
+}: {
+  conversations: StoredConversation[];
+  activeId: string;
+  artifactCount: number;
+  onSelect: (c: StoredConversation) => void;
+  onDelete: (id: string) => void;
+  onNewChat: () => void;
+  onOpenArtifacts: () => void;
+  onRename: (id: string, newTitle: string) => void;
+}) {
+  const [query, setQuery] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState("");
+
+  const filtered = query.trim()
+    ? conversations.filter(
+        (c) =>
+          c.title.toLowerCase().includes(query.toLowerCase()) ||
+          c.lastMessage.toLowerCase().includes(query.toLowerCase())
+      )
+    : conversations;
+
+  return (
+    <div className="w-60 flex-shrink-0 flex flex-col h-full border-r border-border bg-background" style={{ animation: "slideInLeft 0.2s ease" }}>
+
+      {/* New Chat button */}
+      <div className="px-3 pt-3 pb-2 flex-shrink-0">
+        <button
+          onClick={onNewChat}
+          className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-[#c9a84c] hover:bg-[#b8963e] text-white font-medium text-sm transition-colors shadow-sm"
+        >
+          <span className="w-5 h-5 rounded-md bg-white/20 flex items-center justify-center flex-shrink-0">
+            <span className="text-base leading-none font-light">+</span>
+          </span>
+          New Chat
+        </button>
+      </div>
+
+      {/* Artifacts button */}
+      <div className="px-3 pb-2 flex-shrink-0">
+        <button
+          onClick={onOpenArtifacts}
+          className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl border border-border text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+        >
+          <ClipboardList className="w-4 h-4 flex-shrink-0" />
+          <span className="flex-1 text-left">Artifacts</span>
+          {artifactCount > 0 && (
+            <span className="w-5 h-5 rounded-full bg-[#c9a84c]/15 text-[#c9a84c] text-[10px] font-semibold flex items-center justify-center">
+              {artifactCount}
+            </span>
+          )}
+        </button>
+      </div>
+
+      {/* Divider + History label */}
+      <div className="px-3 pb-1 flex-shrink-0">
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] font-semibold text-muted-foreground/50 uppercase tracking-wider">History</span>
+          <div className="flex-1 h-px bg-border" />
+        </div>
+      </div>
+
+      {/* Search */}
+      <div className="px-3 pb-2 flex-shrink-0">
+        <div className="flex items-center gap-2 bg-muted/40 border border-border rounded-lg px-2.5 py-1.5">
+          <Search className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search conversations…"
+            className="flex-1 bg-transparent text-xs outline-none placeholder:text-muted-foreground/50"
+          />
+        </div>
+      </div>
+
+      {/* List */}
+      <div className="flex-1 overflow-y-auto">
+        {filtered.length === 0 ? (
+          <div className="px-4 py-8 text-center">
+            <p className="text-xs text-muted-foreground">
+              {query ? "No matching conversations" : "No past conversations yet"}
+            </p>
+          </div>
+        ) : (
+          filtered.map((c) => (
+            <div
+              key={c.id}
+              onClick={() => { if (editingId !== c.id) onSelect(c); }}
+              className={`relative group px-3 py-2.5 cursor-pointer transition-colors hover:bg-muted/40 ${
+                c.id === activeId ? "bg-[#c9a84c]/8 border-l-2 border-[#c9a84c]" : "border-l-2 border-transparent"
+              }`}
+            >
+              <div className="flex items-start justify-between gap-1 pr-12">
+                {editingId === c.id ? (
+                  <input
+                    autoFocus
+                    value={editValue}
+                    onChange={(e) => setEditValue(e.target.value)}
+                    onBlur={() => {
+                      const trimmed = editValue.trim();
+                      if (trimmed) onRename(c.id, trimmed);
+                      setEditingId(null);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        const trimmed = editValue.trim();
+                        if (trimmed) onRename(c.id, trimmed);
+                        setEditingId(null);
+                      }
+                      if (e.key === "Escape") setEditingId(null);
+                    }}
+                    onClick={(e) => e.stopPropagation()}
+                    className="flex-1 text-xs font-medium bg-muted/60 border border-[#c9a84c]/40 rounded px-1.5 py-0.5 outline-none text-foreground"
+                  />
+                ) : (
+                  <>
+                    <p className="text-xs font-medium text-foreground truncate flex-1 leading-snug">{c.title}</p>
+                    <span className="text-[10px] text-muted-foreground flex-shrink-0 mt-0.5 group-hover:opacity-0 transition-opacity">{relativeTime(c.updatedAt)}</span>
+                  </>
+                )}
+              </div>
+              {editingId !== c.id && (
+                <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-2 leading-relaxed">{c.lastMessage}</p>
+              )}
+              {/* Hover actions */}
+              {editingId !== c.id && (
+                <div className="absolute right-2 top-2 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-all">
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setEditValue(c.title); setEditingId(c.id); }}
+                    aria-label="Rename conversation"
+                    className="w-5 h-5 rounded flex items-center justify-center text-muted-foreground hover:text-foreground"
+                  >
+                    <PenLine className="w-3 h-3" />
+                  </button>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); onDelete(c.id); }}
+                    aria-label="Delete conversation"
+                    className="w-5 h-5 rounded flex items-center justify-center text-muted-foreground hover:text-red-400"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                  </button>
+                </div>
+              )}
+            </div>
+          ))
+        )}
+      </div>
+
+      {/* Footer */}
+      <div className="px-3 py-2.5 border-t border-border flex-shrink-0">
+        <p className="text-[10px] text-muted-foreground/50 leading-relaxed">Stored locally on this device</p>
+      </div>
+    </div>
+  );
+}
+
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
 export default function TracyPage() {
@@ -863,64 +1257,83 @@ export default function TracyPage() {
   const [pendingFiles,        setPendingFiles]        = useState<UploadedFile[]>([]);
   const [pendingFileContents, setPendingFileContents] = useState<Record<string, string>>({});
   const [isDragging,          setIsDragging]          = useState(false);
-  const [isMenuOpen,          setIsMenuOpen]          = useState(false);
   const [firstName,           setFirstName]           = useState("there");
-  const [authReady,           setAuthReady]           = useState(false);
   const [confirmation,        setConfirmation]        = useState<ConfirmationPayload | null>(null);
+  const [toolStatuses,        setToolStatuses]        = useState<ToolStatus[]>([]);
+  const [historyOpen,         setHistoryOpen]         = useState(false);
+  const [conversations,       setConversations]       = useState<StoredConversation[]>([]);
+  const [isRestoredChat,      setIsRestoredChat]      = useState(false);
+  const [showScrollBtn,       setShowScrollBtn]       = useState(false);
+  const [suggestions,         setSuggestions]         = useState(STATIC_SUGGESTIONS);
 
-  const [artifacts,     setArtifacts]     = useState<Record<string, ArtifactPayload>>({});
+  const [artifacts,      setArtifacts]      = useState<Record<string, ArtifactPayload>>({});
   const [activeArtifact, setActiveArtifact] = useState<ArtifactPayload | null>(null);
-  const [panelOpen,     setPanelOpen]     = useState(false);
+  const [panelOpen,      setPanelOpen]      = useState(false);
 
-  // FIX: Use a key to force ResizablePanelGroup remount when panel opens/closes
-  // so defaultSize values are correctly applied on each state change.
   const panelGroupKey = panelOpen ? "split" : "full";
 
-  const fileObjectsRef = useRef<Record<string, File>>({});
-  const bottomRef      = useRef<HTMLDivElement>(null);
-  const inputRef       = useRef<HTMLTextAreaElement>(null);
-  const fileInputRef   = useRef<HTMLInputElement>(null);
-  const menuRef        = useRef<HTMLDivElement>(null);
-  const sessionId      = useRef(`session_${Date.now()}`);
-  const retryCount     = useRef(0);
+  const fileObjectsRef  = useRef<Record<string, File>>({});
+  const bottomRef       = useRef<HTMLDivElement>(null);
+  const inputRef        = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef    = useRef<HTMLInputElement>(null);
+  const sessionId       = useRef(`session_${Date.now()}`);
+  const readerRef       = useRef<ReadableStreamDefaultReader<Uint8Array> | null>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
-  // Close menu on outside click
+  // Load history and bootstrap personalised suggestions
   useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setIsMenuOpen(false);
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    setConversations(loadHistory());
+    setFirstName(getFirstName());
+
+    // Suggestions: serve from cache if fresh, otherwise fetch in background
+    try {
+      const raw = localStorage.getItem(SUGGESTIONS_CACHE_KEY);
+      if (raw) {
+        const { data, cachedAt } = JSON.parse(raw);
+        if (Date.now() - cachedAt < SUGGESTIONS_TTL && Array.isArray(data) && data.length) {
+          setSuggestions(data);
+          return; // cache hit — skip network fetch
+        }
+      }
+    } catch { /* ignore */ }
+
+    fetch("/api/tracy/suggest", { method: "POST" })
+      .then((r) => r.json())
+      .then(({ suggestions: fresh }) => {
+        if (Array.isArray(fresh) && fresh.length) {
+          setSuggestions(fresh);
+          localStorage.setItem(SUGGESTIONS_CACHE_KEY, JSON.stringify({ data: fresh, cachedAt: Date.now() }));
+        }
+      })
+      .catch(() => { /* fail silently — static suggestions stay */ });
   }, []);
 
-  // Auth / name detection
+  // Scroll listener for scroll-to-bottom button
   useEffect(() => {
-    let attempts = 0;
-    const maxAttempts = 20;
-    const checkAuth = () => {
-      const name = getFirstName(document.cookie);
-      const hasAuth =
-        name !== "there" ||
-        !!(window as any).__mirrorUser ||
-        document.cookie.includes("token=") ||
-        document.cookie.includes("auth=") ||
-        document.cookie.includes("session=") ||
-        document.cookie.includes("user=");
-      if (name !== "there") setFirstName(name);
-      if (hasAuth || attempts >= maxAttempts) { setAuthReady(true); return; }
-      attempts++;
-      setTimeout(checkAuth, 500);
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    const handler = () => {
+      const fromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+      setShowScrollBtn(fromBottom > 200);
     };
-    checkAuth();
+    el.addEventListener("scroll", handler, { passive: true });
+    return () => el.removeEventListener("scroll", handler);
   }, []);
 
-  // Auto-scroll
-  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
+  // Auto-scroll on new messages (only when near bottom)
+  useEffect(() => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    const fromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+    if (fromBottom < 300) {
+      bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [messages]);
 
   // Textarea auto-resize
   useEffect(() => {
     const el = inputRef.current;
-    if (!el || !input) return;
+    if (!el || !input) { if (el) el.style.height = "auto"; return; }
     el.style.height = "auto";
     el.style.height = `${Math.min(el.scrollHeight, 160)}px`;
   }, [input]);
@@ -935,6 +1348,41 @@ export default function TracyPage() {
     setTimeout(() => setActiveArtifact(null), 250);
   }, []);
 
+  const allArtifacts = Object.values(artifacts).sort((a, b) => a.id.localeCompare(b.id));
+  const hasArtifacts = allArtifacts.length > 0;
+  const lastArtifact = allArtifacts.at(-1);
+
+  // Save conversation to localStorage after a complete response
+  const saveConversation = useCallback((finalMessages: Message[], finalArtifacts: Record<string, ArtifactPayload>) => {
+    const userMessages = finalMessages.filter((m) => m.role === "user");
+    const tracyMessages = finalMessages.filter((m) => m.role === "tracy" && !m.isLoading && m.content);
+    if (userMessages.length === 0) return;
+
+    const GREETINGS = /^(hey|hi|hello|yo|sup|hiya|howdy|good\s+(morning|afternoon|evening))[\s!?.]*$/i;
+    const substantive = userMessages.find((m) => !GREETINGS.test(m.content.trim())) ?? userMessages[0];
+    const raw = substantive.content.trim().replace(/\s+/g, " ");
+    const titleText = raw.charAt(0).toUpperCase() + raw.slice(1).replace(/[?!.]+$/, "");
+    const title = titleText.length > 50 ? titleText.slice(0, 50) + "…" : titleText;
+    const lastTracy = tracyMessages.at(-1);
+    const lastMessage = lastTracy ? lastTracy.content.slice(0, 80) + (lastTracy.content.length > 80 ? "…" : "") : "";
+
+    const entry: StoredConversation = {
+      id: sessionId.current,
+      title,
+      lastMessage,
+      createdAt: userMessages[0].timestamp instanceof Date ? userMessages[0].timestamp.getTime() : Date.now(),
+      updatedAt: Date.now(),
+      messages: serializeMessages(finalMessages),
+      artifacts: finalArtifacts,
+    };
+
+    setConversations((prev) => {
+      const updated = upsertConversation(prev, entry);
+      saveHistory(updated);
+      return updated;
+    });
+  }, []);
+
   // Add files with eager upload
   const addFiles = useCallback((files: FileList | File[]) => {
     const allowedTypes = [
@@ -944,8 +1392,14 @@ export default function TracyPage() {
     ];
 
     Array.from(files).forEach((file) => {
-      if (!allowedTypes.includes(file.type) && !file.name.endsWith(".csv")) return;
-      if (file.size > 10 * 1024 * 1024) return;
+      if (!allowedTypes.includes(file.type) && !file.name.endsWith(".csv")) {
+        toast.error(`"${file.name}" is not a supported file type.`);
+        return;
+      }
+      if (file.size > 10 * 1024 * 1024) {
+        toast.error(`"${file.name}" is too large. Maximum file size is 10MB.`);
+        return;
+      }
 
       const fileId     = `f_${Date.now()}_${Math.random().toString(36).slice(2)}`;
       const previewUrl = file.type.startsWith("image/") ? URL.createObjectURL(file) : undefined;
@@ -954,7 +1408,6 @@ export default function TracyPage() {
       const newFile: UploadedFile = { id: fileId, name: file.name, size: file.size, type: file.type, previewUrl, uploadState: "pending" };
       setPendingFiles((prev) => [...prev, newFile]);
 
-      // CSV text extraction
       if (file.type === "text/csv" || file.name.endsWith(".csv")) {
         const reader = new FileReader();
         reader.onload = (e) => {
@@ -964,7 +1417,6 @@ export default function TracyPage() {
         reader.readAsText(file);
       }
 
-      // Eager upload for PDF/images
       if (file.type === "application/pdf" || file.type.startsWith("image/")) {
         setPendingFiles((prev) => prev.map((f) => f.id === fileId ? { ...f, uploadState: "uploading" } : f));
         uploadFile(file)
@@ -973,9 +1425,9 @@ export default function TracyPage() {
           })
           .catch(() => {
             setPendingFiles((prev) => prev.map((f) => f.id === fileId ? { ...f, uploadState: "error" } : f));
+            toast.error(`Failed to upload "${file.name}". Please try again.`);
           })
           .finally(() => {
-            // FIX: Clean up fileObjectsRef after upload attempt
             delete fileObjectsRef.current[fileId];
           });
       }
@@ -990,20 +1442,40 @@ export default function TracyPage() {
   }, []);
 
   const clearChat = useCallback(() => {
+    // Cancel any in-flight stream
+    readerRef.current?.cancel();
     revokeAndClearFiles(pendingFiles);
     setMessages([]);
     setPendingFiles([]);
     setPendingFileContents({});
     setConfirmation(null);
     setArtifacts({});
+    setToolStatuses([]);
+    setIsRestoredChat(false);
     closePanel();
-    setIsMenuOpen(false);
-    retryCount.current  = 0;
-    sessionId.current   = `session_${Date.now()}`;
+    sessionId.current = `session_${Date.now()}`;
+    // Invalidate suggestion cache so next empty state re-fetches fresh suggestions
+    localStorage.removeItem(SUGGESTIONS_CACHE_KEY);
+    setSuggestions(STATIC_SUGGESTIONS);
     setTimeout(() => inputRef.current?.focus(), 50);
   }, [pendingFiles, closePanel, revokeAndClearFiles]);
 
-  const send = useCallback(async (text?: string, isRetry = false) => {
+  const stopGeneration = useCallback(() => {
+    readerRef.current?.cancel();
+    readerRef.current = null;
+    setIsLoading(false);
+    setToolStatuses([]);
+    setMessages((prev) =>
+      prev.map((m) =>
+        m.isLoading
+          ? { ...m, isLoading: false, content: m.content || "[stopped]" }
+          : m
+      )
+    );
+    setTimeout(() => inputRef.current?.focus(), 50);
+  }, []);
+
+  const send = useCallback(async (text?: string) => {
     const content = (text ?? input).trim();
     if ((!content && pendingFiles.length === 0) || isLoading) return;
 
@@ -1024,24 +1496,22 @@ export default function TracyPage() {
       attachments: snapshotFiles.length > 0 ? snapshotFiles : undefined,
     };
 
-    if (!isRetry) {
-      setMessages((prev) => [
-        ...prev,
-        userMsg,
-        { id: `l_${Date.now()}`, role: "tracy", content: "", timestamp: new Date(), isLoading: true },
-      ]);
-      setInput("");
-      // Reset textarea height
-      if (inputRef.current) { inputRef.current.style.height = "auto"; }
-      revokeAndClearFiles(snapshotFiles);
-      setPendingFiles([]);
-      setPendingFileContents({});
-    }
+    const loadingId = `l_${Date.now()}`;
 
+    setMessages((prev) => [
+      ...prev,
+      userMsg,
+      { id: loadingId, role: "tracy", content: "", timestamp: new Date(), isLoading: true },
+    ]);
+    setInput("");
+    if (inputRef.current) inputRef.current.style.height = "auto";
+    revokeAndClearFiles(snapshotFiles);
+    setPendingFiles([]);
+    setPendingFileContents({});
+    setToolStatuses([]);
     setIsLoading(true);
 
     try {
-      // Collect uploaded URLs (already eager-uploaded, fall back to now)
       const uploadedParts: string[] = [];
       for (const f of snapshotFiles) {
         if (f.type === "application/pdf" || f.type.startsWith("image/")) {
@@ -1056,9 +1526,9 @@ export default function TracyPage() {
         }
       }
 
-      const attachedFilesBlock   = uploadedParts.length > 0 ? `\n\n[ATTACHED FILES: ${uploadedParts.join(", ")}]` : "";
-      const finalPayloadMessage  = `${userMsg.content}${fileDataContext}${attachedFilesBlock}`;
-      const attachmentsMeta      = snapshotFiles.map(({ name, type, size }) => ({ name, type, size }));
+      const attachedFilesBlock  = uploadedParts.length > 0 ? `\n\n[ATTACHED FILES: ${uploadedParts.join(", ")}]` : "";
+      const finalPayloadMessage = `${userMsg.content}${fileDataContext}${attachedFilesBlock}`;
+      const attachmentsMeta     = snapshotFiles.map(({ name, type, size }) => ({ name, type, size }));
 
       const res = await fetch("/api/tracy", {
         method:  "POST",
@@ -1070,66 +1540,168 @@ export default function TracyPage() {
         }),
       });
 
-      const data = await res.json();
+      if (!res.body) throw new Error("No response body");
 
-      if (res.status === 401 && retryCount.current < 3) {
-        retryCount.current++;
-        setTimeout(() => send(content, true), 1000);
-        return;
-      }
+      const reader = res.body.getReader();
+      readerRef.current = reader;
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let fullReply = "";
+      let finalArtifacts = { ...artifacts };
 
-      retryCount.current = 0;
-      const reply: string = data.reply || data.error || "I hit a snag. Please try again.";
-      const trimmed = reply.trim();
+      const processEvent = (raw: string) => {
+        let event: any;
+        try { event = JSON.parse(raw); } catch { return; }
 
-      // FIX: Handle CONFIRM:, NEXT:, and __NEXT__: prefixes uniformly
-      const confirmMatch = trimmed.match(CONFIRM_RE);
-      if (confirmMatch) {
-        const json = extractJson(confirmMatch[1]);
-        if (json) {
-          try {
-            const parsed: ConfirmationPayload = JSON.parse(json);
-            setMessages((prev) => prev.filter((m) => !m.isLoading));
-            setConfirmation(parsed);
-            return;
-          } catch { console.warn("[Tracy UI] Failed to parse confirmation payload"); }
-        }
-      }
-
-      const artifactMatch = trimmed.match(ARTIFACT_RE);
-      if (artifactMatch) {
-        const json = extractJson(artifactMatch[1]);
-        if (json) {
-          try {
-            const rawArtifact = JSON.parse(json);
-            const artifactId  = `art_${Date.now()}`;
-            const artifact: ArtifactPayload = { id: artifactId, ...rawArtifact };
-            const beforeTag   = trimmed.slice(0, trimmed.search(ARTIFACT_RE)).trim();
-            const fallback    = rawArtifact.summary ?? `Here's the ${(rawArtifact.type as string)?.replace("_", " ") ?? "result"} — click to view.`;
-            const bubbleText  = beforeTag || fallback;
-
-            setArtifacts((prev) => ({ ...prev, [artifactId]: artifact }));
-            setMessages((prev) =>
-              prev.map((m) => m.isLoading ? { ...m, content: bubbleText, isLoading: false, artifactId } : m)
+        switch (event.type) {
+          case "tool_call": {
+            setToolStatuses((prev) => {
+              const existing = prev.find((t) => t.name === event.name && t.status === "running");
+              if (existing) return prev;
+              return [...prev, { name: event.name, label: event.label, status: "running" }];
+            });
+            break;
+          }
+          case "tool_result": {
+            setToolStatuses((prev) =>
+              prev.map((t) =>
+                t.name === event.name && t.status === "running"
+                  ? { ...t, status: event.success ? "done" : "failed" }
+                  : t
+              )
             );
-            openArtifact(artifact);
-            return;
-          } catch { console.warn("[Tracy UI] Failed to parse artifact payload"); }
+            break;
+          }
+          case "text_delta": {
+            fullReply += event.delta;
+            setMessages((prev) =>
+              prev.map((m) => m.isLoading ? { ...m, content: fullReply } : m)
+            );
+            break;
+          }
+          case "error": {
+            const errorMsg = event.message === "__AUTH_PENDING__"
+              ? "__AUTH_PENDING__"
+              : "I hit a snag. Please try again.";
+            setMessages((prev) =>
+              prev.map((m) => m.isLoading ? { ...m, content: errorMsg, isLoading: false } : m)
+            );
+            break;
+          }
+          case "done": {
+            const reply = fullReply || event.reply || "";
+            const trimmed = reply.trim();
+
+            // Parse __CONFIRM__
+            const confirmMatch = trimmed.match(CONFIRM_RE);
+            if (confirmMatch) {
+              const json = extractJson(confirmMatch[1]);
+              if (json) {
+                try {
+                  const parsed: ConfirmationPayload = JSON.parse(json);
+                  setMessages((prev) => prev.filter((m) => !m.isLoading));
+                  setConfirmation(parsed);
+                  return;
+                } catch { /* fall through */ }
+              }
+            }
+
+            // Parse __ARTIFACT__
+            const artifactMatch = trimmed.match(ARTIFACT_RE);
+            if (artifactMatch) {
+              const json = extractJson(artifactMatch[1]);
+              if (json) {
+                try {
+                  const rawArtifact = JSON.parse(json);
+                  const artifactId  = `art_${Date.now()}`;
+                  const artifact: ArtifactPayload = { id: artifactId, ...rawArtifact };
+                  const prefixStart = trimmed.search(ARTIFACT_RE);
+                  const beforeTag   = prefixStart > 0 ? trimmed.slice(0, prefixStart).trim() : "";
+                  const fallback    = rawArtifact.summary ?? `Here's the ${(rawArtifact.type as string)?.replace("_", " ") ?? "result"} — click to view.`;
+                  const bubbleText  = beforeTag || fallback;
+
+                  finalArtifacts = { ...finalArtifacts, [artifactId]: artifact };
+                  setArtifacts(finalArtifacts);
+                  setMessages((prev) =>
+                    prev.map((m) => m.isLoading ? { ...m, content: bubbleText, isLoading: false, artifactId } : m)
+                  );
+                  openArtifact(artifact);
+
+                  // Save to history
+                  setMessages((current) => {
+                    saveConversation(current.filter((m) => !m.isLoading).concat([{ id: loadingId, role: "tracy", content: bubbleText, timestamp: new Date(), artifactId }]), finalArtifacts);
+                    return current;
+                  });
+                  return;
+                } catch { /* fall through */ }
+              }
+            }
+
+            // Parse __NEXT__: extract preceding text + options
+            const nextMatch = trimmed.match(NEXT_RE);
+            if (nextMatch) {
+              const json = extractJson(nextMatch[1]);
+              if (json) {
+                try {
+                  const parsed: ConfirmationPayload = JSON.parse(json);
+                  const prefixStart = trimmed.search(NEXT_RE);
+                  const beforeTag   = prefixStart > 0 ? trimmed.slice(0, prefixStart).trim() : "";
+
+                  setMessages((prev) =>
+                    prev.map((m) =>
+                      m.isLoading
+                        ? { ...m, content: beforeTag, isLoading: false, nextOptions: parsed.options }
+                        : m
+                    )
+                  );
+                  setMessages((current) => {
+                    saveConversation(current, finalArtifacts);
+                    return current;
+                  });
+                  return;
+                } catch { /* fall through */ }
+              }
+            }
+
+            // Plain text reply
+            setMessages((prev) =>
+              prev.map((m) => m.isLoading ? { ...m, content: reply, isLoading: false } : m)
+            );
+            setMessages((current) => {
+              saveConversation(current, finalArtifacts);
+              return current;
+            });
+            break;
+          }
+        }
+      };
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() ?? "";
+        for (const line of lines) {
+          if (!line.startsWith("data: ")) continue;
+          processEvent(line.slice(6).trim());
         }
       }
 
-      setMessages((prev) =>
-        prev.map((m) => (m.isLoading ? { ...m, content: reply, isLoading: false } : m))
-      );
-    } catch {
-      setMessages((prev) =>
-        prev.map((m) => (m.isLoading ? { ...m, content: "Connection lost. Please try again.", isLoading: false } : m))
-      );
+    } catch (err: any) {
+      // Ignore abort errors from stop button
+      if (err?.name !== "AbortError" && err?.message !== "Cancelled") {
+        setMessages((prev) =>
+          prev.map((m) => m.isLoading ? { ...m, content: "Connection lost. Please try again.", isLoading: false } : m)
+        );
+      }
     } finally {
+      readerRef.current = null;
       setIsLoading(false);
+      setToolStatuses([]);
       inputRef.current?.focus();
     }
-  }, [input, pendingFiles, pendingFileContents, isLoading, openArtifact, revokeAndClearFiles]);
+  }, [input, pendingFiles, pendingFileContents, isLoading, artifacts, openArtifact, revokeAndClearFiles, saveConversation]);
 
   const handleConfirmationSelect = useCallback((value: string) => {
     setConfirmation(null);
@@ -1152,13 +1724,43 @@ export default function TracyPage() {
     });
   }, []);
 
+  const handleRestoreConversation = useCallback((c: StoredConversation) => {
+    // Cancel any in-flight stream
+    readerRef.current?.cancel();
+    setMessages(c.messages.map((m) => ({
+      ...m,
+      timestamp: new Date(m.timestamp),
+      isLoading: false,
+    })));
+    setArtifacts(c.artifacts ?? {});
+    setActiveArtifact(null);
+    setPanelOpen(false);
+    setConfirmation(null);
+    setToolStatuses([]);
+    setIsLoading(false);
+    setIsRestoredChat(true);
+    sessionId.current = c.id;
+    setTimeout(() => inputRef.current?.focus(), 50);
+  }, []);
+
+  const handleDeleteConversation = useCallback((id: string) => {
+    setConversations((prev) => {
+      const updated = prev.filter((c) => c.id !== id);
+      saveHistory(updated);
+      if (updated.length === 0) setHistoryOpen(false);
+      return updated;
+    });
+  }, []);
+
+  const handleRenameConversation = useCallback((id: string, newTitle: string) => {
+    setConversations((prev) => {
+      const updated = prev.map((c) => c.id === id ? { ...c, title: newTitle } : c);
+      saveHistory(updated);
+      return updated;
+    });
+  }, []);
+
   const isEmpty      = messages.length === 0;
-  const hasArtifacts = Object.keys(artifacts).length > 0;
-
-  // FIX: Compute the last artifact for the "Show panel" fallback
-  const lastArtifact = Object.values(artifacts).at(-1);
-
-  // Whether toolbar controls (attach, plus menu) should be disabled
   const controlsDisabled = isLoading || !!confirmation;
 
   return (
@@ -1176,6 +1778,13 @@ export default function TracyPage() {
           from { opacity: 0; transform: translateX(16px); }
           to   { opacity: 1; transform: translateX(0); }
         }
+        @keyframes slideInLeft {
+          from { opacity: 0; transform: translateX(-16px); }
+          to   { opacity: 1; transform: translateX(0); }
+        }
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+        .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
       `}</style>
 
       <div
@@ -1188,67 +1797,108 @@ export default function TracyPage() {
           <div className="absolute inset-2 z-40 border-2 border-dashed border-[#c9a84c]/50 rounded-2xl pointer-events-none" />
         )}
 
-        {/* FIX: key forces full remount of the panel group when split state changes,
-            so defaultSize is correctly applied every time. */}
+        {/* History sidebar */}
+        {historyOpen && (
+          <ConversationSidebar
+            conversations={conversations}
+            activeId={sessionId.current}
+            artifactCount={Object.keys(artifacts).length}
+            onSelect={handleRestoreConversation}
+            onDelete={handleDeleteConversation}
+            onRename={handleRenameConversation}
+            onNewChat={() => { clearChat(); }}
+            onOpenArtifacts={() => {
+              if (activeArtifact) setPanelOpen(true);
+            }}
+          />
+        )}
+
         <ResizablePanelGroup key={panelGroupKey} direction="horizontal" className="flex-1 min-h-0">
           <ResizablePanel defaultSize={panelOpen ? 50 : 100} minSize={30} className="flex flex-col min-h-0">
             <div className="flex flex-col h-full min-h-0">
-              {/* Panel toggle — only show when there is at least one artifact */}
-              {hasArtifacts && (
-                <div className="flex justify-end px-4 pt-2.5 pb-0 flex-shrink-0">
+
+              {/* Top bar — history toggle + panel toggle */}
+              <div className="flex items-center justify-between px-4 pt-2.5 pb-0 flex-shrink-0">
+                {conversations.length > 0 ? (
+                  <button
+                    onClick={() => setHistoryOpen((v) => !v)}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs transition-all border ${
+                      historyOpen
+                        ? "bg-muted text-foreground border-border"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted border-border"
+                    }`}
+                  >
+                    <History className="w-3.5 h-3.5" />
+                    History
+                  </button>
+                ) : (
+                  <div />
+                )}
+
+                {hasArtifacts && (
                   <button
                     onClick={() => {
                       if (panelOpen) {
                         closePanel();
                       } else {
-                        // FIX: reopen with active or last artifact
                         const target = activeArtifact ?? lastArtifact;
                         if (target) openArtifact(target);
                       }
                     }}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-muted-foreground hover:text-foreground hover:bg-muted border border-border transition-all"
+                    className="relative flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-muted-foreground hover:text-foreground hover:bg-muted border border-border transition-all"
                   >
                     {panelOpen
                       ? <><PanelRightClose className="w-3.5 h-3.5" /> Hide panel</>
                       : <><PanelRightOpen  className="w-3.5 h-3.5" /> Show panel</>
                     }
+                    {!panelOpen && allArtifacts.length > 0 && (
+                      <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-[#c9a84c] text-white text-[9px] font-bold flex items-center justify-center">
+                        {allArtifacts.length}
+                      </span>
+                    )}
                   </button>
-                </div>
-              )}
+                )}
+              </div>
 
               {/* Message list */}
-              <div className="flex-1 overflow-y-auto min-h-0">
+              <div className="flex-1 overflow-y-auto min-h-0 relative" ref={scrollContainerRef}>
                 <div className="max-w-2xl mx-auto px-4 sm:px-6 py-10">
+
+                  {/* Restored conversation banner */}
+                  {isRestoredChat && !isEmpty && (
+                    <div className="mb-6 flex items-center justify-center">
+                      <span className="text-[11px] text-muted-foreground/60 bg-muted/30 border border-border rounded-full px-3 py-1">
+                        Past conversation · Tracy may not remember this context
+                      </span>
+                    </div>
+                  )}
+
                   {isEmpty ? (
                     <div className="flex flex-col items-center text-center pt-8">
                       <div className="w-14 h-14 rounded-2xl bg-[#c9a84c]/10 border border-[#c9a84c]/20 flex items-center justify-center mb-6 shadow-sm">
                         <Sparkles className="w-6 h-6 text-[#c9a84c]" />
                       </div>
                       <h1 className="text-2xl font-semibold text-foreground tracking-tight mb-2">
-                        {getGreeting()},{" "}
-                        {authReady
-                          ? firstName
-                          : <span className="inline-block w-16 h-5 bg-muted animate-pulse rounded" />}
+                        {getGreeting()}, {firstName}
                       </h1>
                       <p className="text-muted-foreground text-sm mb-12 max-w-xs leading-relaxed">
                         I'm Tracy. What are we doing today?
                       </p>
-                      {/* FIX: show 4 on mobile, 6 on sm+ (no invisible buttons causing layout shift) */}
                       <div className="grid grid-cols-2 gap-3 w-full max-w-lg">
-                        {SUGGESTIONS.slice(0, 4).map((s) => (
+                        {suggestions.slice(0, 4).map((s) => (
                           <button
                             key={s.label}
-                            onClick={() => setInput(s.label)}
+                            onClick={() => { setInput(s.label); setTimeout(() => inputRef.current?.focus(), 50); }}
                             className="flex items-start gap-3 text-left px-4 py-3.5 rounded-xl border border-border bg-card hover:bg-muted/40 hover:border-[#c9a84c]/30 transition-all text-sm text-muted-foreground hover:text-foreground"
                           >
                             <span className="text-base flex-shrink-0">{s.icon}</span>
                             <span className="leading-snug">{s.label}</span>
                           </button>
                         ))}
-                        {SUGGESTIONS.slice(4, 6).map((s) => (
+                        {suggestions.slice(4, 6).map((s) => (
                           <button
                             key={s.label}
-                            onClick={() => setInput(s.label)}
+                            onClick={() => { setInput(s.label); setTimeout(() => inputRef.current?.focus(), 50); }}
                             className="hidden sm:flex items-start gap-3 text-left px-4 py-3.5 rounded-xl border border-border bg-card hover:bg-muted/40 hover:border-[#c9a84c]/30 transition-all text-sm text-muted-foreground hover:text-foreground"
                           >
                             <span className="text-base flex-shrink-0">{s.icon}</span>
@@ -1264,14 +1914,28 @@ export default function TracyPage() {
                           key={m.id}
                           message={m}
                           artifact={m.artifactId ? artifacts[m.artifactId] : undefined}
+                          toolStatuses={m.isLoading ? toolStatuses : undefined}
                           onArtifactClick={openArtifact}
                           isArtifactActive={panelOpen && activeArtifact?.id === m.artifactId}
+                          onSend={send}
                         />
                       ))}
                     </div>
                   )}
                   <div ref={bottomRef} />
                 </div>
+
+                {/* Scroll to bottom button */}
+                {showScrollBtn && (
+                  <button
+                    onClick={() => bottomRef.current?.scrollIntoView({ behavior: "smooth" })}
+                    className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-background border border-border shadow-md text-xs text-muted-foreground hover:text-foreground hover:border-[#c9a84c]/30 transition-all"
+                    style={{ animation: "fadeUp 0.15s ease" }}
+                  >
+                    <ChevronDown className="w-3.5 h-3.5" />
+                    Scroll to bottom
+                  </button>
+                )}
               </div>
 
               {/* Input bar */}
@@ -1290,30 +1954,16 @@ export default function TracyPage() {
                   )}
 
                   <div className="flex items-end gap-2 bg-muted/40 border border-border rounded-2xl px-3 py-3 focus-within:border-[#c9a84c]/40 focus-within:bg-background transition-all shadow-sm">
-                    {/* Plus / new-chat menu */}
-                    <div className="relative" ref={menuRef}>
-                      <button
-                        type="button"
-                        onClick={() => !controlsDisabled && setIsMenuOpen(!isMenuOpen)}
-                        disabled={controlsDisabled}
-                        className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all flex-shrink-0 disabled:opacity-40 disabled:cursor-not-allowed ${
-                          isMenuOpen ? "bg-[#c9a84c] text-white shadow-md" : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                        }`}
-                      >
-                        <Plus className={`w-5 h-5 transition-transform duration-200 ${isMenuOpen ? "rotate-45" : ""}`} />
-                      </button>
-                      {isMenuOpen && (
-                        <div className="absolute bottom-full left-0 mb-3 w-40 bg-background border border-border rounded-xl shadow-xl p-1.5 z-50" style={{ animation: "slideUp 0.15s ease" }}>
-                          <button
-                            onClick={clearChat}
-                            className="w-full flex items-center gap-2.5 px-3 py-2.5 text-xs font-medium text-muted-foreground hover:text-[#c9a84c] hover:bg-[#c9a84c]/5 rounded-lg transition-colors"
-                          >
-                            <RotateCcw className="w-4 h-4" />
-                            New chat
-                          </button>
-                        </div>
-                      )}
-                    </div>
+                    {/* New chat button */}
+                    <button
+                      type="button"
+                      onClick={clearChat}
+                      title="New chat"
+                      disabled={controlsDisabled}
+                      className="w-9 h-9 rounded-xl flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-all flex-shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      <RotateCcw className="w-4 h-4" />
+                    </button>
 
                     <textarea
                       ref={inputRef}
@@ -1327,7 +1977,7 @@ export default function TracyPage() {
                     />
 
                     <div className="flex items-center gap-1.5 flex-shrink-0">
-                      {/* Attach — FIX: disabled during confirmation / loading */}
+                      {/* Attach */}
                       <button
                         type="button"
                         onClick={() => !controlsDisabled && fileInputRef.current?.click()}
@@ -1346,19 +1996,30 @@ export default function TracyPage() {
                         onChange={(e) => e.target.files && addFiles(e.target.files)}
                       />
 
-                      {/* Send */}
-                      <button
-                        type="button"
-                        onClick={() => send()}
-                        disabled={isLoading || !!confirmation || (!input.trim() && pendingFiles.length === 0)}
-                        className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all shadow-sm ${
-                          !input.trim() && pendingFiles.length === 0
-                            ? "bg-muted text-muted-foreground opacity-50 cursor-not-allowed"
-                            : "bg-[#c9a84c] text-white hover:opacity-90"
-                        }`}
-                      >
-                        <ArrowUp className="w-4 h-4 stroke-[3px]" />
-                      </button>
+                      {/* Stop / Send */}
+                      {isLoading ? (
+                        <button
+                          type="button"
+                          onClick={stopGeneration}
+                          title="Stop generation"
+                          className="w-9 h-9 rounded-xl flex items-center justify-center bg-foreground/10 text-foreground hover:bg-foreground/20 transition-all shadow-sm"
+                        >
+                          <Square className="w-3.5 h-3.5 fill-current" />
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => send()}
+                          disabled={!!confirmation || (!input.trim() && pendingFiles.length === 0)}
+                          className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all shadow-sm ${
+                            !input.trim() && pendingFiles.length === 0
+                              ? "bg-muted text-muted-foreground opacity-50 cursor-not-allowed"
+                              : "bg-[#c9a84c] text-white hover:opacity-90"
+                          }`}
+                        >
+                          <ArrowUp className="w-4 h-4 stroke-[3px]" />
+                        </button>
+                      )}
                     </div>
                   </div>
 
@@ -1370,7 +2031,7 @@ export default function TracyPage() {
             </div>
           </ResizablePanel>
 
-          {/* Artifact panel — only mounted when open and an artifact is selected */}
+          {/* Artifact panel */}
           {panelOpen && activeArtifact && (
             <>
               <ResizableHandle withHandle className="w-1 bg-border hover:bg-[#c9a84c]/30 transition-colors data-[resize-handle-active]:bg-[#c9a84c]/50" />
@@ -1383,8 +2044,10 @@ export default function TracyPage() {
               >
                 <ArtifactPanel
                   artifact={activeArtifact}
+                  allArtifacts={allArtifacts}
                   onClose={closePanel}
                   onSendMessage={(msg) => send(msg)}
+                  onSelectArtifact={openArtifact}
                 />
               </ResizablePanel>
             </>
