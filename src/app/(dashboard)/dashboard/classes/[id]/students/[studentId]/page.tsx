@@ -5,6 +5,7 @@ import { getStudent }                  from '@/lib/actions/students'
 import { getClassDetails }             from '@/lib/actions/classes'
 import { getStudentSubmissions, getStudentCognitiveProfiles } from '@/lib/actions/student-details'
 import { getStudentReteachHistory }    from '@/lib/actions/reteach-history'
+import { getStudentGapAttribution }    from '@/lib/actions/gap-attribution'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge }                                    from '@/components/ui/badge'
 import { StudentOverviewTab }          from '@/components/students/student-overview-tab'
@@ -21,13 +22,14 @@ interface StudentDetailPageProps {
 export default async function StudentDetailPage({ params }: StudentDetailPageProps) {
   const { id: classId, studentId } = await params
 
-  const [studentRes, classRes, submissionsRes, profilesRes, interventionsRes] =
+  const [studentRes, classRes, submissionsRes, profilesRes, interventionsRes, gapRes] =
     await Promise.all([
       getStudent(studentId),
       getClassDetails(classId),
       getStudentSubmissions(studentId),
       getStudentCognitiveProfiles(studentId),
       getStudentReteachHistory(studentId),
+      getStudentGapAttribution(studentId, classId),
     ])
 
   if (studentRes.error || !studentRes.data || classRes.error || !classRes.data) {
@@ -39,6 +41,7 @@ export default async function StudentDetailPage({ params }: StudentDetailPagePro
   const submissions         = submissionsRes.data  ?? []
   const cognitiveProfiles   = profilesRes.data     ?? []
   const interventions       = interventionsRes.data ?? []
+  const gapAttribution      = gapRes.data?.attributed_gaps ?? []
   const studentName         = `${student.first_name} ${student.last_name}`.trim()
   const hasCognitiveProfile = cognitiveProfiles.length > 0
   const hasInterventions    = interventions.length > 0
@@ -134,7 +137,8 @@ export default async function StudentDetailPage({ params }: StudentDetailPagePro
           <StudentInterventionsTab
             studentId={studentId}
             initialData={interventions}
-            classId={classId} 
+            classId={classId}
+            gapAttribution={gapAttribution}
           />
         </TabsContent>
 

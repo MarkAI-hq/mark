@@ -38,13 +38,13 @@ const STATUS_META = {
 
 function ImpactBadge({ delta }: { delta: number }) {
   if (delta > 0) return (
-    <div className="flex items-center gap-1 text-xs text-green-700 font-medium">
-      <TrendingUp className="h-3.5 w-3.5" />+{delta}% improvement
+    <div className="flex items-center gap-1 text-xs text-green-700 font-medium tabular-nums">
+      <TrendingUp className="h-3.5 w-3.5" />+{delta} pp improvement
     </div>
   )
   if (delta < 0) return (
-    <div className="flex items-center gap-1 text-xs text-red-600 font-medium">
-      <TrendingDown className="h-3.5 w-3.5" />{delta}% regression
+    <div className="flex items-center gap-1 text-xs text-red-600 font-medium tabular-nums">
+      <TrendingDown className="h-3.5 w-3.5" />{delta} pp regression
     </div>
   )
   return (
@@ -211,12 +211,29 @@ function ReteachHistoryRow({
                 </div>
                 {record.score_before != null && (
                   <p className="text-xs text-muted-foreground">
-                    Score at delivery: <span className="font-medium">{record.score_before}%</span>
+                    Score at delivery:{' '}
+                    <span className="font-medium tabular-nums">{record.score_before}%</span>
+                    {record.score_after != null && (
+                      <span className={`ml-1.5 font-semibold tabular-nums ${
+                        record.score_after - record.score_before >= 0 ? 'text-emerald-600' : 'text-rose-600'
+                      }`}>
+                        → {record.score_after}%
+                        {' '}({record.score_after - record.score_before >= 0 ? '+' : ''}{record.score_after - record.score_before} pp)
+                      </span>
+                    )}
                   </p>
                 )}
                 {record.error_rate_before != null && (
                   <p className="text-xs text-muted-foreground">
-                    Error rate: <span className="font-medium">{record.error_rate_before}%</span>
+                    Error rate:{' '}
+                    <span className="font-medium tabular-nums">{record.error_rate_before}%</span>
+                    {record.error_rate_after != null && (
+                      <span className={`ml-1.5 font-semibold tabular-nums ${
+                        record.error_rate_after - record.error_rate_before <= 0 ? 'text-emerald-600' : 'text-rose-600'
+                      }`}>
+                        → {record.error_rate_after}%
+                      </span>
+                    )}
                   </p>
                 )}
                 {record.quick_score_pct != null && (
@@ -289,7 +306,15 @@ function ReteachHistoryRow({
 
             <div className="p-4">
               {record.session_data
-                ? <ReteachSessionContent session={record.session_data} />
+                ? <ReteachSessionContent
+                    session={record.session_data}
+                    editable={record.status === 'generated'}
+                    sessionId={record.id}
+                    onSaved={(updated) => {
+                      const next = { ...record, session_data: updated }
+                      onDelivered(next as ReteachSessionRecord)
+                    }}
+                  />
                 : <p className="text-sm text-muted-foreground">Session content unavailable.</p>
               }
             </div>

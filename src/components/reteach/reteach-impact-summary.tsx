@@ -53,9 +53,9 @@ export function ReteachImpactSummary({ summary }: ReteachImpactSummaryProps) {
         <p className="text-xs text-slate-500">Avg improvement</p>
         <div className={`flex items-center gap-1.5 ${deltaColor}`}>
           <DeltaIcon className="h-4 w-4 shrink-0" />
-          <p className="text-2xl font-semibold">
+          <p className="text-2xl font-semibold tabular-nums">
             {summary.avg_improvement_delta !== null
-              ? `${summary.avg_improvement_delta > 0 ? '+' : ''}${summary.avg_improvement_delta}%`
+              ? `${summary.avg_improvement_delta > 0 ? '+' : ''}${summary.avg_improvement_delta} pp`
               : '—'
             }
           </p>

@@ -11,7 +11,7 @@ import { Button }         from '@/components/ui/button'
 import { Separator }      from '@/components/ui/separator'
 import {
   TrendingUp, TrendingDown, Minus, AlertTriangle,
-  ArrowRight, BookOpen, Target,
+  ArrowRight, BookOpen, Target, Timer, Flame, ArrowUpRight, ArrowDownRight,
 } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
@@ -82,6 +82,95 @@ export default async function MyPathwayPage({
           )}
         </p>
       </div>
+
+      {/* ── N7: Exam countdown + urgency projection ──────────────────── */}
+      {prediction.weeks_to_exam !== undefined && prediction.weeks_to_exam !== null && (
+        <div className={`rounded-xl border p-4 space-y-3 ${
+          prediction.weeks_to_exam <= 4  ? 'bg-rose-50 border-rose-200'   :
+          prediction.weeks_to_exam <= 12 ? 'bg-amber-50 border-amber-200' :
+          'bg-slate-50 border-slate-200'
+        }`}>
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-2">
+              <Timer className={`h-5 w-5 ${
+                prediction.weeks_to_exam <= 4  ? 'text-rose-600'   :
+                prediction.weeks_to_exam <= 12 ? 'text-amber-600'  :
+                'text-slate-500'
+              }`} />
+              <div>
+                <p className={`text-sm font-semibold ${
+                  prediction.weeks_to_exam <= 4  ? 'text-rose-800'   :
+                  prediction.weeks_to_exam <= 12 ? 'text-amber-800'  :
+                  'text-slate-700'
+                }`}>
+                  {prediction.weeks_to_exam} {prediction.weeks_to_exam === 1 ? 'week' : 'weeks'} to exam
+                </p>
+                <p className={`text-xs ${
+                  prediction.weeks_to_exam <= 4  ? 'text-rose-600'   :
+                  prediction.weeks_to_exam <= 12 ? 'text-amber-600'  :
+                  'text-slate-500'
+                }`}>
+                  {prediction.weeks_to_exam <= 4
+                    ? 'Final push — focus on your highest-impact actions'
+                    : prediction.weeks_to_exam <= 12
+                    ? 'Getting close — stay consistent with your plan'
+                    : 'You have time — build strong habits now'}
+                </p>
+              </div>
+            </div>
+
+            {/* Trajectory indicator */}
+            <div className="shrink-0 text-right">
+              {prediction.trajectory === 'improving' ? (
+                <div className="flex items-center gap-1 text-emerald-700">
+                  <ArrowUpRight className="h-4 w-4" />
+                  <span className="text-xs font-semibold">+{Math.abs(prediction.trajectory_delta)} pp trend</span>
+                </div>
+              ) : prediction.trajectory === 'declining' ? (
+                <div className="flex items-center gap-1 text-rose-700">
+                  <ArrowDownRight className="h-4 w-4" />
+                  <span className="text-xs font-semibold">{prediction.trajectory_delta} pp trend</span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-1 text-slate-500">
+                  <Minus className="h-4 w-4" />
+                  <span className="text-xs font-semibold">Steady</span>
+                </div>
+              )}
+              <p className="text-[10px] text-muted-foreground mt-0.5">vs last assessment</p>
+            </div>
+          </div>
+
+          {/* Urgency projection */}
+          {prediction.trajectory !== 'steady' && prediction.trajectory_delta !== 0 && (
+            <div className={`rounded-lg px-3 py-2 text-xs ${
+              prediction.trajectory === 'improving'
+                ? 'bg-emerald-100/60 text-emerald-800'
+                : 'bg-rose-100/60 text-rose-800'
+            }`}>
+              {prediction.trajectory === 'improving' ? (
+                <>
+                  <Flame className="inline h-3 w-3 mr-1" />
+                  At your current rate, you could reach{' '}
+                  <span className="font-semibold">
+                    {Math.min(100, Math.round(prediction.predicted_score + prediction.trajectory_delta * (prediction.weeks_to_exam! / 4)))}%
+                  </span>{' '}
+                  by exam day — keep going!
+                </>
+              ) : (
+                <>
+                  <AlertTriangle className="inline h-3 w-3 mr-1" />
+                  At your current rate, your score could slip to{' '}
+                  <span className="font-semibold">
+                    {Math.max(0, Math.round(prediction.predicted_score + prediction.trajectory_delta * (prediction.weeks_to_exam! / 4)))}%
+                  </span>{' '}
+                  by exam day — take action now.
+                </>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* ── Prediction card (full) ──────────────────────────────────── */}
       <NationalExamPredictionCard prediction={prediction} showPathway={false} />

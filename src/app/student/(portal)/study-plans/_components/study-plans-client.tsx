@@ -79,11 +79,20 @@ function PlanCard({ plan, onClick }: { plan: StudyPlan; onClick: () => void }) {
       {plan.score_after !== null && plan.score_after !== undefined && (
         <div className="space-y-1">
           <div className="flex justify-between text-xs">
-            <span className="text-muted-foreground">Quiz score</span>
-            <span className="font-medium">{plan.score_after}%</span>
+            <span className="text-muted-foreground">Self-reported score</span>
+            <span className={`font-semibold tabular-nums ${
+              plan.score_after >= 80 ? 'text-emerald-600' :
+              plan.score_after >= 60 ? 'text-amber-600'   :
+              'text-rose-600'
+            }`}>{plan.score_after}%</span>
           </div>
           <Progress value={plan.score_after} className="h-1.5" />
         </div>
+      )}
+      {plan.completed_at && (
+        <p className="text-[10px] text-muted-foreground">
+          Completed {format(parseISO(plan.completed_at), 'd MMM yyyy · HH:mm')}
+        </p>
       )}
     </button>
   )
@@ -329,13 +338,40 @@ function LessonViewer({ plan, onClose, onComplete, completing }: LessonViewerPro
             )}
 
             {plan.status === 'completed' && (
-              <div className="flex flex-col items-center gap-3 py-6 text-center">
+              <div className="flex flex-col items-center gap-4 py-6 text-center">
                 <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-100 dark:bg-emerald-950/40">
                   <CheckCircle2 className="h-8 w-8 text-emerald-500" />
                 </div>
                 <p className="text-sm font-semibold">You&apos;ve completed this lesson!</p>
-                {plan.score_after !== null && (
-                  <p className="text-xs text-muted-foreground">Quiz score: {plan.score_after}%</p>
+
+                {/* M6: Outcome precision */}
+                <div className="grid grid-cols-2 gap-3 w-full max-w-xs">
+                  <Card className="border-emerald-200/60 bg-emerald-50/40">
+                    <CardContent className="pt-3 pb-3">
+                      <p className="text-xs text-muted-foreground">Practice questions</p>
+                      <p className="text-lg font-bold mt-0.5">{content.practice_questions?.length ?? 0}</p>
+                    </CardContent>
+                  </Card>
+                  <Card className="border-emerald-200/60 bg-emerald-50/40">
+                    <CardContent className="pt-3 pb-3">
+                      <p className="text-xs text-muted-foreground">Self-reported score</p>
+                      <p className={`text-lg font-bold mt-0.5 tabular-nums ${
+                        plan.score_after !== null
+                          ? plan.score_after >= 80 ? 'text-emerald-600'
+                            : plan.score_after >= 60 ? 'text-amber-600'
+                            : 'text-rose-600'
+                          : ''
+                      }`}>
+                        {plan.score_after !== null ? `${plan.score_after}%` : '—'}
+                      </p>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {plan.completed_at && (
+                  <p className="text-xs text-muted-foreground">
+                    Completed {format(parseISO(plan.completed_at), 'd MMM yyyy · HH:mm')}
+                  </p>
                 )}
                 <Button variant="outline" onClick={onClose}>Back to study plans</Button>
               </div>

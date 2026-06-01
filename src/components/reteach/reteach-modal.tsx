@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/dialog'
 import { ScrollArea }              from '@/components/ui/scroll-area'
 import { ReteachSessionContent }   from '@/components/reteach/reteach-session-content'
+import { ReteachGenerationConfirmDialog } from '@/components/reteach/reteach-generation-confirm-dialog'
 import { generateStudentReteach, type ReteachSession } from '@/lib/actions/reteach'
 
 interface ReteachModalProps {
@@ -25,11 +26,13 @@ interface ReteachModalProps {
 }
 
 export function ReteachModal({ studentId, studentName, topError }: ReteachModalProps) {
-  const [open,    setOpen]    = useState(false)
-  const [session, setSession] = useState<ReteachSession | null>(null)
-  const [isPending, startTransition] = useTransition()
+  const [open,        setOpen]        = useState(false)
+  const [confirmOpen, setConfirmOpen] = useState(false)
+  const [session,     setSession]     = useState<ReteachSession | null>(null)
+  const [isPending,   startTransition] = useTransition()
 
-  const handleGenerate = () => {
+  const handleConfirm = () => {
+    setConfirmOpen(false)
     startTransition(async () => {
       const { data, error } = await generateStudentReteach(studentId)
       if (error || !data) {
@@ -41,8 +44,24 @@ export function ReteachModal({ studentId, studentName, topError }: ReteachModalP
     })
   }
 
+  const handleGenerate = () => setConfirmOpen(true)
+
   return (
     <>
+      {/* M5: Confirm dialog */}
+      <ReteachGenerationConfirmDialog
+        open={confirmOpen}
+        context={{
+          assessmentTitle: 'Longitudinal Coaching Plan',
+          errorType:       topError,
+          scope:           'longitudinal',
+          studentName,
+        }}
+        onConfirm={handleConfirm}
+        onCancel={() => setConfirmOpen(false)}
+        isLoading={isPending}
+      />
+
       {/* ── Trigger — sits next to error bar in Error Pattern Breakdown ── */}
       <Button
         size="sm"

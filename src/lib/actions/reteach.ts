@@ -196,6 +196,35 @@ export async function generateStudentReteach(
   }
 }
 
+// ── E3: Pre-exam check — pending sessions for assessment topics ────────────────
+
+export interface PreExamCheckItem {
+  session_id:    string
+  scope:         string
+  error_type:    string
+  topic?:        string
+  status:        string
+  created_at:    string
+}
+
+export async function getPreExamCheck(
+  assessmentId: string,
+): Promise<ServerActionResponse<PreExamCheckItem[]>> {
+  try {
+    const response = await fetcher<PreExamCheckItem[]>(
+      `/reteach/preview/assessment/${assessmentId}`,
+      { cache: 'no-store' },
+    )
+    if (response.error) throw new Error(response.error.message)
+    return { data: response.data ?? null, error: null }
+  } catch (err) {
+    return {
+      data:  null,
+      error: { message: err instanceof Error ? err.message : 'Failed to load pre-exam check.' },
+    }
+  }
+}
+
 export async function generateGroupReteach(params: {
   studentIds:    string[]
   errorType:     string

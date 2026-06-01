@@ -16,20 +16,24 @@ import {
 } from '@/components/ui/sheet'
 import { ScrollArea }              from '@/components/ui/scroll-area'
 import { ReteachSessionContent }   from '@/components/reteach/reteach-session-content'
+import { ReteachGenerationConfirmDialog } from '@/components/reteach/reteach-generation-confirm-dialog'
 import { generateSubmissionReteach, type ReteachSession } from '@/lib/actions/reteach'
 
 interface ReteachPanelProps {
   submissionId: string
   studentName:  string
   errorType:    string  // e.g. "Precision Error" — shown in the trigger button
+  score?:       number
 }
 
-export function ReteachPanel({ submissionId, studentName, errorType }: ReteachPanelProps) {
-  const [open,    setOpen]    = useState(false)
-  const [session, setSession] = useState<ReteachSession | null>(null)
-  const [isPending, startTransition] = useTransition()
+export function ReteachPanel({ submissionId, studentName, errorType, score }: ReteachPanelProps) {
+  const [open,        setOpen]        = useState(false)
+  const [confirmOpen, setConfirmOpen] = useState(false)
+  const [session,     setSession]     = useState<ReteachSession | null>(null)
+  const [isPending,   startTransition] = useTransition()
 
-  const handleGenerate = () => {
+  const handleConfirm = () => {
+    setConfirmOpen(false)
     startTransition(async () => {
       const { data, error } = await generateSubmissionReteach(submissionId)
       if (error || !data) {
@@ -41,10 +45,27 @@ export function ReteachPanel({ submissionId, studentName, errorType }: ReteachPa
     })
   }
 
+  const handleGenerate = () => setConfirmOpen(true)
+
   const handlePrint = () => window.print()
 
   return (
     <>
+      {/* M5: Confirm dialog */}
+      <ReteachGenerationConfirmDialog
+        open={confirmOpen}
+        context={{
+          assessmentTitle: errorType,
+          errorType,
+          scope:           'individual',
+          studentName,
+          score,
+        }}
+        onConfirm={handleConfirm}
+        onCancel={() => setConfirmOpen(false)}
+        isLoading={isPending}
+      />
+
       {/* ── Trigger button — sits under "Identified Issues" ── */}
       <Button
         size="sm"

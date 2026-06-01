@@ -32,6 +32,8 @@ import { BatchGradingDialog }  from '@/components/grading/batch-grading-dialog'
 import { ExamDialog }          from '@/components/exams/exam-dialog'
 import { InlineClassDialog }   from '@/components/classes/inline-class-dialog'
 import { PredictionCard }      from './prediction-card'
+import { PreExamBanner }       from '@/components/reteach/pre-exam-banner'
+import { CalibrationSliders }  from '@/components/prediction/calibration-sliders'
 import { cn }                  from '@/lib/utils'
 import { toast }               from 'sonner'
 
@@ -229,6 +231,11 @@ export function AssessmentClient({
 
       {/* ── Banners ────────────────────────────────────────────────── */}
       <div className="space-y-3 mt-6">
+        {/* E3: Pre-exam check — pending reteach sessions for topics in this assessment */}
+        <PreExamBanner
+          assessmentId={assessment.assessment_id}
+          classId={linkedClassId ?? undefined}
+        />
         {canGradeWithAI && !hasStudents && (
           <div className="flex items-center justify-between gap-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
             <div className="flex items-center gap-3">
@@ -337,10 +344,15 @@ export function AssessmentClient({
           </Card>
 
           {hasPrediction && (
-            <PredictionCard 
-              prediction={latestAudit.prediction} 
-              status={auditStatus} 
+            <PredictionCard
+              prediction={latestAudit.prediction}
+              status={auditStatus}
             />
+          )}
+
+          {/* N8: Calibration sliders — visible to admins when curriculum is set */}
+          {assessment.curriculum_id && (
+            <CalibrationSliders curriculumId={assessment.curriculum_id} />
           )}
         </div>
 

@@ -1,10 +1,55 @@
 'use server'
 
 // src/lib/actions/gap-attribution.ts
-// B3: Gap attribution data for student profile
+// Exposure matrix (class-level) + gap attribution (student-level)
 
 import { fetcher } from '@/lib/fetch'
 import type { ServerActionResponse } from '@/lib/types'
+
+// ── Exposure Matrix (class view) ───────────────────────────────────────────
+
+export type ExposureStatus = 'present' | 'absent' | 'partial' | 'no_session' | 'no_record'
+
+export interface ExposureMatrixRow {
+  sow_entry_id:     string
+  topic:            string
+  week_number?:     number
+  session_date?:    string | null
+  lesson_dates:     string[]
+  student_exposure: Record<string, ExposureStatus>
+}
+
+export interface ExposureMatrixStudent {
+  student_id: string
+  name:       string
+}
+
+export interface ExposureMatrix {
+  class_id:  string
+  sow_id:    string | null
+  rows:      ExposureMatrixRow[]
+  students:  ExposureMatrixStudent[]
+}
+
+export async function getClassExposureMatrix(
+  classId: string,
+): Promise<ServerActionResponse<ExposureMatrix>> {
+  try {
+    const res = await fetcher<ExposureMatrix>(
+      `/gap-attribution/class/${classId}/exposure-matrix`,
+      { cache: 'no-store' },
+    )
+    if (res.error) throw new Error(res.error.message)
+    return { data: res.data ?? null, error: null }
+  } catch (err) {
+    return {
+      data:  null,
+      error: { message: err instanceof Error ? err.message : 'Failed to load exposure matrix.' },
+    }
+  }
+}
+
+// ── Student Gap Attribution (individual view) ──────────────────────────────
 
 export type AttributionType =
   | 'never_exposed'

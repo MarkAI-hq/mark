@@ -73,6 +73,30 @@ export async function getStudentPrediction(
   }
 }
 
+export async function calibratePrediction(
+  curriculumId:      string,
+  bloomsSensitivity: number,
+  topicSensitivity:  number,
+): Promise<ServerActionResponse<{ curriculum_id: string; blooms_sensitivity: number; topic_sensitivity: number }>> {
+  try {
+    const res = await fetcher<{ curriculum_id: string; blooms_sensitivity: number; topic_sensitivity: number }>(
+      '/prediction/calibrate',
+      {
+        method: 'POST',
+        cache:  'no-store',
+        body:   JSON.stringify({ curriculumId, bloomsSensitivity, topicSensitivity }),
+      },
+    )
+    if (res.error) throw new Error(res.error.message)
+    return { data: res.data ?? null, error: null }
+  } catch (err) {
+    return {
+      data:  null,
+      error: { message: err instanceof Error ? err.message : 'Failed to update calibration.' },
+    }
+  }
+}
+
 export async function recalculatePrediction(
   studentId:    string,
   curriculumId: string,

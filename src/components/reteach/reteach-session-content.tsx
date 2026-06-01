@@ -3,20 +3,29 @@
 // src/components/reteach/reteach-session-content.tsx
 // Shared content renderer — used by panel, modal, and full page
 
-import { useState }  from 'react'
+import { useState, useTransition } from 'react'
+import { toast }     from 'sonner'
 import { Badge }     from '@/components/ui/badge'
+import { Button }    from '@/components/ui/button'
+import { Textarea }  from '@/components/ui/textarea'
 import { Separator } from '@/components/ui/separator'
 import {
   BookOpen, MessageSquare, Lightbulb,
   AlertCircle, CheckCircle2, Brain, Clock,
   FileText, ChevronDown, ChevronRight, GraduationCap,
   Target, ClipboardList, Languages, NotebookPen,
-  Link2, Calendar, HelpCircle,
+  Link2, Calendar, HelpCircle, Pencil, Save, X,
+  Square, SquareCheckBig, FlipHorizontal,
 } from 'lucide-react'
 import type { ReteachSession, RemediationActivityType } from '@/lib/actions/reteach'
+import { updateSessionContent } from '@/lib/actions/reteach-history'
 
 interface ReteachSessionContentProps {
-  session: ReteachSession
+  session:    ReteachSession
+  /** D4: When true, shows edit controls */
+  editable?:  boolean
+  sessionId?: string
+  onSaved?:   (updated: ReteachSession) => void
 }
 
 const SCOPE_LABEL: Record<ReteachSession['scope'], string> = {
@@ -43,15 +52,88 @@ const STRATEGY_LABEL: Record<RemediationActivityType, string> = {
   structured_decision_making:        'Structured Decision-Making',
 }
 
-export function ReteachSessionContent({ session }: ReteachSessionContentProps) {
+export function ReteachSessionContent({ session, editable, sessionId, onSaved }: ReteachSessionContentProps) {
   const [anchorOpen,    setAnchorOpen]    = useState(false)
   const [cornellOpen,   setCornellOpen]   = useState(false)
   const [etymologyOpen, setEtymologyOpen] = useState(true)
-  const tg = session.teacher_guide
-  const ws = session.student_worksheet
+  const [editMode,      setEditMode]      = useState(false)
+  const [draft,         setDraft]         = useState(session)
+  const [isPending,     startTransition]  = useTransition()
+
+  // H3: interactive state
+  const [checkedQs,   setCheckedQs]   = useState<Set<number>>(new Set())
+  const [flippedCards, setFlippedCards] = useState<Set<number>>(new Set())
+
+  const tg = editMode ? draft.teacher_guide      : session.teacher_guide
+  const ws = editMode ? draft.student_worksheet  : session.student_worksheet
+
+  const patchExplanation = (field: 'opening' | 'core_concept' | 'worked_example', value: string) => {
+    setDraft(d => ({
+      ...d,
+      teacher_guide: {
+        ...d.teacher_guide,
+        scripted_explanation: { ...d.teacher_guide.scripted_explanation, [field]: value },
+      },
+    }))
+  }
+
+  const handleSave = () => {
+    if (!sessionId) return
+    startTransition(async () => {
+      const { data, error } = await updateSessionContent(sessionId, draft)
+      if (error || !data) {
+        toast.error(error?.message ?? 'Failed to save.')
+        return
+      }
+      toast.success('Session content saved.')
+      setEditMode(false)
+      onSaved?.(draft)
+    })
+  }
+
+  const handleCancel = () => {
+    setDraft(session)
+    setEditMode(false)
+  }
+
+  const toggleCheck = (i: number) => setCheckedQs(prev => {
+    const next = new Set(prev)
+    if (next.has(i)) next.delete(i); else next.add(i)
+    return next
+  })
+
+  const toggleFlip = (i: number) => setFlippedCards(prev => {
+    const next = new Set(prev)
+    if (next.has(i)) next.delete(i); else next.add(i)
+    return next
+  })
 
   return (
     <div className="space-y-6">
+
+      {/* D4: Edit toolbar */}
+      {editable && (
+        <div className="flex items-center justify-between gap-3 rounded-lg border border-dashed border-slate-300 bg-slate-50 px-3 py-2">
+          <p className="text-xs text-slate-500">
+            {editMode ? 'Editing session — changes save to the database.' : 'Teacher edits allowed before delivery.'}
+          </p>
+          {editMode ? (
+            <div className="flex items-center gap-2">
+              <Button size="sm" variant="ghost" className="h-7 text-xs gap-1" onClick={handleCancel} disabled={isPending}>
+                <X className="h-3 w-3" /> Cancel
+              </Button>
+              <Button size="sm" className="h-7 text-xs gap-1" onClick={handleSave} disabled={isPending}>
+                <Save className="h-3 w-3" />
+                {isPending ? 'Saving…' : 'Save'}
+              </Button>
+            </div>
+          ) : (
+            <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => setEditMode(true)}>
+              <Pencil className="h-3 w-3" /> Edit
+            </Button>
+          )}
+        </div>
+      )}
 
       {/* ── J1: Etymology — appears first to build semantic intuition ── */}
       {session.etymology_note && (
@@ -171,17 +253,44 @@ export function ReteachSessionContent({ session }: ReteachSessionContentProps) {
         <div className="rounded-lg border bg-slate-50 p-4 space-y-3">
           <div>
             <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">Opening</p>
-            <p className="text-sm text-slate-700 leading-relaxed">{tg.scripted_explanation.opening}</p>
+            {editMode ? (
+              <Textarea
+                value={draft.teacher_guide.scripted_explanation.opening}
+                onChange={e => patchExplanation('opening', e.target.value)}
+                rows={3}
+                className="text-sm"
+              />
+            ) : (
+              <p className="text-sm text-slate-700 leading-relaxed">{tg.scripted_explanation.opening}</p>
+            )}
           </div>
           <Separator />
           <div>
             <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">Core concept</p>
-            <p className="text-sm text-slate-700 leading-relaxed">{tg.scripted_explanation.core_concept}</p>
+            {editMode ? (
+              <Textarea
+                value={draft.teacher_guide.scripted_explanation.core_concept}
+                onChange={e => patchExplanation('core_concept', e.target.value)}
+                rows={4}
+                className="text-sm"
+              />
+            ) : (
+              <p className="text-sm text-slate-700 leading-relaxed">{tg.scripted_explanation.core_concept}</p>
+            )}
           </div>
           <Separator />
           <div>
             <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">Worked example</p>
-            <p className="text-sm text-slate-700 leading-relaxed">{tg.scripted_explanation.worked_example}</p>
+            {editMode ? (
+              <Textarea
+                value={draft.teacher_guide.scripted_explanation.worked_example}
+                onChange={e => patchExplanation('worked_example', e.target.value)}
+                rows={4}
+                className="text-sm"
+              />
+            ) : (
+              <p className="text-sm text-slate-700 leading-relaxed">{tg.scripted_explanation.worked_example}</p>
+            )}
           </div>
         </div>
       </div>
@@ -203,7 +312,7 @@ export function ReteachSessionContent({ session }: ReteachSessionContentProps) {
         </div>
       )}
 
-      {/* ── Example questions ────────────────────────────────────────── */}
+      {/* ── Example questions — H3: flashcard flip mode ──────────────── */}
       <div className="space-y-3">
         <div className="flex items-center gap-2">
           <BookOpen className="h-4 w-4 text-slate-500" />
@@ -211,20 +320,35 @@ export function ReteachSessionContent({ session }: ReteachSessionContentProps) {
           <span className="text-xs text-slate-400">(teacher-led, with model answers)</span>
         </div>
         <div className="space-y-2">
-          {tg.example_questions.map((q, i) => (
-            <div key={i} className="rounded-lg border p-3 space-y-1.5">
-              <div className="flex items-start justify-between gap-2">
-                <p className="text-sm font-medium text-slate-800">{i + 1}. {q.question}</p>
-                <Badge variant="outline" className="text-[10px] shrink-0 bg-slate-50 text-slate-500 border-slate-200">
-                  {q.bloom_level}
-                </Badge>
+          {tg.example_questions.map((q, i) => {
+            const flipped = flippedCards.has(i)
+            return (
+              <div key={i} className="rounded-lg border p-3 space-y-1.5">
+                <div className="flex items-start justify-between gap-2">
+                  <p className="text-sm font-medium text-slate-800">{i + 1}. {q.question}</p>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Badge variant="outline" className="text-[10px] bg-slate-50 text-slate-500 border-slate-200">
+                      {q.bloom_level}
+                    </Badge>
+                    <button
+                      type="button"
+                      title={flipped ? 'Hide answer' : 'Reveal answer'}
+                      onClick={() => toggleFlip(i)}
+                      className="rounded p-0.5 hover:bg-slate-100 transition-colors"
+                    >
+                      <FlipHorizontal className="h-3.5 w-3.5 text-slate-400" />
+                    </button>
+                  </div>
+                </div>
+                {flipped && (
+                  <p className="text-xs text-slate-500 leading-relaxed border-t pt-1.5">
+                    <span className="font-medium text-slate-600">Expected: </span>
+                    {q.expected_answer}
+                  </p>
+                )}
               </div>
-              <p className="text-xs text-slate-500 leading-relaxed">
-                <span className="font-medium text-slate-600">Expected: </span>
-                {q.expected_answer}
-              </p>
-            </div>
-          ))}
+            )
+          })}
         </div>
       </div>
 
@@ -303,29 +427,54 @@ export function ReteachSessionContent({ session }: ReteachSessionContentProps) {
         <span className="text-xs text-slate-400">(print and hand to student — no answers)</span>
       </div>
 
-      {/* ── Practice questions ───────────────────────────────────────── */}
+      {/* ── Practice questions — H3: interactive checklist ──────────── */}
       <div className="space-y-3">
         <div className="flex items-center gap-2">
           <FileText className="h-4 w-4 text-slate-500" />
           <h4 className="text-sm font-medium text-slate-900">Practice questions</h4>
           <span className="text-xs text-slate-400">(students work independently)</span>
+          {checkedQs.size > 0 && (
+            <span className="text-xs text-emerald-600 font-medium ml-auto">
+              {checkedQs.size}/{ws.practice_questions.length} done
+            </span>
+          )}
         </div>
         <div className="space-y-2">
-          {ws.practice_questions.map((q, i) => (
-            <div key={i} className="rounded-lg border p-3 space-y-1.5">
-              <div className="flex items-start justify-between gap-2">
-                <p className="text-sm font-medium text-slate-800">{i + 1}. {q.question}</p>
-                <Badge variant="outline" className="text-[10px] shrink-0 bg-slate-50 text-slate-500 border-slate-200">
-                  {q.bloom_level}
-                </Badge>
+          {ws.practice_questions.map((q, i) => {
+            const checked = checkedQs.has(i)
+            return (
+              <div key={i} className={`rounded-lg border p-3 space-y-1.5 transition-colors ${checked ? 'bg-emerald-50 border-emerald-200' : ''}`}>
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-start gap-2">
+                    <button
+                      type="button"
+                      onClick={() => toggleCheck(i)}
+                      className="mt-0.5 shrink-0"
+                      title={checked ? 'Mark incomplete' : 'Mark complete'}
+                    >
+                      {checked
+                        ? <SquareCheckBig className="h-4 w-4 text-emerald-600" />
+                        : <Square className="h-4 w-4 text-slate-300" />
+                      }
+                    </button>
+                    <p className={`text-sm font-medium ${checked ? 'text-slate-400 line-through' : 'text-slate-800'}`}>
+                      {i + 1}. {q.question}
+                    </p>
+                  </div>
+                  <Badge variant="outline" className="text-[10px] shrink-0 bg-slate-50 text-slate-500 border-slate-200">
+                    {q.bloom_level}
+                  </Badge>
+                </div>
+                {!checked && (
+                  <div className="space-y-0.5 mt-1">
+                    {Array.from({ length: q.answer_lines }).map((_, j) => (
+                      <div key={j} className="h-4 border-b border-dashed border-slate-200" />
+                    ))}
+                  </div>
+                )}
               </div>
-              <div className="space-y-0.5 mt-1">
-                {Array.from({ length: q.answer_lines }).map((_, j) => (
-                  <div key={j} className="h-4 border-b border-dashed border-slate-200" />
-                ))}
-              </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       </div>
 
