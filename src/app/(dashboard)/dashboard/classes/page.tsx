@@ -26,12 +26,12 @@ export default async function ClassesPage() {
 
   return (
     <>
-      <div className="flex items-center justify-between mb-4">
-        <div className="text-3xl font-bold tracking-tight">
-          Classes
-          <h4 className="pt-3 text-lg font-normal text-muted-foreground">
-            Create and manage your assessments or exams.
-          </h4>
+      <div className="flex items-center justify-between pb-2">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Classes</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Create and manage classes, enrol students, and assign teachers.
+          </p>
         </div>
       </div>
       <Suspense fallback={null}>

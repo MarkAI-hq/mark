@@ -55,7 +55,16 @@ export async function overrideAudit(assessmentId: string, reason: string): Promi
   });
 }
 
-export async function getRedesignSuggestions(assessmentId: string): Promise<ServerActionResponse<{ variations: RedesignVariation[] }>> {
+export interface ParsedQuestion {
+  question_number: string;
+  question_text:   string;
+  marks:           number;
+  blooms_level?:   string | null;
+  command_word?:   string | null;
+  topic?:          string | null;
+}
+
+export async function getRedesignSuggestions(assessmentId: string): Promise<ServerActionResponse<{ variations: RedesignVariation[]; parsedQuestions: ParsedQuestion[] }>> {
   return fetcher(`/assessments/${assessmentId}/audit/redesign-suggestions`, {
     method: 'POST',
   });
@@ -92,5 +101,17 @@ export async function confirmRedesign(assessmentId: string, html: string): Promi
   return fetcher(`/assessments/${assessmentId}/audit/redesign/confirm`, {
     method: 'POST',
     body: JSON.stringify({ html }),
+  });
+}
+
+export async function applyPartial(
+  assessmentId:       string,
+  variationId:        'conservative' | 'comprehensive',
+  acceptedDimensions: string[],
+  selectedImages?:    { insertionId: string; imageUrl: string }[],
+): Promise<ServerActionResponse<{ message: string }>> {
+  return fetcher(`/assessments/${assessmentId}/audit/redesign/apply-partial`, {
+    method: 'POST',
+    body: JSON.stringify({ variationId, acceptedDimensions, selectedImages }),
   });
 }

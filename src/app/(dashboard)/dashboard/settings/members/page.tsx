@@ -1,8 +1,8 @@
 // src/app/(dashboard)/dashboard/settings/members/page.tsx
 import { redirect } from 'next/navigation';
 import { getSession } from '@/lib/session';
-import { getOrganizationUsers } from '@/lib/actions/organizations';
-import { MembersClient } from './_components/members-client'; // We will create this next
+import { getOrganizationUsers, getAvailableRoles } from '@/lib/actions/organizations';
+import { MembersClient } from './_components/members-client';
 
 export default async function MembersPage() {
   const user = await getSession();
@@ -15,20 +15,25 @@ export default async function MembersPage() {
     redirect('/dashboard');
   }
 
-  const { data: members, error } = await getOrganizationUsers(
-    user.organizationId,
-  );
+  const [membersRes, rolesRes] = await Promise.all([
+    getOrganizationUsers(user.organizationId),
+    getAvailableRoles(),
+  ]);
 
-  if (error) {
+  if (membersRes.error) {
     return (
       <div>
         <h3 className="text-lg font-medium">Error</h3>
         <p className="text-sm text-muted-foreground">
-          Failed to load members: {error.message}
+          Failed to load members: {membersRes.error.message}
         </p>
       </div>
     );
   }
+
+  // Filter out platform-level roles from the invite options
+  const PLATFORM_ROLES = ['Root', 'Support']
+  const availableRoles = (rolesRes.data ?? []).filter(r => !PLATFORM_ROLES.includes(r.role_name))
 
   return (
     <div className="space-y-6">
@@ -38,7 +43,11 @@ export default async function MembersPage() {
           Invite and manage your organization&apos;s members.
         </p>
       </div>
-      <MembersClient initialMembers={members ?? []} organizationId={user.organizationId} />
+      <MembersClient
+        initialMembers={membersRes.data ?? []}
+        organizationId={user.organizationId}
+        availableRoles={availableRoles}
+      />
     </div>
   );
 }

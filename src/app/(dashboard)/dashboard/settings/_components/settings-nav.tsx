@@ -31,8 +31,8 @@ export function SettingsNav({ className, items, ...props }: SettingsNavProps) {
           className={cn(
             buttonVariants({ variant: 'ghost' }),
             pathname === item.href
-              ? 'bg-muted hover:bg-muted'
-              : 'hover:bg-transparent hover:underline',
+              ? 'bg-surface-overlay font-medium border-l-2 border-gold pl-3 rounded-l-none hover:bg-surface-overlay'
+              : 'hover:bg-surface-overlay/60 hover:no-underline',
             'justify-start',
           )}
         >

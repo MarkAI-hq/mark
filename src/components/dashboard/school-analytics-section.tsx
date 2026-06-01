@@ -37,10 +37,10 @@ const SCORE_COLORS = [
 ]
 
 function performanceBadge(pct: number) {
-  if (pct >= 80) return <Badge className="bg-green-100 text-green-800 border-green-200 text-xs">Strong</Badge>
-  if (pct >= 60) return <Badge className="bg-blue-100 text-blue-800 border-blue-200 text-xs">Good</Badge>
-  if (pct >= 50) return <Badge className="bg-amber-100 text-amber-800 border-amber-200 text-xs">Developing</Badge>
-  return <Badge className="bg-red-100 text-red-800 border-red-200 text-xs">At Risk</Badge>
+  if (pct >= 80) return <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-900 text-xs">Strong</Badge>
+  if (pct >= 60) return <Badge className="bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-950/40 dark:text-blue-400 dark:border-blue-900 text-xs">Good</Badge>
+  if (pct >= 50) return <Badge className="bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-950/40 dark:text-amber-400 dark:border-amber-900 text-xs">Developing</Badge>
+  return <Badge className="bg-red-100 text-red-800 border-red-200 dark:bg-red-950/40 dark:text-red-400 dark:border-red-900 text-xs">At Risk</Badge>
 }
 
 export function SchoolAnalyticsSection({ analytics }: SchoolAnalyticsSectionProps) {
@@ -60,7 +60,7 @@ export function SchoolAnalyticsSection({ analytics }: SchoolAnalyticsSectionProp
       {/* ── Section header ──────────────────────────────────────────────── */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-semibold tracking-tight">School Intelligence</h2>
+          <h2 className="text-base font-semibold tracking-tight">School Intelligence</h2>
           <p className="text-sm text-muted-foreground">
             Based on {analytics.totalSubmissions} graded submission{analytics.totalSubmissions !== 1 ? 's' : ''} · School average: <strong>{analytics.avgSchoolScore}%</strong>
           </p>
@@ -71,7 +71,7 @@ export function SchoolAnalyticsSection({ analytics }: SchoolAnalyticsSectionProp
       <div className="grid gap-4 md:grid-cols-3">
 
         {/* Bloom's radar */}
-        <Card>
+        <Card className="animate-fade-up" style={{ animationDelay: '0ms' }}>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-2">
               <Brain className="h-4 w-4 text-muted-foreground" />
@@ -92,9 +92,9 @@ export function SchoolAnalyticsSection({ analytics }: SchoolAnalyticsSectionProp
                   />
                   <Radar
                     dataKey="mastery"
-                    fill="hsl(var(--primary))"
+                    fill="hsl(var(--gold))"
                     fillOpacity={0.3}
-                    stroke="hsl(var(--primary))"
+                    stroke="hsl(var(--gold))"
                     strokeWidth={2}
                   />
                   <Tooltip
@@ -112,7 +112,7 @@ export function SchoolAnalyticsSection({ analytics }: SchoolAnalyticsSectionProp
         </Card>
 
         {/* Score distribution bar chart */}
-        <Card>
+        <Card className="animate-fade-up" style={{ animationDelay: '50ms' }}>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-2">
               <BarChart2 className="h-4 w-4 text-muted-foreground" />
@@ -145,7 +145,7 @@ export function SchoolAnalyticsSection({ analytics }: SchoolAnalyticsSectionProp
         </Card>
 
         {/* Top error types */}
-        <Card>
+        <Card className="animate-fade-up" style={{ animationDelay: '100ms' }}>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-2">
               <AlertTriangle className="h-4 w-4 text-amber-500" />

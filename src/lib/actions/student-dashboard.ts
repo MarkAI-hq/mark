@@ -140,9 +140,55 @@ export async function getStudentLearningTools(studentId: string): Promise<Learni
   }
 }
 
+// ── Study plans ───────────────────────────────────────────────────────────
+export async function getStudentStudyPlans(studentId: string): Promise<StudyPlan[]> {
+  try {
+    const headers = await authHeaders()
+    const res = await fetch(`${API}/api/v1/study-plans/student/${studentId}`, {
+      headers,
+      cache: 'no-store',
+    })
+    if (!res.ok) return []
+    const data = await res.json()
+    return Array.isArray(data) ? data : (data.data ?? [])
+  } catch (err) {
+    console.error('[getStudentStudyPlans]', err)
+    return []
+  }
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
 // ─────────────────────────────────────────────────────────────────────────────
+
+export interface StudyPlanContent {
+  lesson_type:        string
+  topic:              string
+  subject:            string
+  introduction:       string
+  explanation:        string
+  worked_example:     string
+  practice_questions: { question: string; answer: string }[]
+  summary:            string
+  estimated_minutes:  number
+}
+
+export interface StudyPlan {
+  id:               string
+  student_id:       string
+  organization_id:  string
+  scheme_entry_id:  string | null
+  lesson_type:      'pre_class' | 'catch_up' | 'gap_closure' | 'exam_prep' | 'consolidation'
+  subject:          string
+  topic:            string
+  content:          StudyPlanContent
+  scheduled_for:    string
+  delivery_channel: string
+  status:           'pending' | 'sent' | 'completed' | 'skipped'
+  completed_at:     string | null
+  score_after:      number | null
+  createdAt:        string
+}
 
 export interface StudentAnalytics {
   studentId?:         string

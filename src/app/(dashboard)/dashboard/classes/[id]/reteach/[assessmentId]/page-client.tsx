@@ -2,13 +2,17 @@
 
 // src/app/(dashboard)/dashboard/classes/[id]/reteach/[assessmentId]/page-client.tsx
 
-import { useRouter }               from 'next/navigation'
-import { ArrowLeft, Printer }      from 'lucide-react'
+import { useRouter }                from 'next/navigation'
+import { ArrowLeft, Printer, ChevronDown } from 'lucide-react'
+import { useState }                from 'react'
 import { Button }                  from '@/components/ui/button'
 import { Separator }               from '@/components/ui/separator'
+import {
+  DropdownMenu, DropdownMenuContent,
+  DropdownMenuItem, DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { ReteachSessionContent }   from '@/components/reteach/reteach-session-content'
 import type { ReteachSession }     from '@/lib/actions/reteach'
-import { useEffect }               from 'react'
 
 interface ClassReteachPageClientProps {
   session:         ReteachSession
@@ -29,17 +33,11 @@ export function ClassReteachPageClient({
   affected,
   total,
 }: ClassReteachPageClientProps) {
-  const router = useRouter()
-  const pct    = total > 0 ? Math.round((affected / total) * 100) : 0
+  const router          = useRouter()
+  const pct             = total > 0 ? Math.round((affected / total) * 100) : 0
+  const [copies, setCopies] = useState(1)
 
-  useEffect(() => {
-    console.log('[RETEACH CLIENT DEBUG] session received:', JSON.stringify(session, null, 2))
-    console.log('[RETEACH CLIENT DEBUG] session.scripted_explanation type:', typeof session?.scripted_explanation)
-    console.log('[RETEACH CLIENT DEBUG] session.example_questions length:', session?.example_questions?.length)
-    console.log('[RETEACH CLIENT DEBUG] session.practice_questions length:', session?.practice_questions?.length)
-  }, [session])
-
-  const handleBack = () => {
+const handleBack = () => {
     // Navigate explicitly rather than router.back() so we land on the
     // interventions tab. router.refresh() invalidates the server cache so
     // the class page re-fetches interventions and shows the new session.
@@ -61,15 +59,26 @@ export function ClassReteachPageClient({
           <ArrowLeft className="h-4 w-4" />
           Back to class
         </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          className="gap-2"
-          onClick={() => window.print()}
-        >
-          <Printer className="h-4 w-4" />
-          Print session
-        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm" className="gap-1.5">
+              <Printer className="h-4 w-4" />
+              Print
+              <ChevronDown className="h-3 w-3 opacity-60" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => window.print()}>
+              Full package (teacher + student)
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => window.print()}>
+              Teacher guide only
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => window.print()}>
+              Student worksheet only
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       {/* ── Page header ─────────────────────────────────────────────── */}

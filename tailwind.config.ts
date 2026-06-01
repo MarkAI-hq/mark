@@ -16,10 +16,6 @@ export default {
   				DEFAULT: 'hsl(var(--card))',
   				foreground: 'hsl(var(--card-foreground))'
   			},
-			backgroundImage: {
-				'light': "url('/assets/images/light.png')",
-        		'dark': "url('/assets/images/dark.png')",
-			},
   			popover: {
   				DEFAULT: 'hsl(var(--popover))',
   				foreground: 'hsl(var(--popover-foreground))'
@@ -53,34 +49,61 @@ export default {
   				'3': 'hsl(var(--chart-3))',
   				'4': 'hsl(var(--chart-4))',
   				'5': 'hsl(var(--chart-5))'
+  			},
+  			gold: {
+  				DEFAULT: 'hsl(var(--gold))',
+  				foreground: 'hsl(var(--gold-foreground))'
+  			},
+  			surface: {
+  				raised: 'hsl(var(--surface-raised))',
+  				overlay: 'hsl(var(--surface-overlay))'
   			}
+  		},
+  		backgroundImage: {
+  			'light': "url('/assets/images/light.png')",
+  			'dark': "url('/assets/images/dark.png')",
+  		},
+  		boxShadow: {
+  			xs:  'var(--shadow-xs)',
+  			sm:  'var(--shadow-sm)',
+  			md:  'var(--shadow-md)',
+  			lg:  'var(--shadow-lg)',
   		},
   		borderRadius: {
   			lg: 'var(--radius)',
   			md: 'calc(var(--radius) - 2px)',
-  			sm: 'calc(var(--radius) - 4px)'
+  			sm: 'calc(var(--radius) - 4px)',
+  			'2xl': 'calc(var(--radius) * 2)',
+  			'3xl': 'calc(var(--radius) * 3)'
   		},
   		keyframes: {
   			'accordion-down': {
-  				from: {
-  					height: '0'
-  				},
-  				to: {
-  					height: 'var(--radix-accordion-content-height)'
-  				}
+  				from: { height: '0' },
+  				to: { height: 'var(--radix-accordion-content-height)' }
   			},
   			'accordion-up': {
-  				from: {
-  					height: 'var(--radix-accordion-content-height)'
-  				},
-  				to: {
-  					height: '0'
-  				}
+  				from: { height: 'var(--radix-accordion-content-height)' },
+  				to: { height: '0' }
+  			},
+  			'fade-up': {
+  				from: { opacity: '0', transform: 'translateY(8px)' },
+  				to:   { opacity: '1', transform: 'translateY(0)' }
+  			},
+  			'fade-in': {
+  				from: { opacity: '0' },
+  				to:   { opacity: '1' }
+  			},
+  			'scale-in': {
+  				from: { opacity: '0', transform: 'scale(0.97)' },
+  				to:   { opacity: '1', transform: 'scale(1)' }
   			}
   		},
   		animation: {
   			'accordion-down': 'accordion-down 0.2s ease-out',
-  			'accordion-up': 'accordion-up 0.2s ease-out'
+  			'accordion-up': 'accordion-up 0.2s ease-out',
+  			'fade-up':  'fade-up 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+  			'fade-in':  'fade-in 0.25s ease',
+  			'scale-in': 'scale-in 0.25s cubic-bezier(0.16, 1, 0.3, 1)'
   		}
   	}
   },

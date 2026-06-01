@@ -3,22 +3,22 @@
 // src/components/reteach/reteach-deliver-modal.tsx
 
 import { useState, useTransition, useEffect } from 'react'
-import { toast }           from 'sonner'
-import { CheckCircle2, Loader2, Calendar } from 'lucide-react'
-import { format, parseISO } from 'date-fns'
-import { Button }          from '@/components/ui/button'
+import { toast }                from 'sonner'
+import { CheckCircle2, Loader2, Calendar, Monitor, Printer } from 'lucide-react'
+import { format, parseISO }     from 'date-fns'
+import { Button }               from '@/components/ui/button'
 import {
   Dialog, DialogContent, DialogHeader,
   DialogTitle, DialogDescription, DialogFooter,
 } from '@/components/ui/dialog'
-import { Label }           from '@/components/ui/label'
-import { Input }           from '@/components/ui/input'
+import { Label }                from '@/components/ui/label'
+import { Input }                from '@/components/ui/input'
 import {
   Select, SelectContent, SelectItem,
   SelectTrigger, SelectValue,
 } from '@/components/ui/select'
-import { markSessionDelivered }  from '@/lib/actions/reteach-history'
-import { getClassAssessments }   from '@/lib/actions/classes'
+import { markSessionDelivered }     from '@/lib/actions/reteach-history'
+import { getClassAssessments }      from '@/lib/actions/classes'
 import type { ReteachSessionRecord } from '@/lib/actions/reteach-history'
 import type { Assessment }           from '@/lib/actions/assessments'
 
@@ -45,9 +45,12 @@ export function ReteachDeliverModal({
   const [followUpAssessmentId, setFollowUpAssessmentId] = useState('')
   const [assessments,          setAssessments]          = useState<Assessment[]>([])
   const [loadingAssessments,   setLoadingAssessments]   = useState(false)
+  const [deliveryMode,         setDeliveryMode]         = useState<'digital' | 'print'>('digital')
+  const [showBackdate,         setShowBackdate]         = useState(false)
+  const [deliveredAt,          setDeliveredAt]          = useState('')
   const [isPending,            startTransition]         = useTransition()
 
-  const scopeLabel = scope === 'class' ? 'the class' : 'this student'
+  const scopeLabel = scope === 'class' || scope === 'group' ? 'the class' : 'this student'
 
   useEffect(() => {
     if (!open || !classId) return
@@ -62,6 +65,9 @@ export function ReteachDeliverModal({
     if (!open) {
       setFollowUpDate('')
       setFollowUpAssessmentId('')
+      setDeliveryMode('digital')
+      setShowBackdate(false)
+      setDeliveredAt('')
     }
   }, [open])
 
@@ -71,6 +77,8 @@ export function ReteachDeliverModal({
         sessionId,
         skipFollowUp ? undefined : (followUpDate || undefined),
         skipFollowUp ? undefined : (followUpAssessmentId.trim() || undefined),
+        deliveryMode,
+        deliveredAt || undefined,
       )
       if (error || !data) {
         toast.error(error?.message ?? 'Failed to mark session as delivered.')
@@ -108,6 +116,48 @@ export function ReteachDeliverModal({
         </DialogHeader>
 
         <div className="space-y-4 py-2">
+
+          {/* G2: Delivery mode toggle */}
+          <div className="space-y-2">
+            <Label className="text-sm">How did you deliver this session?</Label>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setDeliveryMode('digital')}
+                className={`flex items-center gap-2 rounded-lg border p-3 text-sm transition-colors ${
+                  deliveryMode === 'digital'
+                    ? 'border-primary bg-primary/5 text-primary font-medium'
+                    : 'border-muted text-muted-foreground hover:border-primary/50'
+                }`}
+              >
+                <Monitor className="h-4 w-4 shrink-0" />
+                <div className="text-left">
+                  <p className="font-medium text-xs">Digital</p>
+                  <p className="text-[10px] opacity-70">Students used devices</p>
+                </div>
+              </button>
+              <button
+                type="button"
+                onClick={() => setDeliveryMode('print')}
+                className={`flex items-center gap-2 rounded-lg border p-3 text-sm transition-colors ${
+                  deliveryMode === 'print'
+                    ? 'border-primary bg-primary/5 text-primary font-medium'
+                    : 'border-muted text-muted-foreground hover:border-primary/50'
+                }`}
+              >
+                <Printer className="h-4 w-4 shrink-0" />
+                <div className="text-left">
+                  <p className="font-medium text-xs">Print</p>
+                  <p className="text-[10px] opacity-70">Printed &amp; handed out</p>
+                </div>
+              </button>
+            </div>
+            {deliveryMode === 'print' && (
+              <p className="text-xs text-amber-600 bg-amber-50 rounded px-2 py-1">
+                Log exit ticket results after class to get a leading indicator before formal impact is calculated.
+              </p>
+            )}
+          </div>
 
           {/* Follow-up assessment dropdown */}
           {classId && (
@@ -186,6 +236,26 @@ export function ReteachDeliverModal({
               onChange={(e) => setFollowUpDate(e.target.value)}
               min={new Date().toISOString().split('T')[0]}
             />
+          </div>
+
+          {/* G6: Backdate delivery */}
+          <div className="space-y-1.5">
+            <button
+              type="button"
+              onClick={() => setShowBackdate(v => !v)}
+              className="text-xs text-muted-foreground hover:text-foreground underline-offset-2 hover:underline"
+            >
+              Delivered on a different date?
+            </button>
+            {showBackdate && (
+              <Input
+                type="date"
+                value={deliveredAt}
+                onChange={(e) => setDeliveredAt(e.target.value)}
+                max={new Date().toISOString().split('T')[0]}
+                className="text-sm"
+              />
+            )}
           </div>
 
           {/* What gets captured right now */}

@@ -44,7 +44,7 @@ export async function getOrganizationUsers(
 export async function inviteUserToOrganization(
   organizationId: string,
   email: string,
-  role: 'Admin' | 'Teacher',
+  role: string,
 ): Promise<ServerActionResponse<InvitationResponse>> {
   try {
     const response = await fetcher<InvitationResponse>(
@@ -146,6 +146,16 @@ export async function updateUserRole(
  * @param data The partial data to update.
  * @returns A ServerActionResponse containing the updated organization.
  */
+export async function getAvailableRoles(): Promise<ServerActionResponse<{ role_id: string; role_name: string; description: string | null }[]>> {
+  try {
+    const response = await fetcher<{ role_id: string; role_name: string; description: string | null }[]>('/roles')
+    return { data: response.data, error: response.error }
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'An unknown error occurred'
+    return { data: null, error: { message } }
+  }
+}
+
 export async function updateOrganization(
   organizationId: string,
   data: Partial<Omit<Organization, 'organization_id'>>,

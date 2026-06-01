@@ -25,7 +25,7 @@ import {
 
 const inviteSchema = z.object({
   email: z.string().email({ message: 'Please enter a valid email address.' }),
-  role:  z.enum(['Admin', 'Teacher'], { required_error: 'Please select a role.' }),
+  role:  z.string().min(1, { message: 'Please select a role.' }),
 })
 
 export type InviteMemberData = z.infer<typeof inviteSchema>
@@ -37,7 +37,13 @@ interface InviteMemberDialogProps {
   onOpenChange: (open: boolean) => void
   onSubmit:     (data: InviteMemberData) => void
   isSubmitting: boolean
+  availableRoles?: { role_name: string; description?: string | null }[]
 }
+
+const DEFAULT_ROLES = [
+  { role_name: 'Teacher',  description: 'Can create assessments and view students' },
+  { role_name: 'Admin',    description: 'Full organization management' },
+]
 
 // ── Component ──────────────────────────────────────────────────────────────
 
@@ -46,7 +52,10 @@ export function InviteMemberDialog({
   onOpenChange,
   onSubmit,
   isSubmitting,
+  availableRoles,
 }: InviteMemberDialogProps) {
+  const roles = availableRoles?.length ? availableRoles : DEFAULT_ROLES
+
   const form = useForm<InviteMemberData>({
     resolver:      zodResolver(inviteSchema),
     defaultValues: { email: '', role: 'Teacher' },
@@ -64,8 +73,7 @@ export function InviteMemberDialog({
           <DialogTitle>Invite New Member</DialogTitle>
           <DialogDescription>
             Enter the email address and role for the new member. They will
-            receive an email with instructions to join. Once they've joined,
-            you can assign them to classes from the class settings.
+            receive an email with instructions to join.
           </DialogDescription>
         </DialogHeader>
 
@@ -101,8 +109,14 @@ export function InviteMemberDialog({
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="Teacher">Teacher</SelectItem>
-                      <SelectItem value="Admin">Admin</SelectItem>
+                      {roles.map(r => (
+                        <SelectItem key={r.role_name} value={r.role_name}>
+                          <span>{r.role_name}</span>
+                          {r.description && (
+                            <span className="text-muted-foreground ml-1 text-xs">— {r.description}</span>
+                          )}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                   <FormMessage />

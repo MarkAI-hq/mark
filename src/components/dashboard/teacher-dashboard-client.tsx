@@ -136,14 +136,14 @@ export function TeacherDashboardClient({
       {/* ── Header ─────────────────────────────────────────────────────── */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">
-            {greeting}, {name} 👋
+          <h1 className="text-2xl font-semibold tracking-tight">
+            {greeting}, {name}
           </h1>
           <p className="text-muted-foreground mt-1">
             Here&apos;s what&apos;s happening in your classes today.
           </p>
         </div>
-        <Button asChild>
+        <Button variant="gold" className="rounded-xl" asChild>
           <Link href="/dashboard/exam-builder/new">
             <FileEdit className="mr-2 h-4 w-4" />
             New Assessment
@@ -166,30 +166,34 @@ export function TeacherDashboardClient({
       )}
 
       {/* ── Stat Cards ──────────────────────────────────────────────────── */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
         <StatCard
           title="My Students"
           value={stats.totalStudents}
           description="Across your assigned classes"
           icon={<Users className="h-4 w-4" />}
+          accentColor="blue"
         />
         <StatCard
           title="Assessments"
           value={stats.totalExams}
           description="In your classes"
           icon={<FileText className="h-4 w-4" />}
+          accentColor="default"
         />
         <StatCard
           title="Marked Papers"
           value={stats.markedPapers}
           description="AI-graded submissions"
           icon={<CheckSquare className="h-4 w-4" />}
+          accentColor="green"
         />
         <StatCard
           title="Courses"
           value={stats.totalCourses}
           description="Your assigned courses"
           icon={<BookOpen className="h-4 w-4" />}
+          accentColor="gold"
         />
       </div>
 
@@ -217,8 +221,8 @@ export function TeacherDashboardClient({
                 <div className="space-y-4">
                   {stats.recentActivity.map((activity) => (
                     <div key={activity.id} className="flex items-start gap-3">
-                      <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10">
-                        <CheckSquare className="h-3.5 w-3.5 text-primary" />
+                      <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gold/10">
+                        <CheckSquare className="h-3.5 w-3.5 text-gold" />
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm leading-snug">{activity.description}</p>
@@ -262,8 +266,8 @@ export function TeacherDashboardClient({
         <>
           <Separator />
           <div className="flex flex-col items-center justify-center py-12 text-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
-              <GraduationCap className="h-6 w-6 text-muted-foreground" />
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gold/10">
+              <GraduationCap className="h-6 w-6 text-gold" />
             </div>
             <p className="text-sm font-medium">No classes assigned yet</p>
             <p className="text-xs text-muted-foreground max-w-xs">
@@ -306,11 +310,11 @@ function ClassInsightCard({
   const atRisk   = analytics.studentSummaries.filter((s) => s.avgPct < 50 && s.submissions > 0)
 
   return (
-    <Card className="group hover:shadow-md transition-shadow">
+    <Card className="group hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="text-sm font-semibold flex items-center gap-2">
-            <BarChart2 className="h-4 w-4 text-primary" />
+            <BarChart2 className="h-4 w-4 text-gold" />
             {className}
           </CardTitle>
           <Badge variant="outline" className="text-xs">
@@ -363,7 +367,7 @@ function ClassInsightCard({
           asChild
           variant="ghost"
           size="sm"
-          className="w-full justify-between mt-1 group-hover:bg-primary/5"
+          className="w-full justify-between mt-1 group-hover:bg-gold/5"
         >
           <Link href={`/dashboard/teacher/classes/${classId}`}>
             <span className="flex items-center gap-1.5 text-xs">

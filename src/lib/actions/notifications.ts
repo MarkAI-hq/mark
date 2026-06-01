@@ -79,3 +79,26 @@ export async function markNotificationRead(notificationId: string): Promise<{
     return { data: null, error: { message: 'Network error marking notification.' } }
   }
 }
+
+/**
+ * Mark all unread notifications as read in one request.
+ */
+export async function markAllNotificationsRead(): Promise<{
+  error: { message: string } | null
+}> {
+  try {
+    const res = await fetch(`${BASE}/api/v1/notifications/read-all`, {
+      method:  'PATCH',
+      headers: await getAuthHeaders(),
+    })
+
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}))
+      return { error: { message: body.message ?? 'Failed to mark all as read.' } }
+    }
+
+    return { error: null }
+  } catch {
+    return { error: { message: 'Network error marking all notifications.' } }
+  }
+}

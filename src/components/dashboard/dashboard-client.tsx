@@ -129,14 +129,14 @@ export function DashboardClient({ stats, analytics, user }: DashboardClientProps
       {/* ── Header ───────────────────────────────────────────────────── */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">
-            {greeting}, {name} 👋
+          <h1 className="text-2xl font-semibold tracking-tight">
+            {greeting}, {name}
           </h1>
           <p className="text-muted-foreground mt-1">
             Here&apos;s what&apos;s happening in your school today.
           </p>
         </div>
-        <Button asChild>
+        <Button variant="gold" className="rounded-xl" asChild>
           <Link href="/dashboard/exam-builder/new">
             <FileEdit className="mr-2 h-4 w-4" />
             New Assessment
@@ -167,30 +167,34 @@ export function DashboardClient({ stats, analytics, user }: DashboardClientProps
       />
 
       {/* ── Stat cards ────────────────────────────────────────────────── */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
         <StatCard
           title="Total Students"
           value={stats.totalStudents}
           description="Enrolled across all classes"
           icon={<Users className="h-4 w-4" />}
+          accentColor="blue"
         />
         <StatCard
           title="Assessments"
           value={stats.totalExams}
           description="Created by your team"
           icon={<FileText className="h-4 w-4" />}
+          accentColor="default"
         />
         <StatCard
           title="Marked Papers"
           value={stats.markedPapers}
           description="AI-graded submissions"
           icon={<CheckSquare className="h-4 w-4" />}
+          accentColor="green"
         />
         <StatCard
           title="Courses"
           value={stats.totalCourses}
           description="Active this term"
           icon={<BookOpen className="h-4 w-4" />}
+          accentColor="gold"
         />
       </div>
 
@@ -218,8 +222,8 @@ export function DashboardClient({ stats, analytics, user }: DashboardClientProps
                 <div className="space-y-4">
                   {stats.recentActivity.map((activity) => (
                     <div key={activity.id} className="flex items-start gap-3">
-                      <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10">
-                        <CheckSquare className="h-3.5 w-3.5 text-primary" />
+                      <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gold/10">
+                        <CheckSquare className="h-3.5 w-3.5 text-gold" />
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm leading-snug">{activity.description}</p>
@@ -238,10 +242,9 @@ export function DashboardClient({ stats, analytics, user }: DashboardClientProps
 
       {/* ── School Intelligence ───────────────────────────────────────── */}
       {analytics && (
-        <>
-          <Separator />
+        <div className="pt-2">
           <SchoolAnalyticsSection analytics={analytics} />
-        </>
+        </div>
       )}
 
       {/* ── Intervention Impact ───────────────────────────────────────── */}

@@ -30,15 +30,15 @@ export default async function SubjectsPage() {
   }
 
   return (
-    <div className="flex-1 space-y-4 p-8 pt-6">
-      <div className="flex items-center justify-between mb-4">
-        <div className="text-3xl font-bold tracking-tight">
-          Subjects
-          <h4 className="pt-3 text-lg font-normal text-muted-foreground">
+    <div className="flex-1 space-y-4">
+      <div className="flex items-center justify-between pb-2">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Subjects</h1>
+          <p className="text-sm text-muted-foreground mt-1">
             {isAdmin
-              ? 'Click the + New Subject button or press C to create a subject.'
+              ? 'Create and manage subjects. Press C to create a new subject.'
               : 'Subjects assigned to your classes.'}
-          </h4>
+          </p>
         </div>
       </div>
       <Suspense fallback={null}>

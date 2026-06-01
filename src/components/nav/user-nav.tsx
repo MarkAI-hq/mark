@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { ThemeToggle } from '@/components/layout/theme-toggle'
+import { NotificationBell } from '@/components/notifications/notification-bell'
 import { logout } from '@/lib/actions/auth'
 import { User } from '@/lib/types'
 
@@ -67,14 +68,15 @@ export function UserNav() {
   return (
     <div className="flex items-center gap-1">
       <ThemeToggle />
+      <NotificationBell />
 
-      <div className="mx-2 h-5 w-px bg-border" />
+      <div className="mx-2 h-5 w-px bg-border/50" />
 
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <button className="flex items-center gap-2.5 rounded-lg px-2 py-1.5 text-sm transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
             <Avatar className="h-7 w-7">
-              <AvatarFallback className="bg-primary text-primary-foreground text-xs font-semibold">
+              <AvatarFallback className="bg-gold text-gold-foreground text-xs font-semibold">
                 {initials}
               </AvatarFallback>
             </Avatar>

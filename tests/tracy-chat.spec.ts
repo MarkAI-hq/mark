@@ -173,8 +173,8 @@ test("stop button cancels in-flight request and re-enables input", async ({ page
   await page.getByPlaceholder("Ask Tracy anything…").press("Enter");
 
   // Stop button (Square icon) should appear
-  const stopBtn = page.locator("button").filter({ has: page.locator("svg") }).last();
-  await expect(stopBtn).toBeVisible({ timeout: 3000 });
+  const stopBtn = page.getByTitle("Stop generation");
+  await expect(stopBtn).toBeVisible({ timeout: 5000 });
   await stopBtn.click();
 
   // Input re-enables

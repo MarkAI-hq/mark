@@ -39,6 +39,8 @@ export interface RedesignSuggestion {
   syllabus_topic:          string;
   example_question_stem?:  string;
   visual_search_query?:    string | null;
+  question_number?:        string | null;
+  after_question_number?:  string | null;
   /** Populated by hydrateWithImageSuggestions — up to 3 candidates */
   image_suggestions?:      ImageCandidate[];
   /** True when best candidate score < 0.55 — set server-side */

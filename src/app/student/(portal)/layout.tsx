@@ -23,9 +23,9 @@ export default async function StudentLayout({
   if (!user?.roles?.includes('Student')) redirect('/login')
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-gradient-to-b from-background to-surface-raised/40">
       <StudentNav user={user} />
-      <main className="container mx-auto max-w-5xl px-4 py-8">
+      <main className="container mx-auto max-w-5xl px-4 py-6">
         {children}
       </main>
     </div>

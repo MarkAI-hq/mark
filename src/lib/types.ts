@@ -1,7 +1,7 @@
 // src/lib/types.ts
 
 // --- CORE AUTH & USER TYPES ---
-export type UserRole = 'Admin' | 'Teacher' | 'Student';
+export type UserRole = 'Root' | 'Support' | 'Admin' | 'Teacher' | 'Student';
 
 export interface User {
   id: string;

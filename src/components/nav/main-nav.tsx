@@ -46,8 +46,8 @@ export function MainNav({ className, organizationName, collapsed, onToggleCollap
       {/* Desktop sidebar */}
       <nav
         className={cn(
-          'hidden lg:flex fixed left-0 top-0 z-40 h-screen flex-col border-r bg-background overflow-y-auto transition-all duration-300 ease-in-out',
-          collapsed ? 'w-[60px]' : 'w-64',
+          'hidden lg:flex fixed left-0 top-0 z-40 h-screen flex-col border-r border-border/50 bg-surface-raised overflow-y-auto transition-all duration-300 ease-in-out',
+          collapsed ? 'w-[60px] bg-background/80 backdrop-blur-md' : 'w-64',
           className
         )}
         {...props}
@@ -66,7 +66,7 @@ export function MainNav({ className, organizationName, collapsed, onToggleCollap
       {mobileOpen && (
         <>
           <div
-            className="fixed inset-0 z-30 bg-background/80 backdrop-blur-sm lg:hidden"
+            className="fixed inset-0 z-30 bg-black/40 backdrop-blur-md lg:hidden"
             onClick={() => setMobileOpen(false)}
           />
           <div className="fixed inset-y-0 left-0 z-40 w-64 bg-background border-r shadow-xl lg:hidden">
@@ -128,8 +128,8 @@ function NavContent({
         ) : (
           <div className="flex items-center justify-between px-1 py-1">
             <div className="flex items-center gap-2 truncate">
-              <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary/10 shrink-0">
-                <Building className="h-4 w-4 text-primary" />
+              <div className="flex h-7 w-7 items-center justify-center rounded-md bg-gold/10 shrink-0">
+                <Building className="h-4 w-4 text-gold" />
               </div>
               <span className="text-sm font-semibold truncate">
                 {organizationName || 'Personal'}
@@ -170,13 +170,13 @@ function NavContent({
                     href={href}
                     className={cn(
                       'flex items-center justify-center rounded-lg p-2.5 transition-all duration-200',
-                      'text-muted-foreground hover:text-primary hover:bg-primary/5',
-                      isActive && 'bg-primary/10 text-primary'
+                      'text-muted-foreground hover:text-foreground hover:bg-surface-overlay',
+                      isActive && 'ring-1 ring-gold/30 bg-gold/8 text-foreground'
                     )}
                   >
                     <Icon className={cn(
                       'h-5 w-5 shrink-0',
-                      isActive ? 'text-primary' : 'text-muted-foreground'
+                      isActive ? 'text-gold' : 'text-muted-foreground'
                     )} />
                     <span className="sr-only">{item.title}</span>
                   </Link>
@@ -194,17 +194,17 @@ function NavContent({
               href={href}
               className={cn(
                 'group relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200',
-                'text-muted-foreground hover:text-primary hover:bg-primary/5',
-                isActive && 'bg-primary/10 text-primary'
+                'text-muted-foreground hover:text-foreground hover:bg-surface-overlay',
+                isActive && 'bg-primary/8 text-foreground font-semibold'
               )}
             >
               <Icon className={cn(
                 'h-4 w-4 shrink-0 transition-colors',
-                isActive ? 'text-primary' : 'text-muted-foreground group-hover:text-primary'
+                isActive ? 'text-gold' : 'text-muted-foreground group-hover:text-foreground'
               )} />
               <span className="truncate">{item.title}</span>
               {isActive && (
-                <div className="ml-auto flex h-1.5 w-1.5 rounded-full bg-primary" />
+                <div className="ml-auto flex h-1.5 w-1.5 rounded-full bg-gold" />
               )}
             </Link>
           )
@@ -214,8 +214,8 @@ function NavContent({
       {/* Footer: pro tip — only when expanded */}
       {!collapsed && (
         <div className="px-3 mt-4">
-          <div className="rounded-lg bg-muted/40 p-3 text-xs text-muted-foreground">
-            <p className="font-semibold text-foreground mb-1">Pro Tip</p>
+          <div className="rounded-lg bg-gold/5 border border-gold/20 p-3 text-xs text-muted-foreground">
+            <p className="font-semibold text-gold mb-1">Pro Tip</p>
             Use the Exam Builder to generate assessments in seconds.
           </div>
         </div>

@@ -31,6 +31,8 @@ export async function middleware(request: NextRequest) {
     try {
       const user   = JSON.parse(decodeURIComponent(userCookie))
       const roles: string[] = user?.roles ?? [user?.role].filter(Boolean)
+      if (roles.includes('Root'))    return { role: 'Root',    id: user.id }
+      if (roles.includes('Support')) return { role: 'Support', id: user.id }
       if (roles.includes('Student')) return { role: 'Student', id: user.id }
       if (roles.includes('Admin'))   return { role: 'Admin',   id: user.id, onboarding_complete: user.onboarding_complete ?? true }
       if (roles.includes('Teacher')) return { role: 'Teacher', id: user.id }
@@ -44,6 +46,7 @@ export async function middleware(request: NextRequest) {
     if (token) {
       const user = getUser()
       if (pathname === '/login' || pathname === '/signup' || pathname === '/register') {
+        if (user?.role === 'Root' || user?.role === 'Support') return NextResponse.redirect(new URL('/root', request.url))
         if (user?.role === 'Student') return NextResponse.redirect(new URL('/student/dashboard', request.url))
         if (user?.role === 'Teacher') return NextResponse.redirect(new URL('/dashboard/teacher', request.url))
         if (user?.role === 'Admin')   return NextResponse.redirect(new URL('/dashboard',          request.url))
@@ -73,6 +76,19 @@ export async function middleware(request: NextRequest) {
   }
 
   const user = getUser()
+
+  // Platform roles (Root + Support) → root dashboard only; blocked from all org routes
+  if (user?.role === 'Root' || user?.role === 'Support') {
+    if (!pathname.startsWith('/root')) {
+      return NextResponse.redirect(new URL('/root', request.url))
+    }
+    return NextResponse.next()
+  }
+
+  // Non-platform roles cannot access /root
+  if (pathname.startsWith('/root')) {
+    return NextResponse.redirect(new URL('/login', request.url))
+  }
 
   if (user?.role === 'Student') {
     if (pathname.startsWith('/dashboard')) {

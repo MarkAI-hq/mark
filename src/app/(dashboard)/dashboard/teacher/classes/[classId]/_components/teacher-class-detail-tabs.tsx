@@ -11,7 +11,7 @@ import { useState, useTransition } from 'react'
 import Link from 'next/link'
 import {
   Brain, AlertTriangle, BarChart2, Users, BookOpen,
-  TrendingUp, TrendingDown, Minus,
+  TrendingUp, TrendingDown, Minus, CalendarCheck, CalendarDays, GitBranch, Layers,
 } from 'lucide-react'
 import {
   RadarChart, Radar, PolarGrid, PolarAngleAxis,
@@ -52,10 +52,10 @@ interface Props {
 const SCORE_COLORS = ['#ef4444', '#f97316', '#fbbf24', '#60a5fa', '#34d399']
 
 function PctBadge({ pct }: { pct: number }) {
-  if (pct >= 80) return <Badge className="bg-green-100 text-green-800 border-green-200 text-xs">Excellent</Badge>
-  if (pct >= 65) return <Badge className="bg-blue-100 text-blue-800 border-blue-200 text-xs">Good</Badge>
-  if (pct >= 50) return <Badge className="bg-amber-100 text-amber-800 border-amber-200 text-xs">Developing</Badge>
-  return <Badge className="bg-red-100 text-red-800 border-red-200 text-xs">At Risk</Badge>
+  if (pct >= 80) return <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-900 text-xs">Excellent</Badge>
+  if (pct >= 65) return <Badge className="bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-950/40 dark:text-blue-400 dark:border-blue-900 text-xs">Good</Badge>
+  if (pct >= 50) return <Badge className="bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-950/40 dark:text-amber-400 dark:border-amber-900 text-xs">Developing</Badge>
+  return <Badge className="bg-red-100 text-red-800 border-red-200 dark:bg-red-950/40 dark:text-red-400 dark:border-red-900 text-xs">At Risk</Badge>
 }
 
 function TrendIcon({ pct }: { pct: number }) {
@@ -66,9 +66,11 @@ function TrendIcon({ pct }: { pct: number }) {
 
 function EmptyState({ icon: Icon, message }: { icon: any; message: string }) {
   return (
-    <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
-      <Icon className="h-10 w-10 mb-3 opacity-25" />
-      <p className="text-sm">{message}</p>
+    <div className="flex flex-col items-center justify-center py-16 gap-4 text-center animate-fade-up">
+      <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gold/8">
+        <Icon className="h-8 w-8 text-gold/60" />
+      </div>
+      <p className="text-sm text-muted-foreground max-w-xs">{message}</p>
     </div>
   )
 }
@@ -86,6 +88,7 @@ export function TeacherClassDetailTabs({
 
   return (
     <Tabs defaultValue="students" className="w-full">
+      <div className="overflow-x-auto">
       <TabsList>
 
         {/* Analytics — identical to admin */}
@@ -114,9 +117,34 @@ export function TeacherClassDetailTabs({
           Courses
         </TabsTrigger>
 
+        {/* Attendance */}
+        <TabsTrigger value="attendance" className="flex items-center gap-1.5">
+          <CalendarCheck className="h-3.5 w-3.5" />
+          Attendance
+        </TabsTrigger>
+
+        {/* Timetable */}
+        <TabsTrigger value="timetable" className="flex items-center gap-1.5">
+          <CalendarDays className="h-3.5 w-3.5" />
+          Timetable
+        </TabsTrigger>
+
+        {/* Gap Report */}
+        <TabsTrigger value="gaps" className="flex items-center gap-1.5">
+          <GitBranch className="h-3.5 w-3.5" />
+          Gap Report
+        </TabsTrigger>
+
+        {/* Scheme of Work */}
+        <TabsTrigger value="sow" className="flex items-center gap-1.5">
+          <Layers className="h-3.5 w-3.5" />
+          SoW
+        </TabsTrigger>
+
         {/* No Teachers tab for teachers */}
 
       </TabsList>
+      </div>
 
       {/* ── Analytics — identical to admin ──────────────────────────────── */}
       <TabsContent value="analytics" className="mt-6">
@@ -158,7 +186,7 @@ export function TeacherClassDetailTabs({
                       <RadarChart data={bloomData}>
                         <PolarGrid stroke="#e2e8f0" />
                         <PolarAngleAxis dataKey="level" tick={{ fontSize: 9, fill: '#64748b' }} />
-                        <Radar dataKey="mastery" fill="hsl(var(--primary))" fillOpacity={0.3} stroke="hsl(var(--primary))" strokeWidth={2} />
+                        <Radar dataKey="mastery" fill="hsl(var(--gold))" fillOpacity={0.3} stroke="hsl(var(--gold))" strokeWidth={2} />
                         <Tooltip formatter={(v) => [`${v}%`, 'Mastery']} contentStyle={{ fontSize: 11 }} />
                       </RadarChart>
                     </ResponsiveContainer>
@@ -316,6 +344,90 @@ export function TeacherClassDetailTabs({
             ))}
           </div>
         )}
+      </TabsContent>
+
+      {/* ── Gap Report — navigation panel ─────────────────────────────── */}
+      <TabsContent value="gaps" className="mt-6">
+        <div className="rounded-2xl border border-border/60 bg-surface-raised p-10 flex flex-col items-center gap-5 text-center animate-fade-up">
+          <div className="h-16 w-16 rounded-2xl bg-gold/10 flex items-center justify-center">
+            <GitBranch className="h-8 w-8 text-gold" aria-hidden="true" />
+          </div>
+          <div className="space-y-1.5">
+            <p className="text-base font-semibold">Exposure matrix &amp; gap attribution</p>
+            <p className="text-sm text-muted-foreground max-w-xs">
+              See which students were present for each SoW topic — and whether gaps are from missed lessons or poor understanding.
+            </p>
+          </div>
+          <Link href={`/dashboard/teacher/classes/${classId}/gap-report`}>
+            <Button variant="gold" className="gap-2 rounded-xl">
+              <GitBranch className="h-4 w-4" aria-hidden="true" />
+              View Gap Report
+            </Button>
+          </Link>
+        </div>
+      </TabsContent>
+
+      {/* ── Timetable — navigation panel ─────────────────────────────── */}
+      <TabsContent value="timetable" className="mt-6">
+        <div className="rounded-2xl border border-border/60 bg-surface-raised p-10 flex flex-col items-center gap-5 text-center animate-fade-up">
+          <div className="h-16 w-16 rounded-2xl bg-gold/10 flex items-center justify-center">
+            <CalendarDays className="h-8 w-8 text-gold" aria-hidden="true" />
+          </div>
+          <div className="space-y-1.5">
+            <p className="text-base font-semibold">Weekly schedule</p>
+            <p className="text-sm text-muted-foreground max-w-xs">
+              Define when each subject is taught — day, time, and room.
+            </p>
+          </div>
+          <Link href={`/dashboard/teacher/classes/${classId}/timetable`}>
+            <Button variant="gold" className="gap-2 rounded-xl">
+              <CalendarDays className="h-4 w-4" aria-hidden="true" />
+              Go to Timetable
+            </Button>
+          </Link>
+        </div>
+      </TabsContent>
+
+      {/* ── Attendance — navigation panel ────────────────────────────── */}
+      <TabsContent value="attendance" className="mt-6">
+        <div className="rounded-2xl border border-border/60 bg-surface-raised p-10 flex flex-col items-center gap-5 text-center animate-fade-up">
+          <div className="h-16 w-16 rounded-2xl bg-gold/10 flex items-center justify-center">
+            <CalendarCheck className="h-8 w-8 text-gold" aria-hidden="true" />
+          </div>
+          <div className="space-y-1.5">
+            <p className="text-base font-semibold">Class attendance</p>
+            <p className="text-sm text-muted-foreground max-w-xs">
+              Open sessions, mark students present or absent, and review history.
+            </p>
+          </div>
+          <Link href={`/dashboard/teacher/classes/${classId}/attendance`}>
+            <Button variant="gold" className="gap-2 rounded-xl">
+              <CalendarCheck className="h-4 w-4" aria-hidden="true" />
+              Go to Attendance
+            </Button>
+          </Link>
+        </div>
+      </TabsContent>
+
+      {/* ── Scheme of Work — navigation panel ──────────────────────── */}
+      <TabsContent value="sow" className="mt-6">
+        <div className="rounded-2xl border border-border/60 bg-surface-raised p-10 flex flex-col items-center gap-5 text-center animate-fade-up">
+          <div className="h-16 w-16 rounded-2xl bg-gold/10 flex items-center justify-center">
+            <Layers className="h-8 w-8 text-gold" aria-hidden="true" />
+          </div>
+          <div className="space-y-1.5">
+            <p className="text-base font-semibold">Scheme of Work</p>
+            <p className="text-sm text-muted-foreground max-w-xs">
+              Manage the weekly plan for this class — mark topics as delivered and dispatch personalised study plans to students.
+            </p>
+          </div>
+          <Link href={`/dashboard/teacher/classes/${classId}/scheme-of-work`}>
+            <Button variant="gold" className="gap-2 rounded-xl">
+              <Layers className="h-4 w-4" aria-hidden="true" />
+              Go to Scheme of Work
+            </Button>
+          </Link>
+        </div>
       </TabsContent>
 
     </Tabs>

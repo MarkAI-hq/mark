@@ -37,7 +37,7 @@ export interface ImpactErrorRateChange {
 
 export interface SessionImpact {
   session_id:        string
-  scope:             'individual' | 'class' | 'longitudinal'
+  scope:             'individual' | 'class' | 'longitudinal' | 'group'
   error_type:        string
   status:            'generated' | 'delivered' | 'completed'
   impact_status:     ImpactStatus
@@ -52,6 +52,14 @@ export interface SessionImpact {
   result:            ImpactResult
   improvement:       ImpactImprovement
   error_rate_change: ImpactErrorRateChange | null
+  // M2: Precision fields
+  quick_score_pct:    number | null
+  quick_score_notes:  string | null
+  quick_score_at:     string | null
+  time_to_impact_days: number | null
+  confidence_level:   'HIGH' | 'MEDIUM' | 'LOW' | null
+  pp_above_class_avg: number | null
+  benchmark_label:    string | null
 }
 
 export interface ImpactSummary {
@@ -92,6 +100,13 @@ export interface OrgImpactView {
     individual:   number
     class:        number
     longitudinal: number
+    group:        number
+  }
+  improvement_range: { min: number; max: number } | null
+  outcome_breakdown: {
+    improved:  number
+    no_change: number
+    regressed: number
   }
   error_breakdown: Array<{
     error_type:    string

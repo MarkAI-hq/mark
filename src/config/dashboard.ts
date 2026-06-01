@@ -9,6 +9,8 @@ import {
   HelpCircle,
   Settings,
   Sparkles,
+  Library,
+  BarChart2,
   LucideIcon,
 } from 'lucide-react'
 
@@ -50,6 +52,18 @@ export const dashboardConfig = {
       href:  '/dashboard/courses',
       roles: ['Admin'],
       icon:  GraduationCap,
+    },
+    {
+      title: 'Curriculum',
+      href:  '/dashboard/curricula',
+      roles: ['Admin', 'Teacher'],
+      icon:  Library,
+    },
+    {
+      title: 'Overview',
+      href:  '/dashboard/overview',
+      roles: ['Admin', 'Teacher'],
+      icon:  BarChart2,
     },
     {
       title: 'Classes',

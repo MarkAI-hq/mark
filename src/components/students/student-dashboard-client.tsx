@@ -19,7 +19,16 @@ import {
 import { format } from 'date-fns'
 import { ExamHistoryDetail }  from '@/components/students/exam-history-detail'
 import { LearningToolkits }   from '@/components/students/learning-toolkits'
-import type { ExamHistoryItem, LearningTool, StudentCognitiveProfile } from '@/lib/actions/student-dashboard'
+import type { ExamHistoryItem, LearningTool, StudentCognitiveProfile, StudyPlan } from '@/lib/actions/student-dashboard'
+
+const LESSON_TYPE_CONFIG: Record<string, { label: string; color: string }> = {
+  catch_up:     { label: 'Catch-Up',     color: 'bg-blue-100 text-blue-800' },
+  gap_closure:  { label: 'Gap Closure',  color: 'bg-amber-100 text-amber-800' },
+  reteach:      { label: 'Reteach',      color: 'bg-purple-100 text-purple-800' },
+  pre_class:    { label: 'Pre-Class',    color: 'bg-cyan-100 text-cyan-800' },
+  consolidation:{ label: 'Consolidation',color: 'bg-green-100 text-green-800' },
+  exam_prep:    { label: 'Exam Prep',    color: 'bg-red-100 text-red-800' },
+}
 
 interface Props {
   user:           any
@@ -28,6 +37,7 @@ interface Props {
   submissions:    any[]
   examHistory:    ExamHistoryItem[]
   tools:          LearningTool[]
+  studyPlans?:    StudyPlan[]
 }
 
 const perfColor = (p: number) =>
@@ -51,7 +61,7 @@ const statusColor: Record<string, string> = {
 }
 
 export function StudentDashboardClient({
-  user, analytics, currentProfile, submissions, examHistory, tools,
+  user, analytics, currentProfile, submissions, examHistory, tools, studyPlans = [],
 }: Props) {
 
   // Normalise: API returns camelCase, fall back to snake_case
@@ -106,7 +116,7 @@ export function StudentDashboardClient({
       {/* ── Welcome header ────────────────────────────────────────────── */}
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold">Welcome back, {firstName}</h1>
+          <h1 className="text-xl font-semibold tracking-tight">Welcome back, {firstName}</h1>
           <p className="text-muted-foreground text-sm mt-1">
             Here&apos;s how you&apos;re performing across all your assessments.
           </p>
@@ -123,7 +133,7 @@ export function StudentDashboardClient({
       </div>
 
       {/* ── Stat cards ────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
         <Card className={`col-span-2 sm:col-span-1 border ${perfBg(avg)}`}>
           <CardContent className="pt-5 pb-4">
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Average Score</p>
@@ -242,16 +252,16 @@ export function StudentDashboardClient({
 
       {/* ── Cognitive profile ─────────────────────────────────────────── */}
       {currentProfile && (
-        <Card className="border-amber-200 bg-amber-50/40">
+        <Card className="border-gold/20 bg-gold/5">
           <CardHeader className="pb-2">
             <CardTitle className="text-base flex items-center gap-2">
-              <Award className="h-4 w-4 text-amber-600" />
+              <Award className="h-4 w-4 text-gold" />
               Your Cognitive Profile
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-start gap-4">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-amber-500 text-white font-bold text-lg">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gold text-gold-foreground font-bold text-lg">
                 LC
               </div>
               <div className="flex-1 space-y-3">
@@ -348,6 +358,58 @@ export function StudentDashboardClient({
           </CardContent>
         </Card>
       )}
+
+      {/* ── Study Plans ──────────────────────────────────────────────── */}
+      {studyPlans.length > 0 && (() => {
+        const pending   = studyPlans.filter((p) => p.status === 'pending' || p.status === 'sent')
+        const completed = studyPlans.filter((p) => p.status === 'completed')
+        return (
+          <Card>
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Target className="h-4 w-4 text-primary" />
+                  My Study Plans
+                </CardTitle>
+                <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                  <span className="flex items-center gap-1">
+                    <span className="h-2 w-2 rounded-full bg-amber-400" />
+                    {pending.length} pending
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <span className="h-2 w-2 rounded-full bg-emerald-400" />
+                    {completed.length} completed
+                  </span>
+                </div>
+              </div>
+              <CardDescription>Personalised lessons generated from your gap analysis</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {pending.slice(0, 5).map((plan) => {
+                const cfg = LESSON_TYPE_CONFIG[plan.lesson_type] ?? { label: plan.lesson_type, color: 'bg-muted text-muted-foreground' }
+                return (
+                  <div key={plan.id} className="flex items-center gap-3 rounded-lg border px-3 py-2.5 hover:bg-muted/30 transition-colors">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{plan.topic}</p>
+                      <p className="text-xs text-muted-foreground">{plan.subject} · {plan.content?.estimated_minutes ?? 20} min</p>
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <Badge className={`text-xs px-1.5 py-0 ${cfg.color}`}>{cfg.label}</Badge>
+                      <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+                    </div>
+                  </div>
+                )
+              })}
+              {pending.length === 0 && (
+                <div className="flex items-center gap-2 py-4 text-muted-foreground">
+                  <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                  <p className="text-sm">All caught up! No pending study plans.</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )
+      })()}
 
       {/* ── Empty state ───────────────────────────────────────────────── */}
       {totalSubs === 0 && recentSubs.length === 0 && (

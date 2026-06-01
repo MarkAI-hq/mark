@@ -1,10 +1,39 @@
 'use client'
 
-// src/components/notifications/notification-bell.tsx
-
 import { useState, useTransition, useEffect } from 'react'
-import { Bell, CheckCheck, BrainCircuit, Info } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { isToday } from 'date-fns'
 import { formatDistanceToNow } from 'date-fns'
+import {
+  Bell,
+  CheckCheck,
+  Info,
+  BrainCircuit,
+  AlertCircle,
+  FileText,
+  Send,
+  Flag,
+  Wand2,
+  ClipboardCheck,
+  BarChart2,
+  UserPlus,
+  UserCheck,
+  UserX,
+  GraduationCap,
+  Users,
+  Building,
+  Shield,
+  UserMinus,
+  BookOpen,
+  CheckCircle2,
+  AlertTriangle,
+  RefreshCw,
+  CalendarCheck,
+  TrendingDown,
+  MailCheck,
+  Lock,
+  UserCircle,
+} from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   Popover,
@@ -17,31 +46,83 @@ import {
   AppNotification,
   getNotifications,
   markNotificationRead,
+  markAllNotificationsRead,
 } from '@/lib/actions/notifications'
 
-// Poll every 30 seconds while the tab is open so grading completions appear promptly
 const POLL_INTERVAL_MS = 30_000
 
-const ICON_MAP: Record<string, React.ReactNode> = {
-  GRADING_COMPLETE: <BrainCircuit className="h-4 w-4 text-primary" />,
+type IconEntry = { icon: React.ReactNode; bg: string }
+
+const ICON_MAP: Record<string, IconEntry> = {
+  // Grading
+  GRADING_COMPLETE:            { icon: <BrainCircuit  className="h-4 w-4" />, bg: 'bg-primary/10 text-primary' },
+  GRADING_FAILED:              { icon: <AlertCircle   className="h-4 w-4" />, bg: 'bg-destructive/10 text-destructive' },
+  // Exam generation
+  EXAM_GENERATED:              { icon: <FileText      className="h-4 w-4" />, bg: 'bg-gold/10 text-gold' },
+  EXAM_READY:                  { icon: <FileText      className="h-4 w-4" />, bg: 'bg-gold/10 text-gold' },
+  EXAM_GENERATION_FAILED:      { icon: <AlertCircle   className="h-4 w-4" />, bg: 'bg-destructive/10 text-destructive' },
+  // Assessment lifecycle
+  ASSESSMENT_PUBLISHED:        { icon: <Send          className="h-4 w-4" />, bg: 'bg-primary/10 text-primary' },
+  ASSESSMENT_AUDIT_FLAGGED:    { icon: <Flag          className="h-4 w-4" />, bg: 'bg-amber-500/10 text-amber-600 dark:text-amber-400' },
+  ASSESSMENT_AUDIT_FAILED:     { icon: <AlertCircle   className="h-4 w-4" />, bg: 'bg-destructive/10 text-destructive' },
+  REDESIGN_SUGGESTIONS_READY:  { icon: <Wand2         className="h-4 w-4" />, bg: 'bg-gold/10 text-gold' },
+  // Submissions / results
+  SUBMISSION_RECEIVED:         { icon: <ClipboardCheck className="h-4 w-4" />, bg: 'bg-green-500/10 text-green-600 dark:text-green-400' },
+  RESULTS_READY:               { icon: <BarChart2     className="h-4 w-4" />, bg: 'bg-primary/10 text-primary' },
+  // Classes
+  CLASS_INVITATION:            { icon: <UserPlus      className="h-4 w-4" />, bg: 'bg-primary/10 text-primary' },
+  CLASS_INVITATION_ACCEPTED:   { icon: <UserCheck     className="h-4 w-4" />, bg: 'bg-green-500/10 text-green-600 dark:text-green-400' },
+  CLASS_INVITATION_DECLINED:   { icon: <UserX         className="h-4 w-4" />, bg: 'bg-destructive/10 text-destructive' },
+  STUDENT_ENROLLED:            { icon: <GraduationCap className="h-4 w-4" />, bg: 'bg-primary/10 text-primary' },
+  STUDENTS_IMPORTED:           { icon: <Users         className="h-4 w-4" />, bg: 'bg-primary/10 text-primary' },
+  // Organization
+  ORG_INVITATION:              { icon: <Building      className="h-4 w-4" />, bg: 'bg-gold/10 text-gold' },
+  USER_ROLE_UPDATED:           { icon: <Shield        className="h-4 w-4" />, bg: 'bg-muted text-muted-foreground' },
+  USER_REMOVED:                { icon: <UserMinus     className="h-4 w-4" />, bg: 'bg-destructive/10 text-destructive' },
+  // Student-specific
+  STUDY_PLAN_ASSIGNED:         { icon: <BookOpen      className="h-4 w-4" />, bg: 'bg-primary/10 text-primary' },
+  STUDY_PLAN_COMPLETED:        { icon: <CheckCircle2  className="h-4 w-4" />, bg: 'bg-green-500/10 text-green-600 dark:text-green-400' },
+  AT_RISK_STUDENT:             { icon: <AlertTriangle className="h-4 w-4" />, bg: 'bg-amber-500/10 text-amber-600 dark:text-amber-400' },
+  RETEACH_READY:               { icon: <RefreshCw     className="h-4 w-4" />, bg: 'bg-primary/10 text-primary' },
+  // Attendance & gaps
+  ATTENDANCE_RECORDED:         { icon: <CalendarCheck className="h-4 w-4" />, bg: 'bg-primary/10 text-primary' },
+  GAP_ANALYSIS_COMPLETE:       { icon: <TrendingDown  className="h-4 w-4" />, bg: 'bg-amber-500/10 text-amber-600 dark:text-amber-400' },
+  // Account / system
+  EMAIL_VERIFIED:              { icon: <MailCheck     className="h-4 w-4" />, bg: 'bg-green-500/10 text-green-600 dark:text-green-400' },
+  PASSWORD_CHANGED:            { icon: <Lock          className="h-4 w-4" />, bg: 'bg-muted text-muted-foreground' },
+  PROFILE_UPDATED:             { icon: <UserCircle    className="h-4 w-4" />, bg: 'bg-muted text-muted-foreground' },
 }
 
 function NotificationIcon({ type }: { type: string }) {
+  const entry = ICON_MAP[type]
   return (
-    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-muted">
-      {ICON_MAP[type] ?? <Info className="h-4 w-4 text-muted-foreground" />}
+    <span
+      className={cn(
+        'flex h-8 w-8 shrink-0 items-center justify-center rounded-xl',
+        entry?.bg ?? 'bg-muted text-muted-foreground',
+      )}
+    >
+      {entry?.icon ?? <Info className="h-4 w-4" />}
     </span>
   )
 }
 
+function SectionHeader({ label }: { label: string }) {
+  return (
+    <p className="px-4 pb-1 pt-2.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/60">
+      {label}
+    </p>
+  )
+}
+
 export function NotificationBell() {
+  const router                             = useRouter()
   const [notifications, setNotifications] = useState<AppNotification[]>([])
   const [open,          setOpen]          = useState(false)
   const [isPending,     startTransition]  = useTransition()
 
   const unreadCount = notifications.filter((n) => !n.is_read).length
 
-  // --- Fetch on mount and on a polling interval ---
   async function fetchNotifications() {
     const { data } = await getNotifications()
     if (data) setNotifications(data)
@@ -53,13 +134,11 @@ export function NotificationBell() {
     return () => clearInterval(interval)
   }, [])
 
-  // --- Re-fetch when popover opens so count is always fresh ---
   function handleOpenChange(next: boolean) {
     setOpen(next)
     if (next) fetchNotifications()
   }
 
-  // --- Mark one as read and update local state optimistically ---
   function handleMarkRead(notificationId: string) {
     setNotifications((prev) =>
       prev.map((n) =>
@@ -71,11 +150,24 @@ export function NotificationBell() {
     })
   }
 
-  // --- Mark all unread as read ---
   function handleMarkAllRead() {
-    const unread = notifications.filter((n) => !n.is_read)
-    unread.forEach((n) => handleMarkRead(n.notification_id))
+    setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })))
+    startTransition(async () => {
+      await markAllNotificationsRead()
+    })
   }
+
+  function handleItemClick(notification: AppNotification) {
+    if (!notification.is_read) handleMarkRead(notification.notification_id)
+    const href = notification.metadata?.href as string | undefined
+    if (href) {
+      setOpen(false)
+      router.push(href)
+    }
+  }
+
+  const todayItems   = notifications.filter((n) => isToday(new Date(n.createdAt)))
+  const earlierItems = notifications.filter((n) => !isToday(new Date(n.createdAt)))
 
   return (
     <Popover open={open} onOpenChange={handleOpenChange}>
@@ -83,7 +175,7 @@ export function NotificationBell() {
         <Button variant="ghost" size="icon" className="relative">
           <Bell className="h-5 w-5" />
           {unreadCount > 0 && (
-            <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] font-semibold text-primary-foreground">
+            <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-gold text-[10px] font-semibold text-gold-foreground">
               {unreadCount > 9 ? '9+' : unreadCount}
             </span>
           )}
@@ -91,9 +183,9 @@ export function NotificationBell() {
         </Button>
       </PopoverTrigger>
 
-      <PopoverContent align="end" className="w-80 p-0">
+      <PopoverContent align="end" className="w-80 p-0 glass">
         {/* Header */}
-        <div className="flex items-center justify-between border-b px-4 py-3">
+        <div className="flex items-center justify-between border-b border-border/40 px-4 py-3">
           <h3 className="text-sm font-semibold">Notifications</h3>
           {unreadCount > 0 && (
             <Button
@@ -112,55 +204,86 @@ export function NotificationBell() {
         {/* List */}
         <ScrollArea className="max-h-[400px]">
           {notifications.length === 0 ? (
-            <div className="flex flex-col items-center justify-center gap-2 py-10 text-center text-sm text-muted-foreground">
-              <Bell className="h-8 w-8 opacity-40" />
-              <p>No notifications yet</p>
+            <div className="flex flex-col items-center justify-center gap-3 py-10 text-center">
+              <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gold/8">
+                <Bell className="h-5 w-5 text-gold opacity-30" />
+              </span>
+              <p className="text-sm text-muted-foreground">No notifications yet</p>
             </div>
           ) : (
             <ul>
-              {notifications.map((notification) => (
-                <li
-                  key={notification.notification_id}
-                  className={cn(
-                    'flex cursor-pointer gap-3 border-b px-4 py-3 transition-colors last:border-0',
-                    'hover:bg-muted/50',
-                    !notification.is_read && 'bg-primary/5',
-                  )}
-                  onClick={() =>
-                    !notification.is_read &&
-                    handleMarkRead(notification.notification_id)
-                  }
-                >
-                  <NotificationIcon type={notification.type} />
-
-                  <div className="flex-1 space-y-0.5">
-                    <p
-                      className={cn(
-                        'text-sm leading-snug',
-                        !notification.is_read && 'font-semibold',
-                      )}
-                    >
-                      {notification.title}
-                    </p>
-                    <p className="text-xs text-muted-foreground line-clamp-2">
-                      {notification.message}
-                    </p>
-                    <p className="text-[11px] text-muted-foreground/70">
-                      {formatDistanceToNow(new Date(notification.createdAt), {
-                        addSuffix: true,
-                      })}
-                    </p>
-                  </div>
-
-                  {!notification.is_read && (
-                    <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-primary" />
-                  )}
-                </li>
-              ))}
+              {todayItems.length > 0 && (
+                <>
+                  <SectionHeader label="Today" />
+                  {todayItems.map((n) => (
+                    <NotificationItem
+                      key={n.notification_id}
+                      notification={n}
+                      onClick={() => handleItemClick(n)}
+                    />
+                  ))}
+                </>
+              )}
+              {earlierItems.length > 0 && (
+                <>
+                  <SectionHeader label="Earlier" />
+                  {earlierItems.map((n) => (
+                    <NotificationItem
+                      key={n.notification_id}
+                      notification={n}
+                      onClick={() => handleItemClick(n)}
+                    />
+                  ))}
+                </>
+              )}
             </ul>
           )}
         </ScrollArea>
       </PopoverContent>
     </Popover>
+  )
+}
+
+function NotificationItem({
+  notification,
+  onClick,
+}: {
+  notification: AppNotification
+  onClick: () => void
+}) {
+  return (
+    <li
+      className={cn(
+        'flex cursor-pointer gap-3 border-b border-border/30 px-4 py-3 transition-colors last:border-0',
+        'hover:bg-muted/50',
+        !notification.is_read && 'bg-gold/5',
+      )}
+      onClick={onClick}
+    >
+      <NotificationIcon type={notification.type} />
+
+      <div className="flex-1 space-y-0.5 min-w-0">
+        <p
+          className={cn(
+            'text-sm leading-snug',
+            !notification.is_read && 'font-semibold',
+          )}
+        >
+          {notification.title}
+        </p>
+        <p className="text-xs text-muted-foreground line-clamp-2">
+          {notification.message}
+        </p>
+        <p className="text-[11px] text-muted-foreground/70">
+          {formatDistanceToNow(new Date(notification.createdAt), {
+            addSuffix: true,
+          })}
+        </p>
+      </div>
+
+      {!notification.is_read && (
+        <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-gold" />
+      )}
+    </li>
   )
 }

@@ -28,12 +28,12 @@ export function DashboardShell({ children, organizationName }: DashboardShellPro
 
       {/* Main content column — margin matches sidebar width, animates with it */}
       <div
-        className={`flex-1 min-w-0 flex flex-col transition-all duration-300 ${
+        className={`flex-1 min-w-0 flex flex-col transition-all duration-300 will-change-[margin-left] ${
           collapsed ? 'lg:ml-[60px]' : 'lg:ml-64'
         }`}
       >
         {/* Top bar */}
-        <header className="flex-shrink-0 sticky top-0 z-30 flex h-14 items-center justify-end border-b border-border/50 bg-background/95 backdrop-blur-sm px-6">
+        <header className="flex-shrink-0 sticky top-0 z-30 flex h-14 items-center justify-end border-b border-border/30 glass px-6">
           <UserNav />
         </header>
 
@@ -44,7 +44,7 @@ export function DashboardShell({ children, organizationName }: DashboardShellPro
           </main>
         ) : (
           <main className="flex-1 overflow-y-auto">
-            <div className="mx-auto max-w-7xl px-4 py-6 lg:px-8 lg:py-8 space-y-6">
+            <div className="mx-auto max-w-7xl px-4 py-5 lg:px-8 lg:py-7 space-y-6">
               {children}
             </div>
             <Footer />

@@ -6,6 +6,7 @@ import {
   getStudentSubmissions,
   getStudentExamHistory,
   getStudentLearningTools,
+  getStudentStudyPlans,
 } from '@/lib/actions/student-dashboard'
 import { StudentDashboardClient } from '@/components/students/student-dashboard-client'
 
@@ -30,11 +31,13 @@ export default async function StudentDashboardPage() {
     submissions,
     examHistory,
     tools,
+    studyPlans,
   ] = await Promise.all([
     getStudentDashboard(studentId),
     getStudentSubmissions(studentId),
     getStudentExamHistory(studentId),
     getStudentLearningTools(studentId),
+    getStudentStudyPlans(studentId),
   ])
 
   return (
@@ -45,6 +48,7 @@ export default async function StudentDashboardPage() {
       submissions={submissions}
       examHistory={examHistory}
       tools={tools}
+      studyPlans={studyPlans}
     />
   )
 }

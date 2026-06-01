@@ -5,6 +5,8 @@ import { getSubmissionsForAssessment }     from '@/lib/actions/submissions'
 import { getAssessment }                   from '@/lib/actions/assessments'
 import { SubmissionsListClient }           from '@/components/results/submissions-list-client'
 import { AssessmentImpactTab }             from '@/components/results/assessment-impact-tab'
+import { InterventionSuggestionBanner }   from '@/components/reteach/intervention-suggestion-banner'
+import { BulkGenerateButton }             from '@/components/reteach/bulk-generate-button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   Breadcrumb, BreadcrumbItem, BreadcrumbLink,
@@ -67,12 +69,20 @@ export default async function SubmissionsPage({ params }: SubmissionsPageProps) 
       </Breadcrumb>
 
       {/* ── Page header ──────────────────────────────────────────────── */}
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Student Results</h1>
-        <p className="text-muted-foreground">
-          Results for &quot;{assessment.title}&quot;
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Student Results</h1>
+          <p className="text-muted-foreground">
+            Results for &quot;{assessment.title}&quot;
+          </p>
+        </div>
+        {(submissions?.length ?? 0) > 0 && (
+          <BulkGenerateButton assessmentId={assessmentId} />
+        )}
       </div>
+
+      {/* ── C2/C1: Intervention suggestion banner ───────────────────── */}
+      <InterventionSuggestionBanner assessmentId={assessmentId} />
 
       {/* ── Tabs ─────────────────────────────────────────────────────── */}
       <Tabs defaultValue="results" className="w-full">

@@ -9,7 +9,7 @@ export default function ExamBuilderLandingPage() {
 
         {/* ── Header ──────────────────────────────────────────────────── */}
         <div className="space-y-3">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 text-xs font-semibold tracking-wide uppercase">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-gold/10 text-gold text-xs font-semibold tracking-wide uppercase">
             <Zap className="h-3 w-3" />
             Examination Centre
           </div>
@@ -47,7 +47,7 @@ export default function ExamBuilderLandingPage() {
 
           {/* Exam Studio — featured */}
           <Link href="/dashboard/exam-builder/new">
-            <div className="group relative h-full rounded-2xl border-2 border-amber-400/70 bg-gradient-to-br from-amber-500 to-orange-500 p-6 hover:shadow-xl hover:scale-[1.01] transition-all duration-200 cursor-pointer overflow-hidden">
+            <div className="group relative h-full rounded-2xl border-2 border-amber-400/70 bg-gradient-to-br from-amber-500 to-orange-500 p-6 hover:shadow-xl hover:scale-[1.01] will-change-transform transition-all duration-200 cursor-pointer overflow-hidden">
               {/* Decorative circles */}
               <div className="absolute -top-6 -right-6 h-24 w-24 rounded-full bg-white/10" />
               <div className="absolute -bottom-4 -right-2 h-16 w-16 rounded-full bg-white/10" />
@@ -97,7 +97,7 @@ export default function ExamBuilderLandingPage() {
         </div>
 
         {/* ── How it works ─────────────────────────────────────────────── */}
-        <div className="rounded-2xl border border-border bg-card/60 backdrop-blur-sm p-8 space-y-6">
+        <div className="rounded-2xl glass p-8 space-y-6">
           <div className="flex items-center gap-2">
             <BookOpen className="h-4 w-4 text-muted-foreground" />
             <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">How it works</h2>

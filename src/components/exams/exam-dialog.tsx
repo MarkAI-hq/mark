@@ -11,10 +11,10 @@ import {
   Upload, X, School, BookOpen,
   Loader2, CheckCircle2, AlertTriangle,
   Brain, ShieldCheck, PartyPopper,
-  Wrench, Lightbulb, ClipboardList, PlusCircle,
-  Download, RefreshCw, ArrowRight, Sparkles,
-  TrendingUp, ShieldAlert, Trash2, Maximize2,
-  Minimize2, ArrowLeft, TrendingDown, CheckCheck,
+  Wrench, ClipboardList,
+  Download, ArrowRight, Sparkles,
+  TrendingUp, ShieldAlert, Trash2,
+  ArrowLeft, TrendingDown,
 } from 'lucide-react'
 
 import {
@@ -57,10 +57,14 @@ import {
   overrideAudit,
   reuploadAssessment,
   confirmRedesign,
+  applyPartial,
   RedesignItem,
   RedesignVariation,
+  ParsedQuestion,
   AuditHistoryEntry,
 } from '@/lib/actions/audit'
+import { ReviewWalkthrough, buildSteps, WalkthroughStep } from '@/components/exams/review-walkthrough'
+import { ReviewSummary } from '@/components/exams/review-summary'
 import { CurriculumSchemaMetadata } from '@/types/curricula'
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -70,8 +74,8 @@ type DialogView =
   | 'auditing'
   | 'audit_passed'
   | 'audit_flagged'
-  | 'redesign_variation_select'
-  | 'redesign_suggestions'
+  | 'review_walkthrough'
+  | 'review_summary'
   | 'saved_redesign_items'
 
 interface AuditStep {
@@ -138,10 +142,10 @@ const STEP_FLOW = [
 ]
 
 function viewToStep(view: DialogView): string {
-  if (view === 'form')                                                  return 'create'
-  if (view === 'auditing' || view === 'audit_passed' || view === 'audit_flagged') return 'audit'
-  if (view === 'redesign_variation_select' || view === 'redesign_suggestions')    return 'fix'
-  if (view === 'saved_redesign_items')                                 return 'export'
+  if (view === 'form')                                                              return 'create'
+  if (view === 'auditing' || view === 'audit_passed' || view === 'audit_flagged')  return 'audit'
+  if (view === 'review_walkthrough' || view === 'review_summary')                  return 'fix'
+  if (view === 'saved_redesign_items')                                              return 'export'
   return 'audit'
 }
 
@@ -258,6 +262,15 @@ export function ExamDialog({
   const [isRequestingRedesign,  setIsRequestingRedesign]  = useState(false)
   const [editorFilterDimension, setEditorFilterDimension] = useState<string | undefined>(undefined)
   const [createError,           setCreateError]           = useState<string | null>(null)
+
+  // Walkthrough state
+  const [chosenVariation,  setChosenVariation]  = useState<RedesignVariation | null>(null)
+  const [walkthroughSteps, setWalkthroughSteps] = useState<WalkthroughStep[]>([])
+  const [walkthroughIdx,   setWalkthroughIdx]   = useState(0)
+  const [acceptedDims,     setAcceptedDims]     = useState<Set<string>>(new Set())
+  const [selectedImages,   setSelectedImages]   = useState<Map<string, string>>(new Map())
+  const [isApplying,       setIsApplying]       = useState(false)
+  const [parsedQuestions,  setParsedQuestions]  = useState<ParsedQuestion[]>([])
   const [savedItems,          setSavedItems]          = useState<RedesignItem[]>([])
   const [savedItemKeys,       setSavedItemKeys]       = useState<Set<string>>(new Set())
   const [savingKey,           setSavingKey]           = useState<string | null>(null)
@@ -268,18 +281,16 @@ export function ExamDialog({
   const [isOverriding,       setIsOverriding]       = useState(false)
   const [isConfirmingReaudit, setIsConfirmingReaudit] = useState(false)
 
-  const [batchOpen,          setBatchOpen]          = useState(false)
-  const [isReuploading,      setIsReuploading]      = useState(false)
-  const [isEditorFullscreen, setIsEditorFullscreen] = useState(false)
-  const [countdown,          setCountdown]          = useState<number | null>(null)
+  const [batchOpen,     setBatchOpen]     = useState(false)
+  const [isReuploading, setIsReuploading] = useState(false)
+  const [countdown,     setCountdown]     = useState<number | null>(null)
 
   const [previewOpen,     setPreviewOpen]     = useState(false)
   const [previewOriginal, setPreviewOriginal] = useState('')
   const [previewRevised,  setPreviewRevised]  = useState('')
 
-  const mirrorEditorRef             = useRef<MirrorEditorHandle>(null)
-  const reuploadInputFlaggedRef     = useRef<HTMLInputElement>(null)
-  const reuploadInputSuggestionsRef = useRef<HTMLInputElement>(null)
+  const mirrorEditorRef         = useRef<MirrorEditorHandle>(null)
+  const reuploadInputFlaggedRef = useRef<HTMLInputElement>(null)
 
   const pollRef            = useRef<ReturnType<typeof setInterval> | null>(null)
   const hasInitializedView = useRef(false)
@@ -309,9 +320,6 @@ export function ExamDialog({
   }
 
   const applyRedesignDiff = (auditPayload: any) => {
-    if (auditPayload?.redesign_diff) {
-      setRedesignData(auditPayload.redesign_diff as AssessmentDiff)
-    }
     if (auditPayload?.redesign_variations) {
       setRedesignVariations(auditPayload.redesign_variations as RedesignVariation[])
     }
@@ -322,11 +330,11 @@ export function ExamDialog({
   useEffect(() => {
     setIsLoadingCurricula(true)
     getCurricula()
-      .then((data) => { setCurricula(data) })
+      .then(({ data }) => { if (data) setCurricula(data) })
       .finally(() => setIsLoadingCurricula(false))
   }, [])
 
-  // Auto-transition countdown when audit passes
+  // Countdown when audit passes — only opens grading dialog, does NOT close exam dialog
   useEffect(() => {
     if (view !== 'audit_passed') { stopCountdown(); return }
     setCountdown(6)
@@ -334,7 +342,7 @@ export function ExamDialog({
       setCountdown(prev => {
         if (prev === null || prev <= 1) {
           stopCountdown()
-          onOpenChange(false); softReset(); form.reset(); setBatchOpen(true)
+          setBatchOpen(true)
           return null
         }
         return prev - 1
@@ -401,7 +409,9 @@ export function ExamDialog({
     setShowOverrideInput(false); setOverrideReason('')
     setPreviousFindings(undefined); setPreviousScore(undefined); setCycleCount(undefined)
     setPreviewOpen(false); setPreviewOriginal(''); setPreviewRevised('')
-    setIsEditorFullscreen(false)
+    setChosenVariation(null); setWalkthroughSteps([]); setWalkthroughIdx(0)
+    setAcceptedDims(new Set()); setSelectedImages(new Map()); setIsApplying(false)
+    setParsedQuestions([])
     hasInitializedView.current = false
   }
 
@@ -526,19 +536,112 @@ export function ExamDialog({
     }
   }
 
-  const handleGetRedesign = async (filterDim?: string) => {
+  const launchWalkthrough = (variation: RedesignVariation, pqs: ParsedQuestion[]) => {
+    const steps = buildSteps(variation.diff as any)
+    if (steps.length === 0) return
+    setChosenVariation(variation)
+    setWalkthroughSteps(steps)
+    setWalkthroughIdx(0)
+    setAcceptedDims(new Set())
+    setSelectedImages(new Map())
+    setParsedQuestions(pqs)
+    setView('review_walkthrough')
+  }
+
+  const handleGetRedesign = async () => {
     if (!createdId) return
-    if (filterDim !== undefined) setEditorFilterDimension(filterDim)
-    if (redesignData) { setView('redesign_suggestions'); return }
-    if (redesignVariations) { setView('redesign_variation_select'); return }
+    if (chosenVariation && walkthroughSteps.length > 0) { setView('review_walkthrough'); return }
+    if (redesignVariations) {
+      const best = redesignVariations.reduce((a, b) => b.projected_score > a.projected_score ? b : a)
+      launchWalkthrough(best, parsedQuestions)
+      return
+    }
     setIsRequestingRedesign(true)
     const { data, error } = await getRedesignSuggestions(createdId)
     setIsRequestingRedesign(false)
     if (error) return toast.error(error.message)
     if (data?.variations) {
       setRedesignVariations(data.variations)
-      setView('redesign_variation_select')
+      setParsedQuestions(data.parsedQuestions ?? [])
+      const best = data.variations.reduce((a, b) => b.projected_score > a.projected_score ? b : a)
+      launchWalkthrough(best, data.parsedQuestions ?? [])
     }
+  }
+
+  const handleApplyAllAuto = async () => {
+    if (!createdId) return
+    let variation = chosenVariation ?? redesignVariations?.reduce((a, b) => b.projected_score > a.projected_score ? b : a)
+    if (!variation) {
+      setIsRequestingRedesign(true)
+      const { data, error } = await getRedesignSuggestions(createdId)
+      setIsRequestingRedesign(false)
+      if (error) return toast.error(error.message)
+      if (!data?.variations) return
+      setRedesignVariations(data.variations)
+      variation = data.variations.reduce((a, b) => b.projected_score > a.projected_score ? b : a)
+    }
+    const allDims = [...new Set(
+      variation.diff.insertions.map((i: any) => i.dimension).filter(Boolean) as string[]
+    )]
+    setIsApplying(true)
+    const { error } = await applyPartial(createdId, variation.id, allDims)
+    setIsApplying(false)
+    if (error) return toast.error('Failed to apply fixes.', { description: error.message })
+    setAuditSteps(INITIAL_STEPS); setAuditProgress(0); setAuditError(null)
+    setView('auditing')
+    toast.success('All fixes applied — re-auditing…')
+    pollForAuditResult(createdId)
+  }
+
+  const handleWalkthroughAccept = (dimension: string) => {
+    setAcceptedDims(prev => new Set([...prev, dimension]))
+    if (walkthroughIdx < walkthroughSteps.length - 1) {
+      setWalkthroughIdx(i => i + 1)
+    } else {
+      setView('review_summary')
+    }
+  }
+
+  const handleWalkthroughSkip = () => {
+    if (walkthroughIdx < walkthroughSteps.length - 1) {
+      setWalkthroughIdx(i => i + 1)
+    } else {
+      setView('review_summary')
+    }
+  }
+
+  const handleWalkthroughBack = () => {
+    if (walkthroughIdx > 0) {
+      setWalkthroughIdx(i => i - 1)
+    } else {
+      setView('audit_flagged')
+    }
+  }
+
+  const handleToggleImage = (insertionId: string, imageUrl: string) => {
+    setSelectedImages(prev => {
+      const next = new Map(prev)
+      if (next.has(insertionId) && next.get(insertionId) === imageUrl) {
+        next.delete(insertionId)
+      } else {
+        next.set(insertionId, imageUrl)
+      }
+      return next
+    })
+  }
+
+  const handleApplyPartial = async () => {
+    if (!createdId || !chosenVariation) return
+    const dims    = [...acceptedDims]
+    const images  = [...selectedImages.entries()].map(([insertionId, imageUrl]) => ({ insertionId, imageUrl }))
+    setIsApplying(true)
+    const { error } = await applyPartial(createdId, chosenVariation.id, dims, images)
+    setIsApplying(false)
+    if (error) return toast.error('Failed to apply changes.', { description: error.message })
+    setAuditSteps(INITIAL_STEPS); setAuditProgress(0); setAuditError(null)
+    setView('auditing')
+    toast.success(`${dims.length} dimension${dims.length !== 1 ? 's' : ''} applied — re-auditing…`)
+    pollForAuditResult(createdId)
   }
 
   const handleSelectVariation = (variationId: 'conservative' | 'comprehensive') => {
@@ -546,7 +649,6 @@ export function ExamDialog({
     if (!variation) return
     setActiveVariationId(variationId)
     setRedesignData(variation.diff)
-    setView('redesign_suggestions')
   }
 
   const handleConfirmAndReaudit = async () => {
@@ -733,14 +835,14 @@ export function ExamDialog({
   }
 
   const handleStepClick = (stepId: string) => {
-    if (stepId === 'audit' && (view === 'redesign_variation_select' || view === 'redesign_suggestions' || view === 'saved_redesign_items')) {
+    if (stepId === 'audit' && (view === 'review_walkthrough' || view === 'review_summary' || view === 'saved_redesign_items')) {
       setView(auditResult?.status === 'passed' ? 'audit_passed' : 'audit_flagged')
     }
   }
 
   const schemeValue = form.watch('scheme')
 
-  const isWide = view === 'form' || view === 'redesign_suggestions' || view === 'saved_redesign_items' || view === 'redesign_variation_select'
+  const isWide = view === 'form' || view === 'saved_redesign_items'
 
   const tabActive   = 'bg-white dark:bg-[#2d2a25] shadow-sm text-[#7a6230] dark:text-[#c9a84c]'
   const tabInactive = 'text-[#a8893d]/70 hover:text-[#7a6230] dark:hover:text-[#c9a84c]'
@@ -753,16 +855,15 @@ export function ExamDialog({
 
   return (
     <>
-      <Dialog open={open} onOpenChange={v => { if (!v) handleClose() }}>
+      <Dialog open={open} onOpenChange={v => {
+        if (!v && countdown !== null) { stopCountdown(); return }
+        if (!v) handleClose()
+      }}>
         <DialogContent className={cn(
           'flex flex-col p-0 transition-all duration-300 overflow-hidden',
-          isEditorFullscreen
-            ? 'fixed inset-0 max-w-full h-screen rounded-none z-50'
-            : view === 'redesign_suggestions'
-              ? 'sm:max-w-[900px] h-[88vh] max-h-[88vh]'
-              : isWide
-                ? 'sm:max-w-[680px] max-h-[88vh]'
-                : 'sm:max-w-[560px] max-h-[88vh]',
+          isWide
+            ? 'sm:max-w-[680px] max-h-[88vh]'
+            : 'sm:max-w-[560px] max-h-[88vh]',
         )}>
 
           {/* ════════════════════════════════════════════════════════════
@@ -1069,15 +1170,22 @@ export function ExamDialog({
               </div>
 
               <div className="px-6 py-4 border-t shrink-0 flex flex-col gap-2" style={{ background: '#f5edda18' }}>
-                <Button className="w-full gap-2 border-0 text-white"
-                  style={{ background: '#c9a84c' }}
-                  onClick={() => { stopCountdown(); onOpenChange(false); softReset(); form.reset(); setBatchOpen(true) }}>
-                  <ArrowRight className="h-4 w-4" />Start Grading Students
-                </Button>
+                <div className="flex gap-2">
+                  <Button className="flex-1 gap-2 border-0 text-white"
+                    style={{ background: '#c9a84c' }}
+                    onClick={() => { stopCountdown(); onOpenChange(false); softReset(); form.reset(); setBatchOpen(true) }}>
+                    <ArrowRight className="h-4 w-4" />Start Grading Students
+                  </Button>
+                  {countdown !== null && (
+                    <Button variant="outline" size="sm" className="shrink-0 gap-1.5 text-muted-foreground"
+                      onClick={stopCountdown}>
+                      Not yet ✕
+                    </Button>
+                  )}
+                </div>
                 {countdown !== null && (
                   <p className="text-center text-xs text-muted-foreground animate-in fade-in">
-                    Starting grading in {countdown}…{' '}
-                    <button className="underline text-[#7a6230]" onClick={stopCountdown}>Cancel</button>
+                    Starting grading in {countdown}…
                   </p>
                 )}
                 <Button variant="ghost" size="sm" className="w-full text-muted-foreground hover:text-foreground"
@@ -1159,7 +1267,7 @@ export function ExamDialog({
                           status="flagged"
                           previousFindings={previousFindings}
                           cycleCount={cycleCount}
-                          onFixDimension={(dim) => handleGetRedesign(dim)}
+                          onFixDimension={() => handleGetRedesign()}
                         />
                       </div>
                     )}
@@ -1208,25 +1316,22 @@ export function ExamDialog({
                         Upload different PDF
                       </Button>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground" onClick={() => setShowOverrideInput(true)}>Grade Anyway</Button>
-                      {redesignVariations ? (
-                        <Button size="sm" onClick={() => setView('redesign_variation_select')} className="gap-2 border-0 text-white" style={{ background: '#c9a84c' }}>
-                          <Lightbulb className="w-4 h-4" />View Suggestions
-                        </Button>
-                      ) : savedItems.length > 0 ? (
-                        <Button size="sm" onClick={() => handleGetRedesign()} disabled={isRequestingRedesign} className="gap-2 border-0 text-white" style={{ background: '#c9a84c' }}>
-                          {isRequestingRedesign
-                            ? <Loader2 className="w-4 h-4 animate-spin" />
-                            : <><ClipboardList className="w-4 h-4" />Continue Fixing ({savedItems.length} saved)</>}
-                        </Button>
-                      ) : (
-                        <Button size="sm" onClick={() => handleGetRedesign()} disabled={isRequestingRedesign} className="gap-2 border-0 text-white" style={{ background: '#c9a84c' }}>
-                          {isRequestingRedesign
-                            ? <><Loader2 className="w-4 h-4 animate-spin" />Preparing suggestions…</>
-                            : <><Wrench className="w-4 h-4" />Fix My Assessment</>}
-                        </Button>
-                      )}
+                    <div className="flex flex-col gap-2 flex-1">
+                      <Button size="sm" onClick={handleGetRedesign} disabled={isRequestingRedesign || isApplying} className="gap-2 border-0 text-white w-full" style={{ background: '#c9a84c' }}>
+                        {isRequestingRedesign
+                          ? <><Loader2 className="w-4 h-4 animate-spin" />Preparing suggestions…</>
+                          : <><Wrench className="w-4 h-4" />Review &amp; Fix Issues →</>}
+                      </Button>
+                      <div className="flex justify-between items-center">
+                        <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground text-xs" onClick={() => setShowOverrideInput(true)}>Grade Anyway</Button>
+                        <button
+                          className="text-xs text-[#a8893d] hover:text-[#7a6230] underline underline-offset-2 disabled:opacity-40"
+                          disabled={isRequestingRedesign || isApplying}
+                          onClick={handleApplyAllAuto}
+                        >
+                          {isApplying ? 'Applying…' : 'Apply all fixes automatically'}
+                        </button>
+                      </div>
                     </div>
                   </div>
                 )}
@@ -1235,191 +1340,44 @@ export function ExamDialog({
           )}
 
           {/* ════════════════════════════════════════════════════════════
-              VIEW: REDESIGN VARIATION SELECT
+              VIEW: REVIEW WALKTHROUGH
           ════════════════════════════════════════════════════════════ */}
-          {view === 'redesign_variation_select' && redesignVariations && (
+          {view === 'review_walkthrough' && chosenVariation && walkthroughSteps.length > 0 && (
             <>
               <StepIndicator view={view} onStepClick={handleStepClick} />
-              <DialogHeader className="px-6 pt-3 pb-4 border-b shrink-0"
-                style={{ background: 'linear-gradient(to bottom, #f5edda, transparent)' }}>
-                <div className="flex items-center gap-2 mb-1" style={{ color: '#c9a84c' }}>
-                  <Lightbulb className="h-5 w-5" />
-                  <DialogTitle>Choose Your Fix Strategy</DialogTitle>
-                </div>
-                <div className="flex items-center gap-2 flex-wrap">
-                  <DialogDescription>
-                    Two approaches generated — each with a projected audit score.
-                  </DialogDescription>
-                  <CurriculumBadge name={activeCurriculum?.display_name} />
-                </div>
-              </DialogHeader>
-
-              <div className="flex-1 px-6 py-6 overflow-y-auto">
-                <div className="grid grid-cols-2 gap-4">
-                  {redesignVariations.map(variation => {
-                    const isPassing = variation.projected_status === 'passed'
-                    return (
-                      <div
-                        key={variation.id}
-                        className={cn(
-                          'rounded-xl border-2 p-5 flex flex-col gap-3 cursor-pointer transition-all duration-200 hover:shadow-md',
-                          isPassing ? 'border-[#c9a84c]/40 bg-[#f5edda]/30' : 'border-amber-300/40 bg-amber-50/20',
-                        )}
-                      >
-                        <div className="flex items-start justify-between">
-                          <div>
-                            <p className="font-bold text-sm text-foreground">{variation.label}</p>
-                            <p className="text-xs text-muted-foreground mt-0.5">{variation.description}</p>
-                          </div>
-                          <Badge className={cn(
-                            'border-none text-[10px] font-bold shrink-0 ml-2',
-                            isPassing ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700',
-                          )}>
-                            {isPassing ? '✓ Pass' : '⚠ Flagged'}
-                          </Badge>
-                        </div>
-
-                        <div className="space-y-1.5">
-                          <div className="flex justify-between text-[10px] text-muted-foreground">
-                            <span>Projected score</span>
-                            <span className="font-bold" style={{ color: isPassing ? '#7a6230' : '#a8893d' }}>
-                              {variation.projected_score}/100
-                            </span>
-                          </div>
-                          <div className="relative h-1.5 w-full rounded-full overflow-hidden" style={{ background: '#e8d5a3' }}>
-                            <div className="h-full rounded-full transition-all duration-700"
-                              style={{
-                                width: `${variation.projected_score}%`,
-                                background: isPassing ? 'linear-gradient(to right, #c9a84c, #7a6230)' : '#f59e0b',
-                              }}
-                            />
-                          </div>
-                          <p className="text-[10px] text-muted-foreground">{variation.change_count} change{variation.change_count !== 1 ? 's' : ''}</p>
-                        </div>
-
-                        <Button
-                          size="sm"
-                          className="w-full gap-2 border-0 text-white mt-1"
-                          style={{ background: isPassing ? '#c9a84c' : '#a8893d' }}
-                          onClick={() => handleSelectVariation(variation.id)}
-                        >
-                          <ArrowRight className="w-4 h-4" />Choose this
-                        </Button>
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-
-              <div className="px-6 py-3 border-t bg-muted/10 shrink-0">
-                <Button variant="ghost" size="sm" className="gap-1.5 text-muted-foreground"
-                  onClick={() => setView('audit_flagged')}>
-                  <ArrowLeft className="h-3.5 w-3.5" />Back to Audit Results
-                </Button>
+              <div className="flex-1 overflow-hidden">
+                <ReviewWalkthrough
+                  variation={chosenVariation}
+                  parsedQuestions={parsedQuestions}
+                  currentIdx={walkthroughIdx}
+                  steps={walkthroughSteps}
+                  acceptedDims={acceptedDims}
+                  selectedImages={selectedImages}
+                  onAccept={handleWalkthroughAccept}
+                  onSkip={handleWalkthroughSkip}
+                  onBack={handleWalkthroughBack}
+                  onToggleImage={handleToggleImage}
+                />
               </div>
             </>
           )}
 
           {/* ════════════════════════════════════════════════════════════
-              VIEW: REDESIGN SUGGESTIONS
+              VIEW: REVIEW SUMMARY
           ════════════════════════════════════════════════════════════ */}
-          {view === 'redesign_suggestions' && redesignData && (
+          {view === 'review_summary' && chosenVariation && (
             <>
-              <div className={cn(
-                'flex flex-col shrink-0',
-                isEditorFullscreen ? '' : 'border-b',
-              )}>
-                <StepIndicator view={view} onStepClick={handleStepClick} />
-                <div className="px-6 pt-3 pb-4"
-                  style={{ background: 'linear-gradient(to bottom, #f5edda, transparent)' }}>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => setView(redesignVariations ? 'redesign_variation_select' : 'audit_flagged')}
-                        className="text-[10px] font-medium text-muted-foreground hover:text-foreground flex items-center gap-1"
-                      >
-                        <ArrowLeft className="h-3 w-3" />
-                        {redesignVariations ? 'Change Strategy' : 'Audit Results'}
-                      </button>
-                      <span className="text-muted-foreground/40 text-[10px]">/</span>
-                      <span className="text-[10px] font-medium" style={{ color: '#7a6230' }}>
-                        {activeVariation ? activeVariation.label : 'Redesign Blueprint'}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <CurriculumBadge name={activeCurriculum?.display_name} />
-                      {savedItems.length > 0 && (
-                        <Button variant="outline" size="sm" className={cn(assessmentItemsBtn, 'text-xs')} onClick={() => setView('saved_redesign_items')}>
-                          <ClipboardList className="h-3.5 w-3.5" />View saved ({savedItems.length})
-                        </Button>
-                      )}
-                      <button
-                        onClick={() => setIsEditorFullscreen(v => !v)}
-                        className="p-1.5 rounded-md hover:bg-[#f5edda] text-muted-foreground hover:text-[#7a6230] transition-colors"
-                        title={isEditorFullscreen ? 'Exit fullscreen' : 'Expand editor'}
-                      >
-                        {isEditorFullscreen
-                          ? <Minimize2 className="h-4 w-4" />
-                          : <Maximize2 className="h-4 w-4" />}
-                      </button>
-                    </div>
-                  </div>
-                  {activeVariation && (
-                    <div className="flex items-center gap-2 mt-2">
-                      <Badge className={cn(
-                        'border-none text-[10px] font-bold',
-                        activeVariation.projected_status === 'passed' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700',
-                      )}>
-                        Projected: {activeVariation.projected_score}/100{activeVariation.projected_status === 'passed' ? ' ✓' : ''}
-                      </Badge>
-                      <span className="text-[10px] text-muted-foreground">{activeVariation.change_count} suggestion{activeVariation.change_count !== 1 ? 's' : ''} — Accept all to reach this score</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-
+              <StepIndicator view={view} onStepClick={handleStepClick} />
               <div className="flex-1 overflow-hidden">
-                <MirrorEditor
-                  ref={mirrorEditorRef}
-                  diff={redesignData}
-                  onConfirm={handleEditorConfirm}
-                  className="h-full"
-                  filterDimension={editorFilterDimension}
+                <ReviewSummary
+                  steps={walkthroughSteps}
+                  acceptedDims={acceptedDims}
+                  currentScore={auditResult?.overall_score ?? 0}
+                  projectedScore={chosenVariation.projected_score}
+                  isApplying={isApplying}
+                  onApply={handleApplyPartial}
+                  onGoBack={() => { setWalkthroughIdx(walkthroughSteps.length - 1); setView('review_walkthrough') }}
                 />
-              </div>
-
-              <div className="px-6 py-3 border-t bg-muted/10 shrink-0 flex items-center justify-between">
-                <Button variant="outline" size="sm" className="gap-1.5"
-                  onClick={() => setView(redesignVariations ? 'redesign_variation_select' : 'audit_flagged')}>
-                  <ArrowLeft className="h-3.5 w-3.5" />Back
-                </Button>
-                <div className="flex items-center gap-2">
-                  <input
-                    ref={reuploadInputSuggestionsRef}
-                    type="file" accept=".pdf" className="hidden"
-                    onChange={handleReuploadFile}
-                  />
-                  <Button
-                    size="sm" variant="outline"
-                    className="gap-2 text-muted-foreground text-xs"
-                    disabled={isReuploading}
-                    onClick={() => reuploadInputSuggestionsRef.current?.click()}
-                  >
-                    {isReuploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
-                    Upload different PDF
-                  </Button>
-                  <Button
-                    size="sm"
-                    className="gap-2 border-0 text-white"
-                    style={{ background: '#c9a84c' }}
-                    disabled={isConfirmingReaudit}
-                    onClick={handleConfirmAndReaudit}
-                  >
-                    {isConfirmingReaudit
-                      ? <><Loader2 className="w-4 h-4 animate-spin" />Confirming…</>
-                      : <><RefreshCw className="w-4 h-4" />Confirm & Re-Audit</>}
-                  </Button>
-                </div>
               </div>
             </>
           )}
@@ -1513,7 +1471,7 @@ export function ExamDialog({
                 <DialogFooter className="px-6 py-4 border-t bg-muted/10 shrink-0">
                   <div className="flex items-center justify-between w-full gap-3">
                     <Button variant="outline" size="sm" className="gap-1.5"
-                      onClick={() => setView(redesignData ? 'redesign_suggestions' : redesignVariations ? 'redesign_variation_select' : 'audit_flagged')}>
+                      onClick={() => setView(chosenVariation ? 'review_summary' : 'audit_flagged')}>
                       <ArrowLeft className="h-3.5 w-3.5" />Back
                     </Button>
                     <Button size="sm" className="gap-2 border-0 text-white" style={{ background: '#c9a84c' }} disabled={isDownloading || savedItems.length === 0} onClick={handleDownloadDocx}>

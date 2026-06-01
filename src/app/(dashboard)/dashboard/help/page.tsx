@@ -14,6 +14,7 @@ import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
+import { sendSupportEmail } from '@/lib/actions/support'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -275,20 +276,23 @@ export default function HelpPage() {
       return
     }
     startTransition(async () => {
-      // TODO: wire to sendSupportEmail(form) server action
-      await new Promise((r) => setTimeout(r, 800))
-      toast.success('Message sent! Our team will get back to you within 24 hours.')
+      const result = await sendSupportEmail(form)
+      if (result.error) {
+        toast.error('Failed to send message', { description: result.error.message })
+        return
+      }
+      toast.success('Message sent!', { description: 'Our team will get back to you within 24 hours.' })
       setForm({ name: '', email: '', topic: '', message: '' })
     })
   }
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] bg-gradient-to-br from-background via-background to-blue-500/5">
+    <div className="min-h-[calc(100vh-4rem)] bg-gradient-to-br from-background via-background to-gold/3">
       <div className="max-w-5xl mx-auto px-6 py-12 space-y-14">
 
         {/* ── Header ───────────────────────────────────────────── */}
         <div className="space-y-3">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 text-xs font-semibold tracking-wide uppercase">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-gold/10 text-gold text-xs font-semibold tracking-wide uppercase">
             <HelpCircle className="h-3 w-3" />
             Help Centre
           </div>
@@ -335,13 +339,13 @@ export default function HelpPage() {
         </div>
 
         {/* ── Tracy AI ─────────────────────────────────────────── */}
-        <div className="rounded-2xl border border-border bg-card/60 backdrop-blur-sm p-6 space-y-4">
+        <div className="rounded-2xl glass p-6 space-y-4">
           <div className="flex items-center gap-2">
-            <Sparkles className="h-4 w-4 text-muted-foreground" />
+            <Sparkles className="h-4 w-4 text-gold" />
             <SectionLabel>Ask Tracy — AI assistant</SectionLabel>
           </div>
           <div className="flex items-start gap-3">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gold/10 text-gold">
               <Sparkles className="h-4 w-4" />
             </div>
             <div className="rounded-xl border border-border bg-background px-4 py-3 text-sm text-muted-foreground leading-relaxed">
@@ -357,7 +361,7 @@ export default function HelpPage() {
               placeholder="E.g. Why is Birungi flagged at risk?"
               className="flex-1 h-10 text-sm"
             />
-            <Button onClick={handleTracy} size="sm" className="h-10 px-4 gap-1.5">
+            <Button variant="gold" onClick={handleTracy} size="sm" className="h-10 px-4 gap-1.5">
               <Send className="h-3.5 w-3.5" />
               Ask Tracy
             </Button>

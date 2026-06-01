@@ -1,13 +1,12 @@
 'use client'
 
 // src/components/reteach/reteach-impact-card.tsx
-// Shared card — renders one session's full impact story.
-// Used inside student view, assessment view, and org summary.
+// M2: Precision upgrade — full before/after, error reduction, time to impact, confidence
 
 import { format }        from 'date-fns'
 import {
   TrendingUp, TrendingDown, Minus, Clock,
-  CheckCircle2, AlertCircle, Zap, Users, Brain,
+  CheckCircle2, AlertCircle, Zap, Users, Brain, Shield,
 } from 'lucide-react'
 import { Badge }         from '@/components/ui/badge'
 import { Separator }     from '@/components/ui/separator'
@@ -19,6 +18,7 @@ const SCOPE_META = {
   individual:   { Icon: Zap,   label: 'Individual',  bg: 'bg-amber-50',  text: 'text-amber-700',  border: 'border-amber-200'  },
   class:        { Icon: Users, label: 'Whole class', bg: 'bg-blue-50',   text: 'text-blue-700',   border: 'border-blue-200'   },
   longitudinal: { Icon: Brain, label: 'Coaching',    bg: 'bg-purple-50', text: 'text-purple-700', border: 'border-purple-200' },
+  group:        { Icon: Users, label: 'Group',       bg: 'bg-teal-50',   text: 'text-teal-700',   border: 'border-teal-200'   },
 }
 
 function DeltaBadge({ improvement }: { improvement: SessionImpact['improvement'] }) {
@@ -73,36 +73,38 @@ function ScoreBar({ before, after }: { before: number | null; after: number | nu
   if (before === null) return (
     <p className="text-xs text-slate-400 italic">No baseline captured yet</p>
   )
+  const delta = after !== null ? after - before : null
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-3">
         <span className="text-xs text-slate-500 w-14 shrink-0">Before</span>
         <div className="flex-1 h-2 rounded-full bg-slate-100 overflow-hidden">
-          <div
-            className="h-full rounded-full bg-slate-400 transition-all"
-            style={{ width: `${before}%` }}
-          />
+          <div className="h-full rounded-full bg-slate-400" style={{ width: `${before}%` }} />
         </div>
         <span className="text-xs font-medium text-slate-700 w-10 text-right">{before}%</span>
       </div>
-      {after !== null && (
+      {after !== null ? (
         <div className="flex items-center gap-3">
           <span className="text-xs text-slate-500 w-14 shrink-0">After</span>
           <div className="flex-1 h-2 rounded-full bg-slate-100 overflow-hidden">
             <div
-              className={`h-full rounded-full transition-all ${after >= before ? 'bg-green-500' : 'bg-red-400'}`}
+              className={`h-full rounded-full ${after >= before ? 'bg-green-500' : 'bg-red-400'}`}
               style={{ width: `${after}%` }}
             />
           </div>
           <span className="text-xs font-medium text-slate-700 w-10 text-right">{after}%</span>
         </div>
-      )}
-      {after === null && (
+      ) : (
         <div className="flex items-center gap-3">
           <span className="text-xs text-slate-400 w-14 shrink-0">After</span>
           <div className="flex-1 h-2 rounded-full bg-slate-100" />
           <span className="text-xs text-slate-400 w-10 text-right">—</span>
         </div>
+      )}
+      {delta !== null && (
+        <p className={`text-xs font-medium ${delta > 0 ? 'text-green-700' : delta < 0 ? 'text-red-600' : 'text-slate-500'}`}>
+          {delta > 0 ? '+' : ''}{delta} pp improvement
+        </p>
       )}
     </div>
   )
@@ -112,11 +114,11 @@ function ScoreBar({ before, after }: { before: number | null; after: number | nu
 
 interface ReteachImpactCardProps {
   impact:     SessionImpact
-  showName?:  boolean  // show student/assessment/class name — hide when already in context
+  showName?:  boolean
 }
 
 export function ReteachImpactCard({ impact, showName = true }: ReteachImpactCardProps) {
-  const scope     = SCOPE_META[impact.scope]
+  const scope     = SCOPE_META[impact.scope] ?? SCOPE_META['class']
   const ScopeIcon = scope.Icon
 
   return (
@@ -150,12 +152,24 @@ export function ReteachImpactCard({ impact, showName = true }: ReteachImpactCard
 
       <Separator />
 
-      {/* ── Score bars ───────────────────────────────────────────────── */}
+      {/* ── Score outcome ───────────────────────────────────────────── */}
       <div className="px-4 py-3 space-y-1.5">
-        <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-2">
-          Score
-        </p>
+        <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-2">Score Outcome</p>
         <ScoreBar before={impact.baseline.score} after={impact.result.score} />
+        {impact.benchmark_label && (
+          <p className={`text-xs mt-1 ${
+            impact.benchmark_label === 'Above class average' ? 'text-green-600' :
+            impact.benchmark_label === 'Below class average' ? 'text-red-500' :
+            'text-slate-500'
+          }`}>
+            {impact.benchmark_label}
+            {impact.pp_above_class_avg !== null && impact.pp_above_class_avg !== 0 && (
+              <span className="ml-1">
+                ({impact.pp_above_class_avg > 0 ? '+' : ''}{impact.pp_above_class_avg} pp vs class avg)
+              </span>
+            )}
+          </p>
+        )}
       </div>
 
       {/* ── Error rate change ────────────────────────────────────────── */}
@@ -164,12 +178,10 @@ export function ReteachImpactCard({ impact, showName = true }: ReteachImpactCard
           <Separator />
           <div className="px-4 py-3">
             <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-2">
-              Error rate — {impact.error_type}
+              Error Rate — {impact.error_type}
             </p>
             <div className="flex items-center gap-3 text-xs">
-              <span className="text-slate-600">
-                {impact.error_rate_change.before}%
-              </span>
+              <span className="text-slate-600">{impact.error_rate_change.before}%</span>
               <span className="text-slate-400">→</span>
               <span className={
                 impact.error_rate_change.direction === 'reduced'   ? 'text-green-700 font-medium' :
@@ -183,34 +195,67 @@ export function ReteachImpactCard({ impact, showName = true }: ReteachImpactCard
                 impact.error_rate_change.direction === 'increased' ? 'text-red-500'   :
                 'text-slate-400'
               }`}>
-                ({impact.error_rate_change.delta > 0 ? '+' : ''}{impact.error_rate_change.delta}pp)
+                ({impact.error_rate_change.delta > 0 ? '+' : ''}{impact.error_rate_change.delta} pp)
               </span>
             </div>
           </div>
         </>
       )}
 
-      {/* ── Timeline ─────────────────────────────────────────────────── */}
+      {/* ── Exit ticket leading indicator ────────────────────────────── */}
+      {impact.quick_score_pct !== null && impact.impact_status !== 'completed' && (
+        <>
+          <Separator />
+          <div className="px-4 py-3 bg-amber-50/40">
+            <p className="text-xs font-medium text-amber-700 uppercase tracking-wide mb-1">
+              Exit Ticket (in-session)
+            </p>
+            <p className="text-xs text-amber-800">
+              <span className="font-semibold">{impact.quick_score_pct}%</span> demonstrated understanding immediately after session
+            </p>
+            {impact.quick_score_at && (
+              <p className="text-xs text-amber-600 mt-0.5">
+                Logged: {format(new Date(impact.quick_score_at), 'MMM d, yyyy')}
+              </p>
+            )}
+          </div>
+        </>
+      )}
+
+      {/* ── Timeline + confidence ────────────────────────────────────── */}
       {(impact.delivered_at || impact.follow_up_date || impact.completed_at) && (
         <>
           <Separator />
-          <div className="px-4 py-3 flex flex-wrap gap-x-6 gap-y-1">
-            {impact.delivered_at && (
-              <div className="flex items-center gap-1.5 text-xs text-slate-500">
-                <CheckCircle2 className="h-3 w-3 text-green-500 shrink-0" />
-                Delivered {format(new Date(impact.delivered_at), 'MMM d')}
-              </div>
+          <div className="px-4 py-3 space-y-1.5">
+            <div className="flex flex-wrap gap-x-6 gap-y-1">
+              {impact.delivered_at && (
+                <div className="flex items-center gap-1.5 text-xs text-slate-500">
+                  <CheckCircle2 className="h-3 w-3 text-green-500 shrink-0" />
+                  Delivered {format(new Date(impact.delivered_at), 'MMM d')}
+                </div>
+              )}
+              {impact.follow_up_date && (
+                <div className="flex items-center gap-1.5 text-xs text-slate-500">
+                  <Clock className="h-3 w-3 text-amber-500 shrink-0" />
+                  Follow-up {format(new Date(impact.follow_up_date), 'MMM d')}
+                </div>
+              )}
+              {impact.completed_at && (
+                <div className="flex items-center gap-1.5 text-xs text-slate-500">
+                  <AlertCircle className="h-3 w-3 text-emerald-500 shrink-0" />
+                  Completed {format(new Date(impact.completed_at), 'MMM d')}
+                </div>
+              )}
+            </div>
+            {impact.time_to_impact_days !== null && (
+              <p className="text-xs text-slate-400">
+                Time to impact: {impact.time_to_impact_days} day{impact.time_to_impact_days !== 1 ? 's' : ''}
+              </p>
             )}
-            {impact.follow_up_date && (
+            {impact.confidence_level && (
               <div className="flex items-center gap-1.5 text-xs text-slate-500">
-                <Clock className="h-3 w-3 text-amber-500 shrink-0" />
-                Follow-up {format(new Date(impact.follow_up_date), 'MMM d')}
-              </div>
-            )}
-            {impact.completed_at && (
-              <div className="flex items-center gap-1.5 text-xs text-slate-500">
-                <AlertCircle className="h-3 w-3 text-emerald-500 shrink-0" />
-                Completed {format(new Date(impact.completed_at), 'MMM d')}
+                <Shield className="h-3 w-3 text-blue-400 shrink-0" />
+                Confidence: {impact.confidence_level}
               </div>
             )}
           </div>
@@ -220,9 +265,7 @@ export function ReteachImpactCard({ impact, showName = true }: ReteachImpactCard
       {/* ── Awaiting followup nudge ───────────────────────────────────── */}
       {impact.impact_status === 'awaiting_followup' && (
         <div className="px-4 py-2.5 bg-amber-50 border-t border-amber-100">
-          <p className="text-xs text-amber-700">
-            {impact.result.label}
-          </p>
+          <p className="text-xs text-amber-700">{impact.result.label}</p>
         </div>
       )}
     </div>

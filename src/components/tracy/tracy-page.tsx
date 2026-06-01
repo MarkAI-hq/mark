@@ -1328,12 +1328,13 @@ export default function TracyPage() {
 
   const panelGroupKey = panelOpen ? "split" : "full";
 
-  const fileObjectsRef  = useRef<Record<string, File>>({});
-  const bottomRef       = useRef<HTMLDivElement>(null);
-  const inputRef        = useRef<HTMLTextAreaElement>(null);
-  const fileInputRef    = useRef<HTMLInputElement>(null);
-  const sessionId       = useRef(`session_${Date.now()}`);
-  const readerRef       = useRef<ReadableStreamDefaultReader<Uint8Array> | null>(null);
+  const fileObjectsRef     = useRef<Record<string, File>>({});
+  const bottomRef          = useRef<HTMLDivElement>(null);
+  const inputRef           = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef       = useRef<HTMLInputElement>(null);
+  const sessionId          = useRef(`session_${Date.now()}`);
+  const readerRef          = useRef<ReadableStreamDefaultReader<Uint8Array> | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   // Load history and bootstrap personalised suggestions
@@ -1517,6 +1518,8 @@ export default function TracyPage() {
   }, [pendingFiles, closePanel, revokeAndClearFiles]);
 
   const stopGeneration = useCallback(() => {
+    abortControllerRef.current?.abort();
+    abortControllerRef.current = null;
     readerRef.current?.cancel();
     readerRef.current = null;
     setIsLoading(false);
@@ -1586,9 +1589,14 @@ export default function TracyPage() {
       const finalPayloadMessage = `${userMsg.content}${fileDataContext}${attachedFilesBlock}`;
       const attachmentsMeta     = snapshotFiles.map(({ name, type, size }) => ({ name, type, size }));
 
+      abortControllerRef.current?.abort();
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
+
       const res = await fetch("/api/tracy", {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
+        signal:  controller.signal,
         body:    JSON.stringify({
           message:     finalPayloadMessage,
           sessionId:   sessionId.current,

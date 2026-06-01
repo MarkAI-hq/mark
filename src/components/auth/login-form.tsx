@@ -21,6 +21,8 @@ import { ServerActionResponse, LoginResponse } from '@/lib/types'
 
 // ── Role → default landing page ───────────────────────────────────────────
 function getDefaultRedirect(roles: string[]): string {
+  if (roles.includes('Root'))    return '/root'
+  if (roles.includes('Support')) return '/root'
   if (roles.includes('Admin'))   return '/dashboard'
   if (roles.includes('Teacher')) return '/dashboard/teacher'
   if (roles.includes('Student')) return '/student/dashboard'
@@ -68,7 +70,7 @@ export function LoginForm() {
       //    BUT only if it matches the user's role scope to prevent
       //    a teacher being bounced back to an admin page they tried to access
       // 2. Otherwise route purely by role
-      const roles: string[] = data.user.roles ?? [data.user.roles].filter(Boolean)
+      const roles: string[] = data.user.roles ?? []
       const defaultDest     = getDefaultRedirect(roles)
 
       let destination = defaultDest

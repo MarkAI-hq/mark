@@ -28,11 +28,13 @@ import {
 interface MembersClientProps {
   initialMembers: OrganizationUser[]
   organizationId: string
+  availableRoles?: { role_id: string; role_name: string; description: string | null }[]
 }
 
 export function MembersClient({
   initialMembers,
   organizationId,
+  availableRoles,
 }: MembersClientProps) {
   const [members,            setMembers]            = useState<OrganizationUser[]>(initialMembers)
   const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false)
@@ -65,7 +67,7 @@ export function MembersClient({
       const { error } = await inviteUserToOrganization(
         organizationId,
         formData.email,
-        formData.role as 'Admin' | 'Teacher',
+        formData.role,
       )
 
       if (error) {
@@ -73,12 +75,7 @@ export function MembersClient({
         return
       }
 
-      toast.success('Invitation sent successfully.', {
-        description:
-          formData.role === 'Teacher'
-            ? 'Once they join, assign them to classes from the class settings.'
-            : undefined,
-      })
+      toast.success('Invitation sent successfully.')
       setIsInviteDialogOpen(false)
     })
   }
@@ -131,6 +128,7 @@ export function MembersClient({
         onOpenChange={setIsInviteDialogOpen}
         onSubmit={handleInviteSubmit}
         isSubmitting={isPending}
+        availableRoles={availableRoles}
       />
 
       <ConfirmDialog
