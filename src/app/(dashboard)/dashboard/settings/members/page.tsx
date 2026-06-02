@@ -31,9 +31,9 @@ export default async function MembersPage() {
     );
   }
 
-  // Filter out platform-level roles from the invite options
-  const PLATFORM_ROLES = ['Root', 'Support']
-  const availableRoles = (rolesRes.data ?? []).filter(r => !PLATFORM_ROLES.includes(r.role_name))
+  // Only Admin and Teacher can be invited — Students join via student login, platform roles are internal
+  const INVITABLE_ROLES = ['Admin', 'Teacher']
+  const availableRoles = (rolesRes.data ?? []).filter(r => INVITABLE_ROLES.includes(r.role_name))
 
   return (
     <div className="space-y-6">
