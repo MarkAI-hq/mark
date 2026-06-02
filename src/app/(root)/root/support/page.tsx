@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useTransition, useEffect } from 'react'
 import { formatDistanceToNow, parseISO } from 'date-fns'
 import { Inbox, CheckCheck, MailOpen, Clock, AlertCircle } from 'lucide-react'
 import { toast } from 'sonner'
@@ -110,7 +110,7 @@ export default function SupportInboxPage() {
     })
   }
 
-  if (!loaded && !isPending) load()
+  useEffect(() => { load() }, [])
 
   function handleRead(id: string) {
     setMessages(prev => prev?.map(m => m.id === id ? { ...m, status: 'read' } : m) ?? null)
