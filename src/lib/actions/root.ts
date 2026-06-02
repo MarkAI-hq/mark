@@ -272,3 +272,28 @@ export async function setRolePermissions(roleId: string, permissions: string[]) 
     body:   JSON.stringify({ permissions }),
   })
 }
+
+// ── Support inbox ─────────────────────────────────────────────────────────────
+
+export interface SupportMessage {
+  id:         string
+  name:       string
+  email:      string
+  topic:      string
+  message:    string
+  status:     'new' | 'read' | 'resolved'
+  created_at: string
+}
+
+export async function getSupportMessages(status?: string) {
+  const qs = status ? `?status=${status}` : ''
+  return fetcher<SupportMessage[]>(`/support/messages${qs}`)
+}
+
+export async function markSupportMessageRead(id: string) {
+  return fetcher<{ message: string }>(`/support/messages/${id}/read`, { method: 'PATCH' })
+}
+
+export async function markSupportMessageResolved(id: string) {
+  return fetcher<{ message: string }>(`/support/messages/${id}/resolve`, { method: 'PATCH' })
+}
