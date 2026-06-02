@@ -39,6 +39,18 @@ jobs:
           NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
           TRACY_URL: ${{ secrets.TRACY_URL }}
 
+      - name: Notify Zoho Cliq on failure
+        if: failure()
+        run: |
+          BRANCH="${{ github.ref_name }}"
+          SHA="${{ github.sha }}"
+          RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          MESSAGE="🚨 *CI Failure on \`${BRANCH}\`*\nCommit: \`${SHA:0:7}\` | Triggered by: ${{ github.event_name }}\n👉 [View run #${{ github.run_number }}](${RUN_URL})"
+          curl -s -X POST \
+            "https://cliq.zoho.com/company/924985165/api/v2/channelsbyname/productcomm/message?zapikey=${{ secrets.ZOHO_CLIQ_WEBHOOK_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d "{\"text\": \"${MESSAGE}\"}"
+
       - name: Open issue on failure
         if: failure()
         uses: actions/github-script@v7
