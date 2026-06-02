@@ -3,24 +3,26 @@
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { AlertTriangle, XCircle, CheckCircle } from 'lucide-react'
-import { updateCurriculumSchema, ValidationViolation } from '@/lib/actions/root'
+import { AlertTriangle, XCircle } from 'lucide-react'
+import { updateCurriculumSchemaWithNote, ValidationViolation } from '@/lib/actions/root'
 
 export function CurriculumEditor({
   schemaId,
-  initialData,
+  raw,
+  onRawChange,
 }: {
   schemaId:    string
-  initialData: Record<string, unknown>
+  raw:         string
+  onRawChange: (v: string) => void
 }) {
   const router = useRouter()
-  const [pending, start] = useTransition()
-  const [raw, setRaw] = useState(JSON.stringify(initialData, null, 2))
-  const [parseError, setParseError] = useState<string | null>(null)
-  const [violations, setViolations] = useState<ValidationViolation[]>([])
-  const [showGate, setShowGate] = useState(false)
+  const [pending, start]    = useTransition()
+  const [parseError, setParseError]   = useState<string | null>(null)
+  const [violations, setViolations]   = useState<ValidationViolation[]>([])
+  const [showGate, setShowGate]       = useState(false)
   const [acknowledged, setAcknowledged] = useState<Set<string>>(new Set())
-  const [reason, setReason] = useState('')
+  const [reason, setReason]           = useState('')
+  const [changeNote, setChangeNote]   = useState('')
 
   const errors   = violations.filter(v => v.severity === 'error')
   const warnings = violations.filter(v => v.severity === 'warning')
@@ -30,17 +32,19 @@ export function CurriculumEditor({
     try {
       parsed = JSON.parse(raw)
       setParseError(null)
-    } catch (e) {
+    } catch {
       setParseError('Invalid JSON — fix before saving.')
       return
     }
 
     start(async () => {
-      const { data, error } = await updateCurriculumSchema(
+      const { data, error } = await updateCurriculumSchemaWithNote(
         schemaId,
         parsed,
+        changeNote.trim() || undefined,
         overrideWarnings,
         overrideWarnings?.length ? reason : undefined,
+        'manual_edit',
       )
 
       if (error) {
@@ -53,6 +57,7 @@ export function CurriculumEditor({
       if (data?.saved) {
         toast.success('Schema saved')
         setShowGate(false)
+        setChangeNote('')
         router.refresh()
       } else {
         const hasErrors = (data?.violations ?? []).some(v => v.severity === 'error')
@@ -65,10 +70,7 @@ export function CurriculumEditor({
     })
   }
 
-  const saveWithOverrides = () => {
-    const warningIds = warnings.map(w => w.id)
-    save(warningIds)
-  }
+  const saveWithOverrides = () => save(warnings.map(w => w.id))
 
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
@@ -86,18 +88,32 @@ export function CurriculumEditor({
           className="w-full rounded-xl p-4 font-mono text-xs text-white outline-none resize-y"
           style={{ background: '#0c0c14', border: '1px solid rgba(255,255,255,0.07)' }}
           value={raw}
-          onChange={e => { setRaw(e.target.value); setViolations([]); setShowGate(false) }}
+          onChange={e => { onRawChange(e.target.value); setViolations([]); setShowGate(false) }}
         />
-        <div className="flex gap-3">
-          <button
-            onClick={() => save()}
-            disabled={pending}
-            className="flex-1 rounded-lg py-2 text-sm font-medium disabled:opacity-50"
-            style={{ background: '#c9a84c', color: '#08080f' }}
-          >
-            {pending ? 'Validating…' : 'Save'}
-          </button>
+
+        {/* Change note */}
+        <div className="space-y-1">
+          <label className="block text-xs font-medium" style={{ color: 'rgba(255,255,255,0.4)' }}>
+            Change note <span style={{ color: 'rgba(255,255,255,0.2)' }}>(optional)</span>
+          </label>
+          <input
+            type="text"
+            value={changeNote}
+            onChange={e => setChangeNote(e.target.value)}
+            placeholder="Brief description of what you changed"
+            className="w-full rounded-lg px-3 py-2 text-xs text-white outline-none"
+            style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}
+          />
         </div>
+
+        <button
+          onClick={() => save()}
+          disabled={pending}
+          className="w-full rounded-lg py-2 text-sm font-medium disabled:opacity-50"
+          style={{ background: '#c9a84c', color: '#08080f' }}
+        >
+          {pending ? 'Validating…' : 'Save'}
+        </button>
       </div>
 
       {/* Violations / Gate */}
@@ -129,7 +145,7 @@ export function CurriculumEditor({
             {warnings.length > 0 && showGate && (
               <div className="space-y-2">
                 <p className="text-xs mb-2" style={{ color: 'rgba(255,255,255,0.4)' }}>
-                  The following warnings can be overridden. Acknowledge each one to proceed.
+                  Acknowledge each warning to proceed with save.
                 </p>
                 {warnings.map(v => (
                   <div

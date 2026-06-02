@@ -1,4 +1,5 @@
 import { Metadata } from 'next'
+import Link from 'next/link'
 import { Building2, Users, FileText } from 'lucide-react'
 import { getPlatformStats, getOrganizations } from '@/lib/actions/root'
 
@@ -68,9 +69,9 @@ export default async function RootPage() {
               {recentOrgs.map(org => (
                 <tr key={org.organization_id} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
                   <td className="px-4 py-3">
-                    <a href={`/root/organizations/${org.organization_id}`} className="text-white hover:underline font-medium">
+                    <Link href={`/root/organizations/${org.organization_id}`} className="text-white hover:underline font-medium">
                       {org.name}
-                    </a>
+                    </Link>
                   </td>
                   <td className="px-4 py-3" style={{ color: 'rgba(255,255,255,0.5)' }}>{org.type ?? '—'}</td>
                   <td className="px-4 py-3" style={{ color: 'rgba(255,255,255,0.5)' }}>{org.subscription_tier ?? 'free'}</td>
@@ -99,9 +100,9 @@ export default async function RootPage() {
         </div>
         {recentOrgs.length > 0 && (
           <div className="mt-2 text-right">
-            <a href="/root/organizations" className="text-xs" style={{ color: '#c9a84c' }}>
+            <Link href="/root/organizations" className="text-xs" style={{ color: '#c9a84c' }}>
               View all organizations →
-            </a>
+            </Link>
           </div>
         )}
       </div>

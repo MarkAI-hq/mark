@@ -223,6 +223,76 @@ export async function reloadCurriculaFromFiles() {
   return fetcher<{ loaded: number }>('/root/curricula/reload', { method: 'POST' })
 }
 
+export async function createCurriculumSchema(data: {
+  country:          string
+  curriculum_body:  string
+  curriculum_level: string
+  subject:          string
+  subject_code:     string
+}) {
+  return fetcher<{ schema_id: string }>('/root/curricula', {
+    method: 'POST',
+    body:   JSON.stringify(data),
+  })
+}
+
+export async function updateCurriculumSchemaWithNote(
+  id: string,
+  schemaData: Record<string, unknown>,
+  changeNote?: string,
+  overrideWarnings?: string[],
+  overrideReason?: string,
+  source?: string,
+) {
+  return fetcher<CurriculumUpdateResult>(`/root/curricula/${id}`, {
+    method: 'PATCH',
+    body:   JSON.stringify({
+      schema_data:       schemaData,
+      change_note:       changeNote,
+      override_warnings: overrideWarnings,
+      override_reason:   overrideReason,
+      source,
+    }),
+  })
+}
+
+export interface CurriculumSchemaVersion {
+  id:          string
+  schema_id:   string
+  version_num: number
+  schema_data: Record<string, unknown>
+  changed_by:  string | null
+  change_note: string | null
+  source:      string
+  created_at:  string
+}
+
+export async function getCurriculumVersions(id: string) {
+  return fetcher<CurriculumSchemaVersion[]>(`/root/curricula/${id}/versions`)
+}
+
+export async function restoreCurriculumVersion(id: string, versionId: string) {
+  return fetcher<{ schema_id: string; restored_from_version: number }>(
+    `/root/curricula/${id}/restore/${versionId}`,
+    { method: 'POST' },
+  )
+}
+
+export interface AiFillResult {
+  sections_affected: string[]
+  proposed_patch:    Record<string, unknown>
+}
+
+export async function aiSuggestFill(
+  id: string,
+  data: { file_base64?: string; file_url?: string; mime_type: string; instructions?: string },
+) {
+  return fetcher<AiFillResult>(`/root/curricula/${id}/ai-fill`, {
+    method: 'POST',
+    body:   JSON.stringify(data),
+  })
+}
+
 // ── Roles & Permissions ───────────────────────────────────────────────────────
 
 export interface RoleWithPermissions {

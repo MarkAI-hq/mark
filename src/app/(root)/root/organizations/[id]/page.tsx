@@ -19,8 +19,30 @@ export default async function OrgDetailPage({
     getOrgAssessments(id),
   ])
 
-  if (orgRes.error?.status === 404 || !orgRes.data) notFound()
-  const org  = orgRes.data!
+  if (orgRes.error?.status === 404) notFound()
+
+  if (orgRes.error || !orgRes.data) {
+    return (
+      <div className="space-y-4">
+        <Link href="/root/organizations" className="text-xs" style={{ color: 'rgba(255,255,255,0.35)' }}>
+          ← Organizations
+        </Link>
+        <div
+          className="rounded-xl p-6 text-center"
+          style={{ border: '1px solid rgba(239,68,68,0.2)', background: 'rgba(239,68,68,0.05)' }}
+        >
+          <p className="text-sm font-medium" style={{ color: '#f87171' }}>
+            {orgRes.error?.message ?? 'Failed to load organization'}
+          </p>
+          <p className="text-xs mt-1" style={{ color: 'rgba(255,255,255,0.3)' }}>
+            The API may be unavailable. Try refreshing the page.
+          </p>
+        </div>
+      </div>
+    )
+  }
+
+  const org  = orgRes.data
   const users = usersRes.data ?? []
   const assessments = assessmentsRes.data ?? []
 
