@@ -15,7 +15,7 @@ export async function getSession(): Promise<User | null> {
 
   try {
     // Safely parse the user data from the cookie.
-    const user: User = JSON.parse(userCookie);
+    const user: User = JSON.parse(decodeURIComponent(userCookie));
     return user;
   } catch (error) {
     console.error('Failed to parse user cookie:', error);

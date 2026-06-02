@@ -24,8 +24,34 @@ function transformUser(backendUser: BackendUser) {
     isVerified:          backendUser.email_verified,
     photoUrl:            backendUser.profile_image_url,
     organizationId:      backendUser.organization_id,
-    onboarding_complete: backendUser.onboarding_complete, // ← ADDED
+    onboarding_complete: backendUser.onboarding_complete,
   }
+}
+
+type CookieStore = Awaited<ReturnType<typeof cookies>>
+
+export function setAuthCookies(cookieStore: CookieStore, data: LoginResponse) {
+  const isProd = process.env.NODE_ENV === 'production'
+  cookieStore.set('token', data.accessToken, {
+    httpOnly: true,
+    secure:   isProd,
+    sameSite: 'lax',
+    path:     '/',
+    maxAge:   60 * 15,
+  })
+  cookieStore.set('refreshToken', data.refreshToken, {
+    httpOnly: true,
+    secure:   isProd,
+    sameSite: 'lax',
+    path:     '/',
+    maxAge:   60 * 60 * 24 * 7,
+  })
+  cookieStore.set('user', encodeURIComponent(JSON.stringify(transformUser(data.user))), {
+    secure:   isProd,
+    sameSite: 'lax',
+    path:     '/',
+    maxAge:   60 * 60 * 24 * 7,
+  })
 }
 
 export async function login(email: string, password: string) {
@@ -41,30 +67,8 @@ export async function login(email: string, password: string) {
     if (response.error) throw new Error(response.error.message)
     if (!response.data)  throw new Error('Login failed: No data returned from API.')
 
-    const { data } = response
-
-    cookieStore.set('token', data.accessToken, {
-      httpOnly: true,
-      secure:   process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      path:     '/',
-      maxAge:   60 * 15,
-    })
-    cookieStore.set('refreshToken', data.refreshToken, {
-      httpOnly: true,
-      secure:   process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      path:     '/',
-      maxAge:   60 * 60 * 24 * 7,
-    })
-    cookieStore.set('user', JSON.stringify(transformUser(data.user)), {
-      secure:   process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      path:     '/',
-      maxAge:   60 * 60 * 24 * 7,
-    })
-
-    return { data, error: null }
+    setAuthCookies(cookieStore, response.data)
+    return { data: response.data, error: null }
   } catch (err) {
     return { data: null, error: { message: err instanceof Error ? err.message : 'An unknown error occurred' } }
   }
