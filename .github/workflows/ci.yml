@@ -30,9 +30,11 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Lint
+        id: lint
         run: pnpm lint
 
       - name: Build
+        id: build
         run: pnpm build
         env:
           API_BASE_URL: ${{ secrets.API_BASE_URL }}
@@ -45,7 +47,19 @@ jobs:
           BRANCH="${{ github.ref_name }}"
           SHA="${{ github.sha }}"
           RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-          MESSAGE="🚨 *CI Failure on \`${BRANCH}\`*\nCommit: \`${SHA:0:7}\` | Triggered by: ${{ github.event_name }}\n👉 [View run #${{ github.run_number }}](${RUN_URL})"
+
+          if [ "${{ steps.lint.outcome }}" == "failure" ]; then
+            STEP="Lint"
+            ACTION="Run \`pnpm lint\` locally to reproduce, then fix the reported ESLint errors."
+          elif [ "${{ steps.build.outcome }}" == "failure" ]; then
+            STEP="Build"
+            ACTION="Run \`pnpm build\` locally to reproduce. Check for type errors or missing env vars."
+          else
+            STEP="Setup / Install"
+            ACTION="Check the run log — likely a dependency or pnpm install issue."
+          fi
+
+          MESSAGE="🚨 *CI Failure on \`${BRANCH}\`*\n📍 *Failed step:* ${STEP}\n🔧 *What to do:* ${ACTION}\n📝 Commit: \`${SHA:0:7}\` | Triggered by: ${{ github.event_name }}\n👉 [View run #${{ github.run_number }}](${RUN_URL})"
           curl -s -X POST \
             "https://cliq.zoho.com/company/924985165/api/v2/channelsbyname/productcomm/message?zapikey=${{ secrets.ZOHO_CLIQ_WEBHOOK_TOKEN }}" \
             -H "Content-Type: application/json" \
@@ -59,7 +73,17 @@ jobs:
             const branch = context.ref.replace('refs/heads/', '');
             const sha = context.sha.substring(0, 7);
             const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
-            const title = `CI failure: ${context.workflow} #${context.runNumber} on \`${branch}\``;
+
+            const lintFailed = '${{ steps.lint.outcome }}' === 'failure';
+            const buildFailed = '${{ steps.build.outcome }}' === 'failure';
+            const failedStep = lintFailed ? 'Lint' : buildFailed ? 'Build' : 'Setup / Install';
+            const action = lintFailed
+              ? 'Run `pnpm lint` locally to reproduce and fix the ESLint errors.'
+              : buildFailed
+              ? 'Run `pnpm build` locally to reproduce. Check for type errors or missing env vars.'
+              : 'Check the run log — likely a dependency or pnpm install issue.';
+
+            const title = `CI failure [${failedStep}]: ${context.workflow} #${context.runNumber} on \`${branch}\``;
 
             const { data: open } = await github.rest.issues.listForRepo({
               owner: context.repo.owner,
@@ -81,9 +105,11 @@ jobs:
                 '|---|---|',
                 `| **Branch** | \`${branch}\` |`,
                 `| **Commit** | \`${sha}\` |`,
+                `| **Failed step** | ${failedStep} |`,
                 `| **Triggered by** | ${context.eventName} |`,
                 `| **Run log** | [View run #${context.runNumber}](${runUrl}) |`,
                 '',
-                '> Auto-created by GitHub Actions. Check the run log above for the exact failing step.',
+                `### What to do`,
+                action,
               ].join('\n'),
             });
