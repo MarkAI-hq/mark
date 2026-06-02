@@ -4,6 +4,7 @@ import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 
 import {
   Card,
@@ -29,6 +30,7 @@ const formSchema = z.object({
 })
 
 export default function ForgotPasswordForm() {
+  const router = useRouter()
   const form = useForm({
     resolver: zodResolver(formSchema),
     defaultValues: { email: '' }
@@ -46,6 +48,7 @@ export default function ForgotPasswordForm() {
         toast.success('Email sent', {
           description: 'Please check your inbox for the reset link.'
         })
+        setTimeout(() => router.push('/login'), 2000)
       } else {
         const errorData = await res.json()
         toast.error('Reset failed', {
