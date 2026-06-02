@@ -4,6 +4,7 @@
 
 import { useState }                    from 'react'
 import { useRouter, useSearchParams }  from 'next/navigation'
+import { Eye, EyeOff }                from 'lucide-react'
 import { useForm }                     from 'react-hook-form'
 import { zodResolver }                 from '@hookform/resolvers/zod'
 import { z }                           from 'zod'
@@ -48,7 +49,8 @@ export function LoginForm() {
     defaultValues: { email: '', password: '' },
   })
 
-  const [formError, setFormError] = useState<string | null>(null)
+  const [formError,    setFormError]    = useState<string | null>(null)
+  const [showPassword, setShowPassword] = useState(false)
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setFormError(null)
@@ -164,7 +166,17 @@ export function LoginForm() {
                 </Link>
               </div>
               <FormControl>
-                <Input type="password" placeholder="••••••••" {...field} />
+                <div className="relative">
+                  <Input type={showPassword ? 'text' : 'password'} placeholder="••••••••" className="pr-10" {...field} />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((v) => !v)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                    tabIndex={-1}
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
               </FormControl>
               <FormMessage />
             </FormItem>
