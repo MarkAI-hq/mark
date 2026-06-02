@@ -26,9 +26,6 @@ jobs:
           node-version: '20'
           cache: 'pnpm'
 
-      - name: Intentional failure (test)
-        run: exit 1
-
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
