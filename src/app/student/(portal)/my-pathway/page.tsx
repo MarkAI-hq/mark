@@ -26,7 +26,7 @@ export default async function MyPathwayPage({
   if (!userCookie) redirect('/student/login')
 
   let user: any = null
-  try { user = JSON.parse(userCookie) } catch { redirect('/student/login') }
+  try { user = JSON.parse(decodeURIComponent(userCookie)) } catch { redirect('/student/login') }
 
   const curriculumId = searchParams.curriculumId ?? ''
 

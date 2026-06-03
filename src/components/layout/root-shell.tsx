@@ -28,7 +28,7 @@ export function RootShell({ children }: { children: React.ReactNode }) {
   let user: User | null = null
   try {
     const c = cookies.get('user')
-    if (c) user = JSON.parse(c) as User
+    if (c) user = JSON.parse(decodeURIComponent(c)) as User
   } catch { /* ignore */ }
 
   const isRoot    = user?.role === 'Root'

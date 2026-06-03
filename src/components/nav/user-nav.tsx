@@ -49,7 +49,7 @@ export function UserNav() {
   let user: User | null = null
   try {
     const userCookie = cookies.get('user')
-    if (userCookie) user = JSON.parse(userCookie) as User
+    if (userCookie) user = JSON.parse(decodeURIComponent(userCookie)) as User
   } catch {
     console.error('Failed to parse user cookie')
   }

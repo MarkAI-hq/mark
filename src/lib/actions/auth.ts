@@ -191,7 +191,7 @@ export async function verifyEmail(token: string) {
         path:     '/',
         maxAge:   60 * 60 * 24 * 7,
       })
-      cookieStore.set('user', JSON.stringify(transformUser(data.user)), {
+      cookieStore.set('user', encodeURIComponent(JSON.stringify(transformUser(data.user))), {
         secure:   process.env.NODE_ENV === 'production',
         sameSite: 'lax',
         path:     '/',

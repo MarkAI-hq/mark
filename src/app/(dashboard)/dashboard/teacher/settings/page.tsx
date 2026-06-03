@@ -61,7 +61,7 @@ export default function TeacherSettingsPage() {
   let user: { name?: string; email?: string; firstName?: string; lastName?: string; phone?: string } = {}
   try {
     const raw = cookies.get('user')
-    if (raw) user = JSON.parse(raw)
+    if (raw) user = JSON.parse(decodeURIComponent(raw))
   } catch {}
 
   const nameParts = user.name?.split(' ') ?? []
