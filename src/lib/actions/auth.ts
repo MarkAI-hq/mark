@@ -30,7 +30,7 @@ function transformUser(backendUser: BackendUser) {
 
 type CookieStore = Awaited<ReturnType<typeof cookies>>
 
-export function setAuthCookies(cookieStore: CookieStore, data: LoginResponse) {
+export async function setAuthCookies(cookieStore: CookieStore, data: LoginResponse) {
   const isProd = process.env.NODE_ENV === 'production'
   cookieStore.set('token', data.accessToken, {
     httpOnly: true,

@@ -9,7 +9,7 @@ import * as z from 'zod'
 import { toast } from 'sonner'
 import {
   Loader2, MailCheck, XCircle, Eye, EyeOff,
-  ArrowRight, ShieldCheck, BookOpen, BarChart2, CheckCircle2,
+  ArrowRight, ShieldCheck, BookOpen, BarChart2, CheckCircle2, Chrome,
 } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
@@ -24,12 +24,14 @@ import {
 import { peekInvitation, acceptInvitation, registerInvited } from '@/lib/actions/auth'
 
 // ── Types ──────────────────────────────────────────────────────────────────
-type PageStatus = 'validating' | 'form' | 'existing-user' | 'success' | 'error'
+type PageStatus = 'validating' | 'form' | 'sso' | 'existing-user' | 'success' | 'error'
 
 interface InvitationMeta {
   email:            string
   organizationName: string
   requiresSignup:   boolean
+  ssoRequired:      boolean
+  token:            string
 }
 
 // ── Schema ─────────────────────────────────────────────────────────────────
@@ -110,9 +112,14 @@ export default function AcceptInvitationPage() {
         email:            data.email,
         organizationName: data.organizationName,
         requiresSignup:   data.requiresSignup,
+        ssoRequired:      data.ssoRequired,
+        token,
       })
 
-      if (data.requiresSignup) {
+      if (data.ssoRequired) {
+        // SSO-enforced org → show "Accept with Google" button
+        setPageStatus('sso')
+      } else if (data.requiresSignup) {
         // New user → show registration form
         setPageStatus('form')
       } else {
@@ -217,6 +224,39 @@ export default function AcceptInvitationPage() {
             <Image src="/assets/images/markBlackBg.png" alt="Mark logo" width={28} height={28} className="rounded-lg" />
           </Link>
         </div>
+
+        {/* ── SSO-enforced invitation ── */}
+        {pageStatus === 'sso' && meta && (
+          <div className="w-full max-w-sm bg-white rounded-2xl border border-slate-200 shadow-sm px-8 py-10 space-y-6">
+            <div className="space-y-1">
+              <h2 className="text-2xl font-bold text-slate-900">Accept Invitation</h2>
+              <p className="text-sm text-slate-500">
+                Joining <span className="font-semibold text-slate-700">{meta.organizationName}</span> as a Teacher
+              </p>
+            </div>
+
+            <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+              <p className="font-medium">Google Workspace required</p>
+              <p className="mt-0.5 text-xs text-amber-700">
+                Your school requires all staff to sign in with Google. Password login is disabled.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2 rounded-lg bg-slate-100 px-3 py-2.5">
+              <MailCheck className="h-4 w-4 text-slate-400 shrink-0" />
+              <span className="text-sm text-slate-600 truncate">{meta.email}</span>
+              <span className="ml-auto text-xs text-slate-400 shrink-0">Invited</span>
+            </div>
+
+            <Link
+              href={`/api/auth/google?invite_token=${encodeURIComponent(meta.token)}&return_url=/dashboard/teacher`}
+              className="flex w-full items-center justify-center gap-2.5 rounded-lg bg-white border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 transition-colors"
+            >
+              <Chrome className="h-4 w-4" />
+              Accept with Google
+            </Link>
+          </div>
+        )}
 
         {/* ── Validating / processing / error / success ── */}
         {(pageStatus === 'validating' || pageStatus === 'existing-user' || pageStatus === 'error' || pageStatus === 'success') && (

@@ -30,13 +30,15 @@ export async function GET(
   const storedNonce = cookieStore.get('__oauth_state')?.value
   cookieStore.delete('__oauth_state')
 
-  let returnUrl = ''
+  let returnUrl   = ''
+  let inviteToken = ''
   try {
     const decoded = JSON.parse(Buffer.from(state, 'base64url').toString())
     if (!storedNonce || decoded.nonce !== storedNonce) {
       return NextResponse.redirect(new URL('/login?error=invalid_state', origin))
     }
-    returnUrl = decoded.returnUrl ?? ''
+    returnUrl   = decoded.returnUrl   ?? ''
+    inviteToken = decoded.inviteToken ?? ''
   } catch {
     return NextResponse.redirect(new URL('/login?error=invalid_state', origin))
   }
@@ -53,7 +55,14 @@ export async function GET(
     return NextResponse.redirect(new URL(`/login?error=sso_failed&message=${msg}`, origin))
   }
 
-  setAuthCookies(cookieStore, response.data)
+  await setAuthCookies(cookieStore, response.data)
+
+  if (inviteToken) {
+    await fetcher('/auth/accept-invitation', {
+      method: 'POST',
+      body:   JSON.stringify({ token: inviteToken }),
+    })
+  }
 
   const role = response.data.user.roles?.[0] ?? 'Teacher'
   const destination = returnUrl || ROLE_REDIRECTS[role] || '/dashboard'

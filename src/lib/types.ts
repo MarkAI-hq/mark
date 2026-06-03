@@ -46,6 +46,7 @@ export interface Organization {
   education_system: string | null;
   timezone: string;
   onboarding_complete: boolean;
+  sso_required: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -458,6 +459,7 @@ export type PeekInvitationResponse = {
   organizationName: string
   role:             string
   requiresSignup:   boolean  // true = new user, false = existing user
+  ssoRequired:      boolean
 }
 
 

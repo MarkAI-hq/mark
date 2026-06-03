@@ -33,11 +33,12 @@ export async function GET(
   }
 
   const origin = request.nextUrl.origin
-  const returnUrl = request.nextUrl.searchParams.get('return_url') ?? ''
+  const returnUrl   = request.nextUrl.searchParams.get('return_url') ?? ''
+  const inviteToken = request.nextUrl.searchParams.get('invite_token') ?? ''
   const redirectUri = `${origin}/api/auth/${provider}/callback`
 
   const nonce = crypto.randomUUID()
-  const statePayload = Buffer.from(JSON.stringify({ nonce, returnUrl })).toString('base64url')
+  const statePayload = Buffer.from(JSON.stringify({ nonce, returnUrl, inviteToken })).toString('base64url')
 
   const cookieStore = await cookies()
   cookieStore.set('__oauth_state', nonce, {

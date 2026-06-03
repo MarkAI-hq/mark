@@ -156,6 +156,27 @@ export async function getAvailableRoles(): Promise<ServerActionResponse<{ role_i
   }
 }
 
+export async function updateOrgSso(
+  organizationId: string,
+  ssoRequired: boolean,
+): Promise<ServerActionResponse<{ sso_required: boolean }>> {
+  try {
+    const response = await fetcher<{ sso_required: boolean }>(
+      `/organizations/${organizationId}/sso`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify({ sso_required: ssoRequired }),
+      },
+    )
+    if (response.error) throw new Error(response.error.message)
+    revalidatePath('/dashboard/settings/organization')
+    return { data: response.data, error: null }
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'An unknown error occurred'
+    return { data: null, error: { message } }
+  }
+}
+
 export async function updateOrganization(
   organizationId: string,
   data: Partial<Omit<Organization, 'organization_id'>>,
