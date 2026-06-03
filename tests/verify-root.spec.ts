@@ -1,7 +1,7 @@
 import { test, expect, Page } from '@playwright/test'
 
-const ROOT_EMAIL    = process.env.ROOT_TEST_EMAIL    ?? 'tusii.ug@gmail.com'
-const ROOT_PASSWORD = process.env.ROOT_TEST_PASSWORD ?? 'TestRoot@2026'
+const ROOT_EMAIL    = process.env.ROOT_TEST_EMAIL    ?? ''
+const ROOT_PASSWORD = process.env.ROOT_TEST_PASSWORD ?? ''
 
 async function loginAs(page: Page, email: string, password: string) {
   await page.goto('/login', { timeout: 60000 })
