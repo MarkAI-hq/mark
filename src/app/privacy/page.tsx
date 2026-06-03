@@ -21,7 +21,7 @@ export default function PrivacyPage() {
           <section>
             <h2 className="text-lg font-semibold text-slate-900 mb-3">1. Who we are</h2>
             <p>
-              Mirror Intelligence is an educational assessment platform operated by Mirror Education Ltd ("Mirror", "we", "us"). We are committed to protecting the privacy of teachers, school administrators, and students who use our platform.
+              Mirror Intelligence is an educational assessment platform operated by Mirror Education Ltd (&quot;Mirror&quot;, &quot;we&quot;, &quot;us&quot;). We are committed to protecting the privacy of teachers, school administrators, and students who use our platform.
             </p>
           </section>
 
@@ -38,7 +38,7 @@ export default function PrivacyPage() {
             <p>Assessments, student submissions, class records, and curriculum materials you create or upload are stored on our servers and processed solely to provide the service.</p>
 
             <h3 className="text-base font-medium text-slate-800 mt-4 mb-2">Student data</h3>
-            <p>Student records are created and managed by your institution. Mirror processes this data as a data processor on your institution's behalf. Your school is the data controller for student information.</p>
+            <p>Student records are created and managed by your institution. Mirror processes this data as a data processor on your institution&apos;s behalf. Your school is the data controller for student information.</p>
 
             <h3 className="text-base font-medium text-slate-800 mt-4 mb-2">Error reports</h3>
             <p>In production, we collect error reports using Sentry to diagnose and fix technical issues. These reports may include browser type, URL, and error stack traces, but do not include assessment content or student answers.</p>
@@ -103,7 +103,7 @@ export default function PrivacyPage() {
           <section>
             <h2 className="text-lg font-semibold text-slate-900 mb-3">5. Your consent choices</h2>
             <p>
-              When you first visit Mirror, we ask for your consent to analytics cookies. You can change your choice at any time by clearing your browser's localStorage for this site, which will prompt the consent banner again on your next visit.
+              When you first visit Mirror, we ask for your consent to analytics cookies. You can change your choice at any time by clearing your browser&apos;s localStorage for this site, which will prompt the consent banner again on your next visit.
             </p>
           </section>
 
@@ -121,7 +121,7 @@ export default function PrivacyPage() {
           <section>
             <h2 className="text-lg font-semibold text-slate-900 mb-3">7. Data retention</h2>
             <p>
-              Account data is retained for the duration of your institution's subscription and for up to 12 months after termination. Student records are deleted or anonymised upon your institution's written request. Analytics data retained by PostHog follows their 1-year retention policy.
+              Account data is retained for the duration of your institution&apos;s subscription and for up to 12 months after termination. Student records are deleted or anonymised upon your institution&apos;s written request. Analytics data retained by PostHog follows their 1-year retention policy.
             </p>
           </section>
 
@@ -150,7 +150,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-lg font-semibold text-slate-900 mb-3">10. Children's privacy</h2>
+            <h2 className="text-lg font-semibold text-slate-900 mb-3">10. Children&apos;s privacy</h2>
             <p>
               Student accounts are created by and under the supervision of their school. Schools using Mirror are responsible for obtaining any parental consents required under applicable law before adding student data to the platform.
             </p>

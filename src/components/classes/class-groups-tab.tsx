@@ -213,7 +213,7 @@ function UngroupedCard({ students, classId }: { students: StudentGroupMember[]; 
           <Badge variant="outline" className="text-xs text-slate-500">{students.length}</Badge>
         </div>
         <CardDescription className="text-xs">
-          These students haven't been graded yet and can't be grouped.
+          These students haven&apos;t been graded yet and can&apos;t be grouped.
         </CardDescription>
       </CardHeader>
       <CardContent className="pt-0">

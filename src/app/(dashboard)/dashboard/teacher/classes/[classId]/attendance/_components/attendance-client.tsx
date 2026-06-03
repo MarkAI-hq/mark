@@ -140,7 +140,7 @@ export function AttendanceClient({ classId, initialSessions, error }: Props) {
             </div>
             <div className="space-y-1">
               <p className="text-sm font-medium text-foreground">No attendance sessions yet</p>
-              <p className="text-xs text-muted-foreground">Click "Take Attendance" to record your first session.</p>
+              <p className="text-xs text-muted-foreground">Click &quot;Take Attendance&quot; to record your first session.</p>
             </div>
           </CardContent>
         </Card>

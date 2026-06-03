@@ -322,7 +322,7 @@ export function ClassDetailTabs({
 
               <Card>
                 <CardContent className="pt-5">
-                  <p className="text-xs text-muted-foreground uppercase tracking-wide">Top Bloom's Level</p>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wide">Top Bloom&apos;s Level</p>
                   <p className="text-xl font-bold mt-1 leading-tight truncate">
                     {analytics.bloomDistribution[0]?.level_name ?? '—'}
                   </p>
@@ -340,7 +340,7 @@ export function ClassDetailTabs({
                     <Brain className="h-4 w-4 text-muted-foreground" />
                     Cognitive Depth
                   </CardTitle>
-                  <CardDescription className="text-xs">Bloom's taxonomy for this class</CardDescription>
+                  <CardDescription className="text-xs">Bloom&apos;s taxonomy for this class</CardDescription>
                 </CardHeader>
                 <CardContent>
                   {bloomData.length > 0 ? (
@@ -364,7 +364,7 @@ export function ClassDetailTabs({
                     <BarChart2 className="h-4 w-4 text-muted-foreground" />
                     Score Distribution
                   </CardTitle>
-                  <CardDescription className="text-xs">How this class's scores spread</CardDescription>
+                  <CardDescription className="text-xs">How this class&apos;s scores spread</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <ResponsiveContainer width="100%" height={200}>

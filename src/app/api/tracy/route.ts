@@ -10,7 +10,7 @@ async function resolveJwt(): Promise<string | null> {
   let jwt = cookieStore.get("token")?.value;
 
   if (!jwt) {
-    console.log("[Tracy proxy] No token — attempting refresh...");
+    console.warn("[Tracy proxy] No token — attempting refresh...");
     const { data } = await refreshAccessToken();
     if (!data) return null;
     jwt = cookieStore.get("token")?.value;

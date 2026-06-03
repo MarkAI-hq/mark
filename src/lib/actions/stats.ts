@@ -22,8 +22,6 @@ export interface StatsResponse {
 
 export async function getStats(): Promise<StatsResponse> {
   const { data, error } = await fetcher<StatsResponse>('/stats')
-  console.log('stats response:', JSON.stringify(data, null, 2))  // ← add here
-
   if (data) return data
 
   return {

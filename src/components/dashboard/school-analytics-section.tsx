@@ -78,7 +78,7 @@ export function SchoolAnalyticsSection({ analytics }: SchoolAnalyticsSectionProp
               Cognitive Depth
             </CardTitle>
             <CardDescription className="text-xs">
-              Bloom's taxonomy across all students
+              Bloom&apos;s taxonomy across all students
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -105,7 +105,7 @@ export function SchoolAnalyticsSection({ analytics }: SchoolAnalyticsSectionProp
               </ResponsiveContainer>
             ) : (
               <div className="h-[200px] flex items-center justify-center text-muted-foreground text-sm">
-                No Bloom's data yet
+                No Bloom&apos;s data yet
               </div>
             )}
           </CardContent>

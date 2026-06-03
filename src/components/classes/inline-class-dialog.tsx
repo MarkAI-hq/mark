@@ -137,7 +137,7 @@ function AssignTab({
     <div className="flex flex-col items-center justify-center py-8 text-center text-muted-foreground">
       <School className="h-8 w-8 mb-3 opacity-25" />
       <p className="text-sm">No classes available to assign.</p>
-      <p className="text-xs mt-1 opacity-75">Use the "Create New" tab instead.</p>
+      <p className="text-xs mt-1 opacity-75">Use the &quot;Create New&quot; tab instead.</p>
     </div>
   )
 

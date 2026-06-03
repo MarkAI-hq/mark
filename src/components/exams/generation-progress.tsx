@@ -105,7 +105,7 @@ export function GenerationProgress({
       {/* Time estimate */}
       {isActive && (
         <p className="text-xs text-muted-foreground">
-          This usually takes 20–45 seconds. You can leave this page — we'll send you a notification when it's ready.
+          This usually takes 20–45 seconds. You can leave this page — we&apos;ll send you a notification when it&apos;s ready.
         </p>
       )}
     </div>

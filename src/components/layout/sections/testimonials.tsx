@@ -148,7 +148,7 @@ export function TestimonialsSection() {
             Schools that made the decision.
           </h2>
           <p className="max-w-xl text-base text-muted-foreground">
-            In their own words — what Mirror looks like when it's working.
+            In their own words — what Mirror looks like when it&apos;s working.
           </p>
         </motion.div>
 

@@ -219,7 +219,7 @@ export function StudentOverviewTab({ student, studentId }: StudentOverviewTabPro
                     <Brain className="h-4 w-4 text-muted-foreground" />
                     Cognitive Achievement
                   </CardTitle>
-                  <CardDescription>Bloom's taxonomy mastery levels</CardDescription>
+                  <CardDescription>Bloom&apos;s taxonomy mastery levels</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div style={{ height: 200 }}>

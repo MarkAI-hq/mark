@@ -369,7 +369,7 @@ function StepSchool({
       <div>
         <h2 className="text-2xl font-bold text-slate-900">Welcome, {adminName}.</h2>
         <p className="text-slate-500 mt-1.5 text-sm leading-relaxed">
-          Let's set up{' '}
+          Let&apos;s set up{' '}
           <span className="text-slate-800 font-medium">{schoolName}</span>.
           This takes about a minute.
         </p>
@@ -433,7 +433,7 @@ function StepSchool({
       {(previewClasses.length > 0 || previewSubjects.length > 0) && (
         <div className="rounded-xl border border-slate-100 bg-slate-50 p-4 space-y-3">
           <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-            We'll set up for you
+            We&apos;ll set up for you
           </p>
           {previewClasses.length > 0 && (
             <div className="flex items-start gap-2.5">
@@ -510,7 +510,7 @@ function StepStudents({
       <div>
         <h2 className="text-2xl font-bold text-slate-900">Your school is ready.</h2>
         <p className="text-slate-500 mt-1.5 text-sm leading-relaxed">
-          We've created your classes and subjects. Now add students — or skip and do it later.
+          We&apos;ve created your classes and subjects. Now add students — or skip and do it later.
         </p>
       </div>
 

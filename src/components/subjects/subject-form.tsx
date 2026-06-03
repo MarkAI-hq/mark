@@ -89,8 +89,8 @@ export function SubjectForm({
             {isEditing ? 'Edit Subject' : 'Create New Subject'}
           </DialogTitle>
           <DialogDescription>
-            Subjects are broad categories for your courses, like 'Mathematics'
-            or 'History'.
+            Subjects are broad categories for your courses, like &apos;Mathematics&apos;
+            or &apos;History&apos;.
           </DialogDescription>
         </DialogHeader>
 

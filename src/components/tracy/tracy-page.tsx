@@ -1946,7 +1946,7 @@ export default function TracyPage() {
                         {getGreeting()}, {firstName}
                       </h1>
                       <p className="text-muted-foreground text-sm mb-12 max-w-xs leading-relaxed">
-                        I'm Tracy. What are we doing today?
+                        I&apos;m Tracy. What are we doing today?
                       </p>
                       <div className="grid grid-cols-2 gap-3 w-full max-w-lg">
                         {suggestions.slice(0, 4).map((s) => (

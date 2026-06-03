@@ -205,7 +205,7 @@ export function OnboardingBanner({ stats, role = 'Admin', userId, schoolName }: 
                   {schoolName} is live.
                 </h3>
                 <p className="text-sm leading-relaxed text-muted-foreground">
-                  You've set up {doneText}. One thing left before your first assessment —{' '}
+                  You&apos;ve set up {doneText}. One thing left before your first assessment —{' '}
                   {nextStep
                     ? <span style={{ color: 'hsl(var(--foreground))', fontWeight: 500 }}>{nextStep.label.toLowerCase()}</span>
                     : 'you\'re almost there'
@@ -313,7 +313,7 @@ export function OnboardingBanner({ stats, role = 'Admin', userId, schoolName }: 
                 className="text-base font-semibold"
                 style={{ fontFamily: 'Georgia, serif', color: 'hsl(var(--foreground))' }}
               >
-                You're all set up.
+                You&apos;re all set up.
               </h3>
               <p className="text-sm text-muted-foreground mt-0.5">
                 Mirror is ready to grade scripts and build cognitive profiles for your school.

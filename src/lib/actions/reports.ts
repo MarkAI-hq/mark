@@ -68,4 +68,3 @@ export async function generateCognitiveReport(
   }
 }
 
-console.log('Posting to:', `${process.env.API_BASE_URL}/api/v1/reports/cognitive-profile`)

@@ -79,8 +79,6 @@ export interface CreateClassInput {
 }
 
 export async function createClass(data: CreateClassInput): Promise<Class> {
-  console.log("Sending data to API:", data); // Add this log
-  console.log("Grade Level length:", data.grade_level?.length); // Add this
   const response = await fetcher<Class>('/classes', {
     method: 'POST',
     body: JSON.stringify(data),

@@ -131,8 +131,8 @@ export function CoursesClient({ initialCourses, subjects }: CoursesClientProps) 
             <h3 className="text-base font-semibold text-foreground">No courses yet</h3>
             <p className="text-sm text-muted-foreground max-w-xs leading-relaxed">
               Courses hold your assessments for a topic — e.g.{' '}
-              <span className="text-foreground">"S3 Mathematics"</span> or{' '}
-              <span className="text-foreground">"P6 English"</span>.
+              <span className="text-foreground">&quot;S3 Mathematics&quot;</span> or{' '}
+              <span className="text-foreground">&quot;P6 English&quot;</span>.
             </p>
           </div>
           <Button onClick={openCreateForm}>

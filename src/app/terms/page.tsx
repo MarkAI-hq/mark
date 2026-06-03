@@ -21,14 +21,14 @@ export default function TermsPage() {
           <section>
             <h2 className="text-lg font-semibold text-slate-900 mb-3">1. About this agreement</h2>
             <p>
-              These Terms of Service ("Terms") govern your use of Mirror Intelligence ("Mirror", "we", "us"), an educational assessment platform operated by Mirror Education Ltd. By accessing or using Mirror, you agree to these Terms on behalf of yourself and your institution.
+              These Terms of Service (&quot;Terms&quot;) govern your use of Mirror Intelligence (&quot;Mirror&quot;, &quot;we&quot;, &quot;us&quot;), an educational assessment platform operated by Mirror Education Ltd. By accessing or using Mirror, you agree to these Terms on behalf of yourself and your institution.
             </p>
           </section>
 
           <section>
             <h2 className="text-lg font-semibold text-slate-900 mb-3">2. Who can use Mirror</h2>
             <p>
-              Mirror is intended for schools, teachers, and students operating under an institutional subscription. Individual users access the platform through their school's administrator account. You must be at least 16 years old to hold a teacher or administrator account.
+              Mirror is intended for schools, teachers, and students operating under an institutional subscription. Individual users access the platform through their school&apos;s administrator account. You must be at least 16 years old to hold a teacher or administrator account.
             </p>
           </section>
 

@@ -37,12 +37,6 @@ export function LearningProcessAnalysis({
   cognitiveProfile,
 }: LearningProcessAnalysisProps) {
   
-  // DEBUG STEP: Check your browser console to see exactly what is being passed
-  useEffect(() => {
-    console.log('🔍 Cognitive Profile Data:', cognitiveProfile);
-    console.log('🔍 Submission Results:', results);
-  }, [cognitiveProfile, results]);
-
   return (
     <div className="space-y-4">
       <div>

@@ -257,7 +257,7 @@ export function GapReportClient({ classId, matrix, error }: Props) {
       </div>
 
       <p className="text-xs text-muted-foreground">
-        Hover over any cell for details. "Not recorded" means the lesson occurred but attendance was not taken for that date.
+        Hover over any cell for details. &quot;Not recorded&quot; means the lesson occurred but attendance was not taken for that date.
       </p>
     </div>
   )

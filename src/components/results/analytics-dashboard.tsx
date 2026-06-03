@@ -42,7 +42,7 @@ export function AnalyticsDashboard({
               <Tooltip>
                 <TooltipTrigger><Info className="h-3 w-3" /></TooltipTrigger>
                 <TooltipContent className="max-w-[250px] text-[10px]">
-                  Visualizes mastery levels based on Bloom's Taxonomy.
+                  Visualizes mastery levels based on Bloom&apos;s Taxonomy.
                 </TooltipContent>
               </Tooltip>
             </CardTitle>

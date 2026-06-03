@@ -178,7 +178,7 @@ export function TeacherClassDetailTabs({
                     <Brain className="h-4 w-4 text-muted-foreground" />
                     Cognitive Depth
                   </CardTitle>
-                  <CardDescription className="text-xs">Bloom's taxonomy for this class</CardDescription>
+                  <CardDescription className="text-xs">Bloom&apos;s taxonomy for this class</CardDescription>
                 </CardHeader>
                 <CardContent>
                   {bloomData.length > 0 ? (
@@ -202,7 +202,7 @@ export function TeacherClassDetailTabs({
                     <BarChart2 className="h-4 w-4 text-muted-foreground" />
                     Score Distribution
                   </CardTitle>
-                  <CardDescription className="text-xs">How this class's scores spread</CardDescription>
+                  <CardDescription className="text-xs">How this class&apos;s scores spread</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <ResponsiveContainer width="100%" height={200}>

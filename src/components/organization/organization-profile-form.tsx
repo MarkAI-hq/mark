@@ -249,7 +249,7 @@ export function OrganizationProfileForm({
                       <FormItem>
                         <FormLabel>Timezone</FormLabel>
                         <FormControl><Input {...field} /></FormControl>
-                        <FormDescription>Defaults to your browser's timezone if not set.</FormDescription>
+                        <FormDescription>Defaults to your browser&apos;s timezone if not set.</FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}

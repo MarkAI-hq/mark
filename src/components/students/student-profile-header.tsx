@@ -108,7 +108,7 @@ function ResetPinDialog({
         ) : (
           <div className="py-2">
             <p className="text-sm text-muted-foreground">
-              This will immediately invalidate the student's current PIN. Make sure to give them the new one.
+              This will immediately invalidate the student&apos;s current PIN. Make sure to give them the new one.
             </p>
           </div>
         )}

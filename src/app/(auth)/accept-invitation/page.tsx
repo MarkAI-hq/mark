@@ -188,7 +188,7 @@ export default function AcceptInvitationPage() {
         <div className="space-y-10">
           <div className="space-y-3">
             <h1 className="text-4xl font-bold leading-tight">
-              You've been invited<br />to join your institution.
+              You&apos;ve been invited<br />to join your institution.
             </h1>
             <p className="text-slate-400 text-lg leading-relaxed max-w-sm">
               {leftPanelCopy}
