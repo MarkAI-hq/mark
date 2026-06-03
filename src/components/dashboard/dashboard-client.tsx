@@ -174,6 +174,7 @@ export function DashboardClient({ stats, analytics, user }: DashboardClientProps
           description="Enrolled across all classes"
           icon={<Users className="h-4 w-4" />}
           accentColor="blue"
+          href="/dashboard/students"
         />
         <StatCard
           title="Assessments"

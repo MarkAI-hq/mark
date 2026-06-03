@@ -14,11 +14,13 @@ import { toast } from 'sonner'
 import type { ClassTeacher }     from '@/lib/actions/classes'
 import type { OrganizationUser } from '@/lib/actions/organizations'
 import { assignTeacherToClass, removeTeacherFromClass, updateTeacherPrivileges } from '@/lib/actions/classes'
+import { inviteUserToOrganization } from '@/lib/actions/organizations'
 
 import { Button }                 from '@/components/ui/button'
 import { Badge }                  from '@/components/ui/badge'
 import { Switch }                 from '@/components/ui/switch'
 import { Label }                  from '@/components/ui/label'
+import { Input }                  from '@/components/ui/input'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Separator }              from '@/components/ui/separator'
 import {
@@ -69,14 +71,15 @@ const STATUS_CONFIG = {
 } satisfies Record<ClassTeacher['status'], { label: string; icon: React.ElementType; className: string }>
 
 interface ClassTeachersTabProps {
-  classId:     string
-  teachers:    ClassTeacher[]
-  orgTeachers: OrganizationUser[]
+  classId:        string
+  teachers:       ClassTeacher[]
+  orgTeachers:    OrganizationUser[]
+  organizationId: string
 }
 
 // ── Component ──────────────────────────────────────────────────────────────
 
-export function ClassTeachersTab({ classId, teachers: initialTeachers, orgTeachers }: ClassTeachersTabProps) {
+export function ClassTeachersTab({ classId, teachers: initialTeachers, orgTeachers, organizationId }: ClassTeachersTabProps) {
   const router = useRouter()
   const [isPending,       startTransition]  = useTransition()
   const [teachers,        setTeachers]      = useState<ClassTeacher[]>(initialTeachers)
@@ -86,8 +89,30 @@ export function ClassTeachersTab({ classId, teachers: initialTeachers, orgTeache
   const [teacherToRemove, setTeacherToRemove] = useState<ClassTeacher | null>(null)
   const [expandedTeacher, setExpandedTeacher] = useState<string | null>(null)
 
+  const [inviteEmail,     setInviteEmail]    = useState('')
+  const [isInviting,      setIsInviting]     = useState(false)
+
   const assignedEmails    = new Set(teachers.map((t) => t.email))
   const availableTeachers = orgTeachers.filter((t) => !assignedEmails.has(t.email))
+
+  const handleInviteTeacher = async () => {
+    if (!inviteEmail || isInviting) return
+    setIsInviting(true)
+    try {
+      const { error } = await inviteUserToOrganization(organizationId, inviteEmail, 'Teacher')
+      if (error) {
+        toast.error(error.message)
+      } else {
+        toast.success('Invitation sent.', { description: `${inviteEmail} will receive an invite to join as a Teacher.` })
+        setInviteEmail('')
+        router.refresh()
+      }
+    } catch {
+      toast.error('Failed to send invitation.')
+    } finally {
+      setIsInviting(false)
+    }
+  }
 
   const handleAssign = () => {
     if (!selectedEmail) return
@@ -238,11 +263,32 @@ export function ClassTeachersTab({ classId, teachers: initialTeachers, orgTeache
           Assign a Teacher
         </p>
 
-        {availableTeachers.length === 0 ? (
+        {orgTeachers.length === 0 ? (
+          <div className="space-y-2">
+            <p className="text-xs text-muted-foreground">
+              No teachers in your organisation yet. Invite one directly:
+            </p>
+            <div className="flex gap-2">
+              <Input
+                type="email"
+                placeholder="teacher@school.com"
+                value={inviteEmail}
+                onChange={e => setInviteEmail(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleInviteTeacher()}
+                className="flex-1 h-9 text-sm"
+              />
+              <Button
+                size="sm"
+                onClick={handleInviteTeacher}
+                disabled={!inviteEmail || isInviting}
+              >
+                {isInviting ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Invite Teacher'}
+              </Button>
+            </div>
+          </div>
+        ) : availableTeachers.length === 0 ? (
           <p className="text-xs text-muted-foreground py-1">
-            {orgTeachers.length === 0
-              ? 'No teachers in your organisation yet. Invite one from Settings → Members.'
-              : 'All organisation teachers are already assigned to this class.'}
+            All organisation teachers are already assigned to this class.
           </p>
         ) : (
           <div className="space-y-3">

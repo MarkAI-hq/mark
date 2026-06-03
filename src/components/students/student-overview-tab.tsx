@@ -92,7 +92,15 @@ export function StudentOverviewTab({ student, studentId }: StudentOverviewTabPro
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            <DetailItem label="Email Address"   value={student.email} />
+            <DetailItem
+              label="Email Address"
+              value={
+                student.email?.endsWith('@students.mirrorintelligence.com') ||
+                student.email?.includes('.local')
+                  ? <span className="text-muted-foreground italic text-xs">Auto-assigned (no personal email set)</span>
+                  : student.email
+              }
+            />
             <DetailItem label="School ID"       value={student.student_school_id} />
             <DetailItem label="Date of Birth"   value={formattedDob} />
             <DetailItem label="Gender"          value={student.gender} />

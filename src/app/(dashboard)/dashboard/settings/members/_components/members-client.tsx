@@ -29,12 +29,14 @@ interface MembersClientProps {
   initialMembers: OrganizationUser[]
   organizationId: string
   availableRoles?: { role_id: string; role_name: string; description: string | null }[]
+  currentUserId?: string
 }
 
 export function MembersClient({
   initialMembers,
   organizationId,
   availableRoles,
+  currentUserId,
 }: MembersClientProps) {
   const [members,            setMembers]            = useState<OrganizationUser[]>(initialMembers)
   const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false)
@@ -82,6 +84,13 @@ export function MembersClient({
 
   const handleRoleUpdateSubmit = (formData: ManageRoleData) => {
     if (!userToManage) return
+    if (currentUserId && userToManage.user_id === currentUserId) {
+      toast.error('You cannot change your own role.', {
+        description: 'Ask another admin to make this change.',
+      })
+      setUserToManage(null)
+      return
+    }
     startTransition(async () => {
       const { error } = await updateUserRole(
         organizationId,

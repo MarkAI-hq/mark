@@ -80,7 +80,11 @@ export function StudentsClient({ initialStudents }: StudentsClientProps) {
         onEdit={openForm}
         getId={(s: Student) => s.user_id}
         getName={(s: Student) => `${s.first_name} ${s.last_name || ''}`.trim()}
-        getEmail={(s: Student) => s.email}
+        getEmail={(s: Student) =>
+          s.email?.endsWith('@students.mirrorintelligence.com') || s.email?.includes('.local')
+            ? '—'
+            : s.email
+        }
         getStatus={(s: Student) => s.enrollment_status}
         headerSlot={
           <div className="flex gap-2">

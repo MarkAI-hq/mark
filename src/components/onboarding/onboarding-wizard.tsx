@@ -159,8 +159,9 @@ export function OnboardingWizard({ adminName, schoolName }: OnboardingWizardProp
         )
         if (subjectsError) {
           toast.warning(`Subjects could not be saved — you can add them later. (${subjectsError.message})`)
+        } else {
+          setCreatedSubjects(subjectNames)
         }
-        setCreatedSubjects(subjectNames)
       }
 
       // 3. Create classes

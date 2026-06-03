@@ -267,6 +267,14 @@ export async function acceptInvitation(token: string) {
   }
 }
 
+export async function exportAccountData() {
+  return fetcher<Record<string, unknown>>('/auth/export-data')
+}
+
+export async function deleteAccount() {
+  return fetcher<{ message: string }>('/auth/account', { method: 'DELETE' })
+}
+
 export async function registerInvited(payload: {
   token:       string
   firstName:   string

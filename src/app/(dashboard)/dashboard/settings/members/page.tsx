@@ -33,7 +33,12 @@ export default async function MembersPage() {
 
   // Only Admin and Teacher can be invited — Students join via student login, platform roles are internal
   const INVITABLE_ROLES = ['Admin', 'Teacher']
-  const availableRoles = (rolesRes.data ?? []).filter(r => INVITABLE_ROLES.includes(r.role_name))
+  const fetchedRoles = (rolesRes.data ?? []).filter(r => INVITABLE_ROLES.includes(r.role_name))
+  // Always ensure Teacher and Admin are available even if the /roles endpoint omits them
+  const availableRoles = INVITABLE_ROLES.map(name => {
+    const found = fetchedRoles.find(r => r.role_name === name)
+    return found ?? { role_id: name.toLowerCase(), role_name: name, description: null }
+  })
 
   return (
     <div className="space-y-6">
@@ -47,6 +52,7 @@ export default async function MembersPage() {
         initialMembers={membersRes.data ?? []}
         organizationId={user.organizationId}
         availableRoles={availableRoles}
+        currentUserId={user.id}
       />
     </div>
   );

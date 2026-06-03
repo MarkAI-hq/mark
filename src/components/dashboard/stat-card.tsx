@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { Card } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
 
@@ -18,6 +19,7 @@ interface StatCardProps extends React.HTMLAttributes<HTMLDivElement> {
   icon?:        React.ReactNode
   loading?:     boolean
   accentColor?: AccentColor
+  href?:        string
 }
 
 export function StatCard({
@@ -27,11 +29,21 @@ export function StatCard({
   icon,
   loading = false,
   accentColor = 'default',
+  href,
   className,
   ...props
 }: StatCardProps) {
+  const Wrapper = href
+    ? ({ children }: { children: React.ReactNode }) => (
+        <Link href={href} className="block group">
+          {children}
+        </Link>
+      )
+    : ({ children }: { children: React.ReactNode }) => <>{children}</>
+
   return (
-    <Card className={cn('animate-fade-up p-5', className)} {...props}>
+    <Wrapper>
+    <Card className={cn('animate-fade-up p-5', href && 'cursor-pointer hover:border-primary/50 hover:shadow-sm transition-all', className)} {...props}>
       {loading ? (
         <div className="space-y-3">
           <div className="h-9 w-9 animate-pulse rounded-xl bg-muted" />
@@ -55,5 +67,6 @@ export function StatCard({
         </div>
       )}
     </Card>
+    </Wrapper>
   )
 }

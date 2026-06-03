@@ -10,7 +10,11 @@ const storageKey = (userId: string) => `mirror_onboarding_v2_${userId}`
 
 const REMIND_DELAY_MS  = 24 * 60 * 60 * 1000
 const ARRIVAL_TTL_MS   = 24 * 60 * 60 * 1000
-const DEMO_VIDEO_EMBED = 'https://www.youtube.com/embed/dQw4w9WgXcQ'
+const CAL_ATTRS = {
+  'data-cal-link':      'tusii-mirror/30min',
+  'data-cal-namespace': '30min',
+  'data-cal-config':    '{"layout":"month_view","useSlotsViewOnSmallScreen":"true"}',
+} as const
 
 interface Step {
   id:       string
@@ -56,7 +60,6 @@ export function OnboardingBanner({ stats, role = 'Admin', userId, schoolName }: 
 
   const [snoozed,     setSnoozed]     = useState(false)
   const [dismissed,   setDismissed]   = useState(false)
-  const [videoOpen,   setVideoOpen]   = useState(false)
   const [mounted,     setMounted]     = useState(false)
   const [justDone,    setJustDone]    = useState(false)
   const [showArrival, setShowArrival] = useState(false)
@@ -484,13 +487,12 @@ export function OnboardingBanner({ stats, role = 'Admin', userId, schoolName }: 
                 Master Mirror In 5 Minutes
               </h3>
               <p className="text-sm leading-relaxed text-muted-foreground">
-                Curious about the best way to use Mirror?{' '}
-                Watch this walkthrough to see how scripts are uploaded, graded in 60 seconds,
-                and turned into cognitive profiles for every student.
+                Want to see Mirror in action? Book a live walkthrough with our team —
+                we&apos;ll show you grading, cognitive profiles, and gap attribution for your school.
               </p>
             </div>
             <button
-              onClick={() => setVideoOpen(true)}
+              {...CAL_ATTRS}
               className="flex-shrink-0 relative rounded-lg overflow-hidden"
               style={{
                 width:      88,
@@ -510,70 +512,27 @@ export function OnboardingBanner({ stats, role = 'Admin', userId, schoolName }: 
             >
               <div className="absolute inset-0 flex items-center justify-center">
                 <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: '#C9A84C' }}>
-                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                    <path d="M3.5 2.5l6 3.5-6 3.5V2.5z" fill="#060E24" />
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#060E24" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                    <line x1="16" y1="2" x2="16" y2="6"/>
+                    <line x1="8" y1="2" x2="8" y2="6"/>
+                    <line x1="3" y1="10" x2="21" y2="10"/>
                   </svg>
                 </div>
               </div>
             </button>
           </div>
           <button
-            onClick={() => setVideoOpen(true)}
+            {...CAL_ATTRS}
             className="mt-4 w-full py-2.5 rounded-lg text-sm font-semibold transition-all"
             style={{ background: '#C9A84C', color: '#060E24' }}
             onMouseEnter={e => (e.currentTarget.style.background = '#E8C96A')}
             onMouseLeave={e => (e.currentTarget.style.background = '#C9A84C')}
           >
-            Watch Demo
+            Schedule a Demo
           </button>
         </div>
       </div>
-
-      {/* Video modal */}
-      {videoOpen && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-6"
-          style={{ background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(6px)' }}
-          onClick={() => setVideoOpen(false)}
-        >
-          <div
-            className="w-full max-w-3xl rounded-2xl overflow-hidden shadow-2xl"
-            style={{
-              background: 'hsl(var(--card))',
-              border:     '1px solid hsl(var(--border))',
-              animation:  'mirrorFadeIn 0.25s ease',
-            }}
-            onClick={e => e.stopPropagation()}
-          >
-            <div
-              className="flex items-center justify-between px-5 py-4"
-              style={{ borderBottom: '1px solid hsl(var(--border))' }}
-            >
-              <div>
-                <p className="font-semibold text-sm" style={{ fontFamily: 'Georgia, serif', color: 'hsl(var(--foreground))' }}>
-                  Mirror in 5 minutes
-                </p>
-                <p className="text-xs text-muted-foreground mt-0.5">Upload → grade → insight. See it live.</p>
-              </div>
-              <button
-                onClick={() => setVideoOpen(false)}
-                className="w-8 h-8 rounded-full flex items-center justify-center text-sm text-muted-foreground transition-colors hover:bg-muted"
-              >
-                ✕
-              </button>
-            </div>
-            <div style={{ position: 'relative', paddingBottom: '56.25%', height: 0 }}>
-              <iframe
-                src={DEMO_VIDEO_EMBED}
-                title="Mirror Demo"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-                style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 'none' }}
-              />
-            </div>
-          </div>
-        </div>
-      )}
     </>
   )
 }

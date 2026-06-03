@@ -576,6 +576,7 @@ export function ClassDetailTabs({
           classId={classId}
           teachers={teachers}
           orgTeachers={orgTeachers}
+          organizationId={classDetails.organization_id ?? ''}
         />
       </TabsContent>
 

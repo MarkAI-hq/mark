@@ -21,7 +21,10 @@ const sidebarNavItems = [
     title: 'Billing',
     href: '/dashboard/settings/billing',
   },
-  // Add more settings pages here in the future (e.g., Billing, Notifications)
+  {
+    title: 'Account & Privacy',
+    href: '/dashboard/settings/account',
+  },
 ];
 
 interface SettingsLayoutProps {
