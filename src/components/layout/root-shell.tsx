@@ -82,7 +82,7 @@ export function RootShell({ children }: { children: React.ReactNode }) {
                         <PanelLeftOpen className="h-4 w-4" />
                       </Button>
                     </TooltipTrigger>
-                    <TooltipContent side="right">Mark · Platform</TooltipContent>
+                    <TooltipContent side="right">Mirror Intelligence · Platform</TooltipContent>
                   </Tooltip>
                 </div>
               ) : (
@@ -95,7 +95,7 @@ export function RootShell({ children }: { children: React.ReactNode }) {
                       <Shield className="h-4 w-4" style={{ color: '#c9a84c' }} />
                     </div>
                     <div className="leading-none">
-                      <span className="text-sm font-bold text-white">Mark</span>
+                      <span className="text-sm font-bold text-white">Mirror Intelligence</span>
                       <span className="text-xs ml-1" style={{ color: '#c9a84c' }}>· Platform</span>
                     </div>
                   </div>

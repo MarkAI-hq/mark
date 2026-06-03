@@ -20,7 +20,7 @@ import { ThemeToggle } from "../theme-toggle";
 
 type RouteItem = { href: string; label: string; cal?: boolean };
 const routeList: RouteItem[] = [
-  { href: "", label: "Demo", cal: true },
+  // { href: "", label: "Demo", cal: true },
   { href: "/register", label: "Start for free" },
   { href: "/login", label: "Login" },
   { href: "#faq", label: "FAQ" },
