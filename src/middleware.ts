@@ -20,6 +20,8 @@ export async function middleware(request: NextRequest) {
     '/accept-invitation',
     '/student/login',
     '/onboarding',
+    '/privacy',
+    '/terms',
   ]
 
   const isPublicPath =

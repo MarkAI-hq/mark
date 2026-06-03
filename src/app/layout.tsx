@@ -1,5 +1,6 @@
 // src/app/layout.tsx
 import type { Metadata, Viewport } from 'next';
+import { Suspense } from 'react';
 import { GeistSans } from 'geist/font/sans';
 import { GeistMono } from 'geist/font/mono';
 import { CookiesProvider } from 'next-client-cookies/server';
@@ -11,6 +12,8 @@ import { cn } from '@/lib/utils';
 
 import { getSession } from '@/lib/session';
 import { AuthInitializer } from '@/components/auth/auth-initializer';
+import { PostHogProvider, PostHogPageview } from '@/components/providers/posthog-provider';
+import { CookieBanner } from '@/components/consent/cookie-banner';
 
 export const viewport: Viewport = {
   themeColor: '#c9a84c',
@@ -58,15 +61,23 @@ export default async function RootLayout({
       >
         <AuthInitializer user={user} />
 
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="system"
-          enableSystem
-          disableTransitionOnChange
-        >
-          <CookiesProvider>{children}</CookiesProvider>
-          <Toaster position="bottom-right" richColors />
-        </ThemeProvider>
+        <PostHogProvider>
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="system"
+            enableSystem
+            disableTransitionOnChange
+          >
+            <CookiesProvider>
+              <Suspense fallback={null}>
+                <PostHogPageview />
+              </Suspense>
+              {children}
+            </CookiesProvider>
+            <Toaster position="bottom-right" richColors />
+            <CookieBanner />
+          </ThemeProvider>
+        </PostHogProvider>
       </body>
     </html>
   );

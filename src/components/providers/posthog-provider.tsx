@@ -7,16 +7,18 @@ import posthog from 'posthog-js';
 import { PostHogProvider as PHProvider } from 'posthog-js/react';
 
 // ── Boot PostHog once on the client ───────────────────────────────────────────
+// Starts opted-out by default; CookieBanner calls posthog.opt_in_capturing()
+// after the user grants consent (or restores their previous choice on load).
 if (typeof window !== 'undefined' && process.env.NEXT_PUBLIC_POSTHOG_KEY) {
   posthog.init(process.env.NEXT_PUBLIC_POSTHOG_KEY, {
-    api_host:             process.env.NEXT_PUBLIC_POSTHOG_HOST ?? 'https://us.i.posthog.com',
-    ui_host:              'https://us.posthog.com',
-    capture_pageview:     false,   // we handle pageviews manually below
-    capture_pageleave:    true,
-    person_profiles:      'identified_only',
-    persistence:          'localStorage',
+    api_host:                      process.env.NEXT_PUBLIC_POSTHOG_HOST ?? 'https://us.i.posthog.com',
+    ui_host:                       'https://us.posthog.com',
+    capture_pageview:              false,
+    capture_pageleave:             true,
+    person_profiles:               'identified_only',
+    persistence:                   'localStorage',
+    opt_out_capturing_by_default:  true,
     loaded: (ph) => {
-      // Opt out of capturing in local dev
       if (process.env.NODE_ENV !== 'production') ph.opt_out_capturing();
     },
   });
