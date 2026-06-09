@@ -2,7 +2,7 @@
 // Full platform-admin (Root) coverage. Runs on the "root" project which is
 // pre-authenticated as tusii.ug@gmail.com via global-setup.
 
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./fixtures";
 
 test.use({ storageState: "tests/auth/root-auth.json" });
 

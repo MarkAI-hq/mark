@@ -33,10 +33,10 @@ export default async function OrganizationProfilePage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h3 className="text-lg font-medium">Profile</h3>
+      <div className="space-y-1">
+        <h3 className="text-xl font-semibold tracking-tight">Organisation Profile</h3>
         <p className="text-sm text-muted-foreground">
-          Update your organization&apos;s details.
+          Update your school&apos;s name, logo, and contact details.
         </p>
       </div>
       <SettingsClient organization={organization} />

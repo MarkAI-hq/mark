@@ -4,7 +4,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { GraduationCap, LogOut, BookOpen, LayoutDashboard } from 'lucide-react'
+import { GraduationCap, LogOut, BookOpen, LayoutDashboard, Award, Users, ArrowRightLeft, FileCheck, Gift } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { NotificationBell } from '@/components/notifications/notification-bell'
 import {
@@ -19,8 +19,9 @@ import { studentLogout } from '@/lib/actions/student-auth'
 
 interface StudentNavProps {
   user: {
-    name:              string
+    name:               string
     student_school_id?: string
+    enrollment_source?: string
   }
 }
 
@@ -43,10 +44,17 @@ export function StudentNav({ user }: StudentNavProps) {
     router.refresh()
   }
 
+  const isMarketplace = user.enrollment_source === 'marketplace'
+
   const navLinks = [
-    { href: '/student/dashboard',    label: 'Dashboard',    icon: LayoutDashboard },
-    { href: '/student/study-plans',  label: 'Study Plans',  icon: BookOpen },
-  ]
+    { href: '/student/dashboard',    label: 'Dashboard',    icon: LayoutDashboard, marketplaceOnly: false },
+    { href: '/student/study-plans',  label: 'Study Plans',  icon: BookOpen,        marketplaceOnly: false },
+    { href: '/student/certificates', label: 'Certificates', icon: Award,           marketplaceOnly: false },
+    { href: '/student/community',    label: 'Community',    icon: Users,           hideForMarketplace: true },
+    { href: '/student/exams',        label: 'Exams',        icon: FileCheck,       marketplaceOnly: false },
+    { href: '/student/transfer',     label: 'Transfer',     icon: ArrowRightLeft,  hideForMarketplace: true },
+    { href: '/student/welcome-pack', label: 'Welcome Pack', icon: Gift,            marketplaceOnly: false },
+  ].filter(link => !(isMarketplace && link.hideForMarketplace))
 
   return (
     <header className="sticky top-0 z-50 glass">

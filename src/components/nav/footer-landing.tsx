@@ -194,7 +194,7 @@ export const FooterSection = () => {
           {/* Bottom bar */}
           <div className="mt-12 flex flex-col items-center justify-between gap-4 border-t border-border pt-8 sm:flex-row">
             <p className="text-xs text-muted-foreground">
-              &copy; {getYear(new TZDate(new Date(), tz))} MarkAI Labs, Inc. All rights reserved.
+              &copy; {getYear(new TZDate(new Date(), tz))} Mirror Intelligence. All rights reserved.
             </p>
             <div className="flex gap-6">
               <Link

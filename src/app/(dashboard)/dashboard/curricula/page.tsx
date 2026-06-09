@@ -11,13 +11,18 @@ export default async function CurriculaPage() {
 
   const { data: curricula, error } = await getCurricula()
 
-  // Teachers only see curricula that match their assigned subjects
+  // Teachers only see curricula that match their assigned subjects.
+  // If they have no classes yet, show nothing — not the full library.
   let filtered = curricula ?? []
+  let noSubjectsYet = false
   if (session.role === 'Teacher') {
     const { data: mySubjects } = await getMyCoursesAsSubjects()
     if (mySubjects && mySubjects.length > 0) {
       const names = new Set(mySubjects.map(s => s.name.toLowerCase()))
       filtered = filtered.filter(c => names.has(c.subject.toLowerCase()))
+    } else {
+      filtered = []
+      noSubjectsYet = true
     }
   }
 
@@ -37,7 +42,11 @@ export default async function CurriculaPage() {
         </div>
       </div>
 
-      <CurriculumLibraryClient curricula={filtered} error={error?.message ?? null} />
+      <CurriculumLibraryClient
+        curricula={filtered}
+        error={error?.message ?? null}
+        noSubjectsYet={noSubjectsYet}
+      />
     </div>
   )
 }

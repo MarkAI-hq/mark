@@ -4,7 +4,7 @@
 
 import {
   TrendingUp, BookOpen, Target, Award,
-  AlertCircle, CheckCircle2, Clock, Download,
+  AlertCircle, CheckCircle2, Clock, Download, Flame,
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge }          from '@/components/ui/badge'
@@ -17,9 +17,10 @@ import {
   PolarAngleAxis, PolarRadiusAxis,
 } from 'recharts'
 import { format } from 'date-fns'
-import { ExamHistoryDetail }  from '@/components/students/exam-history-detail'
-import { LearningToolkits }   from '@/components/students/learning-toolkits'
-import type { ExamHistoryItem, LearningTool, StudentCognitiveProfile, StudyPlan } from '@/lib/actions/student-dashboard'
+import { ExamHistoryDetail }    from '@/components/students/exam-history-detail'
+import { LearningToolkits }     from '@/components/students/learning-toolkits'
+import { CertPreviewAnchor }    from '@/components/students/cert-preview-anchor'
+import type { ExamHistoryItem, LearningTool, StudentCognitiveProfile, StudyPlan, SocialProof, SubjectProgress } from '@/lib/actions/student-dashboard'
 
 const LESSON_TYPE_CONFIG: Record<string, { label: string; color: string }> = {
   catch_up:     { label: 'Catch-Up',     color: 'bg-blue-100 text-blue-800' },
@@ -31,13 +32,16 @@ const LESSON_TYPE_CONFIG: Record<string, { label: string; color: string }> = {
 }
 
 interface Props {
-  user:           any
-  analytics:      any
-  currentProfile: StudentCognitiveProfile | null
-  submissions:    any[]
-  examHistory:    ExamHistoryItem[]
-  tools:          LearningTool[]
-  studyPlans?:    StudyPlan[]
+  user:            any
+  analytics:       any
+  currentProfile:  StudentCognitiveProfile | null
+  submissions:     any[]
+  examHistory:     ExamHistoryItem[]
+  tools:           LearningTool[]
+  studyPlans?:     StudyPlan[]
+  streak?:         number
+  socialProof?:    SocialProof | null
+  subjectProgress?: SubjectProgress[]
 }
 
 const perfColor = (p: number) =>
@@ -61,7 +65,7 @@ const statusColor: Record<string, string> = {
 }
 
 export function StudentDashboardClient({
-  user, analytics, currentProfile, submissions, examHistory, tools, studyPlans = [],
+  user, analytics, currentProfile, submissions, examHistory, tools, studyPlans = [], streak = 0, socialProof, subjectProgress = [],
 }: Props) {
 
   // Normalise: API returns camelCase, fall back to snake_case
@@ -124,7 +128,7 @@ export function StudentDashboardClient({
         {currentProfile && (
           <Button
             variant="outline" size="sm" onClick={handleCompassDownload}
-            className="shrink-0 gap-2 border-amber-200 text-amber-800 hover:bg-amber-50"
+            className="shrink-0 gap-2 border-gold/30 text-gold hover:bg-gold/5"
           >
             <Download className="h-4 w-4" />
             <span className="hidden sm:inline">Learning Compass</span>
@@ -133,7 +137,7 @@ export function StudentDashboardClient({
       </div>
 
       {/* ── Stat cards ────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <Card className={`col-span-2 sm:col-span-1 border ${perfBg(avg)}`}>
           <CardContent className="pt-5 pb-4">
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Average Score</p>
@@ -159,14 +163,98 @@ export function StudentDashboardClient({
             <p className="text-xs text-muted-foreground mt-2">Bloom&apos;s taxonomy</p>
           </CardContent>
         </Card>
+
+        <Card className={streak > 0 ? 'border-orange-200 bg-orange-50/50' : ''}>
+          <CardContent className="pt-5 pb-4">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Study Streak</p>
+            <div className="flex items-center gap-1.5">
+              <Flame className={`h-7 w-7 ${streak > 0 ? 'text-orange-500' : 'text-muted-foreground/40'}`} />
+              <p className={`text-4xl font-bold ${streak > 0 ? 'text-orange-600' : 'text-muted-foreground'}`}>
+                {streak}
+              </p>
+            </div>
+            <p className="text-xs text-muted-foreground mt-2">
+              {streak === 0 ? 'Start today!' : streak === 1 ? '1 day — keep going!' : `${streak} days in a row`}
+            </p>
+          </CardContent>
+        </Card>
       </div>
+
+      {/* ── Certificate preview anchor ───────────────────────────────── */}
+      <CertPreviewAnchor
+        averageScore={avg}
+        studentName={user?.name ?? user?.first_name ?? 'Student'}
+        schoolName={user?.organization?.name ?? user?.school_name}
+      />
+
+      {/* ── Social proof ─────────────────────────────────────────────── */}
+      {socialProof && (socialProof.rank_percentile !== null || socialProof.peers_completed_this_week > 0) && (
+        <div className="flex flex-wrap gap-3">
+          {socialProof.rank_percentile !== null && (
+            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gold/5 border border-gold/20">
+              <Target className="h-3.5 w-3.5 text-gold shrink-0" />
+              <p className="text-xs text-foreground">
+                You&apos;re in the <span className="font-semibold">top {100 - socialProof.rank_percentile}%</span> of your school
+              </p>
+            </div>
+          )}
+          {socialProof.peers_completed_this_week > 0 && (
+            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-50 border border-emerald-100">
+              <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+              <p className="text-xs text-emerald-700">
+                <span className="font-semibold">{socialProof.peers_completed_this_week}</span> schoolmate{socialProof.peers_completed_this_week === 1 ? '' : 's'} completed assessments this week
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Subject progress bars ────────────────────────────────────── */}
+      {subjectProgress.length > 0 && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center gap-2">
+              <BookOpen className="h-4 w-4 text-gold" />
+              Subject Progress
+            </CardTitle>
+            <CardDescription>Average score per subject across all assessments</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {subjectProgress.map((s) => (
+              <div key={s.subject} className="space-y-1">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="font-medium text-slate-700">{s.subject}</span>
+                  <span className={`text-xs font-semibold ${
+                    s.mastery_label === 'strong'     ? 'text-emerald-600' :
+                    s.mastery_label === 'developing' ? 'text-amber-600'   :
+                    s.mastery_label === 'at_risk'    ? 'text-orange-600'  : 'text-rose-600'
+                  }`}>
+                    {s.avg_percentage}%
+                  </span>
+                </div>
+                <div className="relative h-2 bg-muted rounded-full overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all ${
+                      s.mastery_label === 'strong'     ? 'bg-emerald-500' :
+                      s.mastery_label === 'developing' ? 'bg-amber-400'   :
+                      s.mastery_label === 'at_risk'    ? 'bg-orange-500'  : 'bg-rose-600'
+                    }`}
+                    style={{ width: `${s.avg_percentage}%` }}
+                  />
+                </div>
+                <p className="text-[10px] text-muted-foreground">{s.assessment_count} assessment{s.assessment_count !== 1 ? 's' : ''}</p>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
 
       {/* ── Score history chart ───────────────────────────────────────── */}
       {chartData.length > 0 && (
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-base flex items-center gap-2">
-              <TrendingUp className="h-4 w-4 text-primary" />
+              <TrendingUp className="h-4 w-4 text-gold" />
               Score History
             </CardTitle>
             <CardDescription>Your recent assessment scores</CardDescription>
@@ -196,7 +284,7 @@ export function StudentDashboardClient({
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-base flex items-center gap-2">
-                <Target className="h-4 w-4 text-primary" />
+                <Target className="h-4 w-4 text-gold" />
                 Cognitive Depth
               </CardTitle>
               <CardDescription>Bloom&apos;s taxonomy breakdown</CardDescription>
@@ -318,7 +406,7 @@ export function StudentDashboardClient({
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-base flex items-center gap-2">
-              <BookOpen className="h-4 w-4 text-primary" />
+              <BookOpen className="h-4 w-4 text-gold" />
               Recent Assessments
             </CardTitle>
             <CardDescription>Your latest graded work</CardDescription>
@@ -368,7 +456,7 @@ export function StudentDashboardClient({
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-base flex items-center gap-2">
-                  <Target className="h-4 w-4 text-primary" />
+                  <Target className="h-4 w-4 text-gold" />
                   My Study Plans
                 </CardTitle>
                 <div className="flex items-center gap-3 text-xs text-muted-foreground">

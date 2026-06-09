@@ -9,9 +9,10 @@ import { Footer } from '@/components/nav/footer'
 interface DashboardShellProps {
   children: React.ReactNode
   organizationName?: string | null
+  isPublic?: boolean
 }
 
-export function DashboardShell({ children, organizationName }: DashboardShellProps) {
+export function DashboardShell({ children, organizationName, isPublic }: DashboardShellProps) {
   const pathname              = usePathname()
   const [collapsed, setCollapsed] = useState(false)
   const isChat                = pathname?.includes('/tracy')
@@ -22,6 +23,7 @@ export function DashboardShell({ children, organizationName }: DashboardShellPro
       {/* Sidebar — receives collapsed state from here */}
       <MainNav
         organizationName={organizationName}
+        isPublic={isPublic}
         collapsed={collapsed}
         onToggleCollapse={() => setCollapsed((c) => !c)}
       />
@@ -43,8 +45,8 @@ export function DashboardShell({ children, organizationName }: DashboardShellPro
             {children}
           </main>
         ) : (
-          <main className="flex-1 overflow-y-auto">
-            <div className="mx-auto max-w-7xl px-4 py-5 lg:px-8 lg:py-7 space-y-6">
+          <main className="flex-1 overflow-y-auto flex flex-col">
+            <div className="flex-1 mx-auto w-full max-w-7xl px-4 py-5 lg:px-8 lg:py-7 space-y-6">
               {children}
             </div>
             <Footer />

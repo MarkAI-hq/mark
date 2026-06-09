@@ -2,7 +2,7 @@
 // Full admin feature coverage. Runs on the "admin" project which is
 // pre-authenticated as tusiimekenneth.ug@gmail.com via global-setup.
 
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./fixtures";
 
 test.use({ storageState: "tests/auth/admin-auth.json" });
 

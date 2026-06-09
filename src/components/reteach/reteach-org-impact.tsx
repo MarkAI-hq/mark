@@ -49,9 +49,9 @@ export function ReteachOrgImpact() {
     Minus
 
   const deltaColor =
-    direction === 'improved'  ? 'text-green-700' :
+    direction === 'improved'  ? 'text-green-600' :
     direction === 'regressed' ? 'text-red-600'   :
-    'text-slate-500'
+    'text-muted-foreground'
 
   return (
     <div className="space-y-6">
@@ -69,8 +69,8 @@ export function ReteachOrgImpact() {
       </div>
 
       {/* ── Avg impact ───────────────────────────────────────────────── */}
-      <div className="rounded-lg border bg-white p-5">
-        <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-3">
+      <div className="rounded-lg border bg-card p-5">
+        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">
           Overall intervention impact
         </p>
         <div className={`flex items-center gap-2 ${deltaColor}`}>
@@ -81,15 +81,15 @@ export function ReteachOrgImpact() {
               : '—'
             }
           </span>
-          <span className="text-sm text-slate-500 ml-1">
+          <span className="text-sm text-muted-foreground ml-1">
             avg score improvement across {view.impact.sessions_with_data} completed session(s)
           </span>
         </div>
       </div>
 
       {/* ── Scope breakdown ──────────────────────────────────────────── */}
-      <div className="rounded-lg border bg-white p-4 space-y-3">
-        <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">
+      <div className="rounded-lg border bg-card p-4 space-y-3">
+        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
           Sessions by type
         </p>
         <div className="flex flex-wrap gap-3">
@@ -101,10 +101,10 @@ export function ReteachOrgImpact() {
 
       {/* ── Error breakdown ──────────────────────────────────────────── */}
       {view.error_breakdown.length > 0 && (
-        <div className="rounded-lg border bg-white p-4 space-y-3">
+        <div className="rounded-lg border bg-card p-4 space-y-3">
           <div className="flex items-center gap-2">
-            <BarChart3 className="h-4 w-4 text-slate-400" />
-            <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">
+            <BarChart3 className="h-4 w-4 text-muted-foreground" />
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
               Impact by error type
             </p>
           </div>
@@ -115,13 +115,13 @@ export function ReteachOrgImpact() {
               return (
                 <div key={e.error_type} className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-2 min-w-0">
-                    <span className="text-sm text-slate-700 truncate">{e.error_type}</span>
-                    <span className="text-xs text-slate-400 shrink-0">
+                    <span className="text-sm text-foreground truncate">{e.error_type}</span>
+                    <span className="text-xs text-muted-foreground shrink-0">
                       {e.session_count} session{e.session_count !== 1 ? 's' : ''}
                     </span>
                   </div>
                   <span className={`text-sm font-semibold shrink-0 ${
-                    isPositive ? 'text-green-700' : isNegative ? 'text-red-600' : 'text-slate-500'
+                    isPositive ? 'text-green-600' : isNegative ? 'text-red-600' : 'text-muted-foreground'
                   }`}>
                     {e.avg_delta > 0 ? '+' : ''}{e.avg_delta}%
                   </span>
@@ -136,7 +136,7 @@ export function ReteachOrgImpact() {
       {view.recent_completed.length > 0 && (
         <div className="space-y-3">
           <Separator />
-          <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
             Recently completed
           </p>
           {view.recent_completed.map(s => (
@@ -152,10 +152,10 @@ export function ReteachOrgImpact() {
 
 function StatCard({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
-    <div className="rounded-lg border bg-white p-4 space-y-1">
-      <p className="text-xs text-slate-500">{label}</p>
-      <p className="text-2xl font-semibold text-slate-900">{value}</p>
-      {sub && <p className="text-xs text-slate-400">{sub}</p>}
+    <div className="rounded-lg border bg-card p-4 space-y-1">
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className="text-2xl font-semibold text-foreground">{value}</p>
+      {sub && <p className="text-xs text-muted-foreground">{sub}</p>}
     </div>
   )
 }
@@ -167,9 +167,9 @@ function ScopeChip({ Icon, label, count, color }: {
   color: 'amber' | 'blue' | 'purple'
 }) {
   const styles = {
-    amber:  'bg-amber-50  text-amber-700  border-amber-200',
-    blue:   'bg-blue-50   text-blue-700   border-blue-200',
-    purple: 'bg-purple-50 text-purple-700 border-purple-200',
+    amber:  'bg-amber-500/10  text-amber-600  border-amber-500/20',
+    blue:   'bg-blue-500/10   text-blue-600   border-blue-500/20',
+    purple: 'bg-purple-500/10 text-purple-600 border-purple-500/20',
   }
   return (
     <Badge variant="outline" className={`gap-1.5 px-3 py-1.5 text-sm ${styles[color]}`}>

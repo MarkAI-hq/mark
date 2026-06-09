@@ -47,7 +47,7 @@ export function ArchetypeDetectionCard({ onDetected }: DetectionProps) {
   }
 
   return (
-    <div className="space-y-4 border rounded-xl p-6 bg-white shadow-sm">
+    <div className="space-y-4 border rounded-xl p-6 bg-card shadow-sm">
       <div className="flex items-center gap-3 mb-4">
         <div className="p-2 bg-blue-50 rounded-lg text-blue-600">
           <FileText size={20} />
@@ -62,7 +62,7 @@ export function ArchetypeDetectionCard({ onDetected }: DetectionProps) {
         {...getRootProps()}
         className={cn(
           "border-2 border-dashed rounded-lg p-10 flex flex-col items-center justify-center gap-2 cursor-pointer transition-colors",
-          isDragActive ? "border-blue-500 bg-blue-50" : "border-gray-200 hover:border-gray-300",
+          isDragActive ? "border-blue-500 bg-blue-500/10" : "border-border hover:border-border/60",
           file && "border-green-500 bg-green-50"
         )}
       >
@@ -75,7 +75,7 @@ export function ArchetypeDetectionCard({ onDetected }: DetectionProps) {
           </>
         ) : (
           <>
-            <Upload className="text-gray-400" size={32} />
+            <Upload className="text-muted-foreground" size={32} />
             <p className="font-medium">Click or drag files to upload</p>
             <p className="text-xs text-muted-foreground">PDF or TXT (Max 20MB)</p>
           </>
@@ -87,7 +87,7 @@ export function ArchetypeDetectionCard({ onDetected }: DetectionProps) {
         disabled={!file || loading} 
         onClick={handleUpload}
       >
-        {loading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Analysing Content...</> : 'Analyse with Mark·AI'}
+        {loading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Analysing Content...</> : 'Analyse with Mirror'}
       </Button>
     </div>
   )

@@ -17,6 +17,7 @@ import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
+import { sendSupportEmail } from '@/lib/actions/support'
 
 // ─────────────────────────────────────────────
 // Routing helper — pushes to Tracy with ?q=
@@ -168,9 +169,12 @@ function ContactForm() {
       return
     }
     startTransition(async () => {
-      // TODO: wire to a real server action, e.g. sendSupportEmail(form)
-      await new Promise((r) => setTimeout(r, 800))
-      toast.success('Message sent! Our team will get back to you within 24 hours.')
+      const result = await sendSupportEmail(form)
+      if (result.error) {
+        toast.error('Failed to send message', { description: result.error.message })
+        return
+      }
+      toast.success('Message sent!', { description: 'Our team will get back to you within 24 hours.' })
       setForm({ name: '', email: '', topic: '', message: '' })
     })
   }

@@ -41,8 +41,8 @@ export default function MarkingGuideStudio() {
   }
 
   if (guide) return (
-    <div className="bg-slate-50 min-h-screen">
-      <div className="sticky top-0 z-20 bg-white border-b p-4 mb-6 shadow-sm no-print">
+    <div className="bg-background min-h-screen">
+      <div className="sticky top-0 z-20 bg-background/80 backdrop-blur-sm border-b p-4 mb-6 shadow-sm no-print">
         <div className="max-w-5xl mx-auto flex justify-between items-center">
            <Button variant="ghost" onClick={() => setGuide(null)} className="gap-2">
              <ArrowLeft size={16} /> Back to Studio
@@ -70,7 +70,7 @@ export default function MarkingGuideStudio() {
         <p className="text-muted-foreground">Select a generated assessment to create its marking criteria.</p>
       </div>
 
-      <div className="bg-white border rounded-xl p-10 shadow-sm space-y-6">
+      <div className="bg-card border rounded-xl p-10 shadow-sm space-y-6">
         <div className="space-y-2">
           <label className="text-sm font-semibold">Select Assessment</label>
           <Select value={selectedExamId} onValueChange={setSelectedExamId}>
@@ -88,7 +88,7 @@ export default function MarkingGuideStudio() {
         </div>
 
         <Button 
-          className="w-full h-12 bg-slate-900 text-lg gap-2" 
+          className="w-full h-12 text-lg gap-2"
           disabled={!selectedExamId || loading}
           onClick={handleGenerate}
         >

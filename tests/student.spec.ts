@@ -2,7 +2,7 @@
 // Student portal tests. Uses cookie injection so the middleware routes to
 // /student/* correctly without needing a real student account.
 
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./fixtures";
 import { injectStudentCookies } from "./helpers/login";
 
 // ── Student portal (authenticated via cookie injection) ────────────────────
@@ -42,10 +42,44 @@ test.describe("Student portal — authenticated", () => {
     expect(page.url()).toContain("/student/dashboard");
   });
 
-  test("Student is blocked from /root → redirected to /login", async ({ page }) => {
+  test("Student is blocked from /root → redirected away", async ({ page }) => {
     await page.goto("/root");
-    await page.waitForURL(/\/login/, { timeout: 10_000 });
-    expect(page.url()).toContain("/login");
+    // Middleware: /root → /login → /student/dashboard (two hops for authenticated student)
+    await page.waitForURL(/\/(login|student)/, { timeout: 10_000 });
+    expect(page.url()).not.toContain("/root");
+  });
+
+  test("/student/community loads", async ({ page }) => {
+    await page.route("**/api/v1/school-extras/**", (route) =>
+      route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ data: [] }) }),
+    );
+    await page.goto("/student/community");
+    await page.waitForLoadState("networkidle");
+    const body = await page.textContent("body");
+    expect(body).toMatch(/community|extra|club|activity/i);
+    await page.screenshot({ path: "tests/screenshots/student-06-community.png", fullPage: true });
+  });
+
+  test("/student/exams loads", async ({ page }) => {
+    await page.route("**/api/v1/exam-registrations/my**", (route) =>
+      route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ data: [] }) }),
+    );
+    await page.goto("/student/exams");
+    await page.waitForLoadState("networkidle");
+    const body = await page.textContent("body");
+    expect(body).toMatch(/exam|registration|board|session/i);
+    await page.screenshot({ path: "tests/screenshots/student-07-exams.png", fullPage: true });
+  });
+
+  test("/student/transfer loads", async ({ page }) => {
+    await page.route("**/api/v1/transfers/my**", (route) =>
+      route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ data: [] }) }),
+    );
+    await page.goto("/student/transfer");
+    await page.waitForLoadState("networkidle");
+    const body = await page.textContent("body");
+    expect(body).toMatch(/transfer|school|request/i);
+    await page.screenshot({ path: "tests/screenshots/student-08-transfer.png", fullPage: true });
   });
 });
 
@@ -84,9 +118,10 @@ test.describe("Student login page", () => {
 
 test.describe("Public student record", () => {
   test("/record/[studentId] is publicly accessible (no auth required)", async ({ page }) => {
-    // No cookies injected — public route
-    await page.goto("/record/test-student-public-id");
-    await page.waitForLoadState("networkidle");
+    // No cookies injected — public route. Use domcontentloaded: client component
+    // fetches student data async which keeps the load event pending indefinitely.
+    await page.goto("/record/test-student-public-id", { waitUntil: "domcontentloaded" });
+    await page.waitForLoadState("networkidle", { timeout: 15_000 }).catch(() => {});
     // Should not redirect to login
     expect(page.url()).not.toContain("/login");
     await page.screenshot({ path: "tests/screenshots/student-05-public-record.png", fullPage: true });

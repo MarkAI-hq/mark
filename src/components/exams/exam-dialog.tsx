@@ -15,6 +15,7 @@ import {
   Download, ArrowRight, Sparkles,
   TrendingUp, ShieldAlert, Trash2,
   ArrowLeft, TrendingDown,
+  Maximize2, Minimize2,
 } from 'lucide-react'
 
 import {
@@ -288,6 +289,7 @@ export function ExamDialog({
   const [previewOpen,     setPreviewOpen]     = useState(false)
   const [previewOriginal, setPreviewOriginal] = useState('')
   const [previewRevised,  setPreviewRevised]  = useState('')
+  const [isExpanded,      setIsExpanded]      = useState(false)
 
   const mirrorEditorRef         = useRef<MirrorEditorHandle>(null)
   const reuploadInputFlaggedRef = useRef<HTMLInputElement>(null)
@@ -333,6 +335,36 @@ export function ExamDialog({
       .then(({ data }) => { if (data) setCurricula(data) })
       .finally(() => setIsLoadingCurricula(false))
   }, [])
+
+  // Sync subject field and auto-select curriculum whenever the dialog opens
+  // or when curricula finish loading (in case they weren't ready on open).
+  useEffect(() => {
+    if (!open) return
+
+    // Fix 1: push the known subject into the form (defaultValues only run on mount)
+    if (initialCourseId) {
+      form.setValue('courseId', initialCourseId)
+    }
+
+    // Fix 2: auto-select curriculum when it can be inferred
+    if (curricula.length === 0 || form.getValues('curriculumId')) return
+
+    if (curricula.length === 1) {
+      form.setValue('curriculumId', curricula[0].id)
+      return
+    }
+
+    // Match by subject name if multiple curricula exist
+    if (initialCourseId) {
+      const subject = (subjects ?? []).find(s => s.id === initialCourseId)
+      if (subject) {
+        const match = curricula.find(
+          c => c.subject.toLowerCase() === subject.name.toLowerCase()
+        )
+        if (match) form.setValue('curriculumId', match.id)
+      }
+    }
+  }, [open, curricula, initialCourseId])
 
   // Countdown when audit passes — only opens grading dialog, does NOT close exam dialog
   useEffect(() => {
@@ -409,10 +441,16 @@ export function ExamDialog({
     setShowOverrideInput(false); setOverrideReason('')
     setPreviousFindings(undefined); setPreviousScore(undefined); setCycleCount(undefined)
     setPreviewOpen(false); setPreviewOriginal(''); setPreviewRevised('')
+    setIsExpanded(false)
     setChosenVariation(null); setWalkthroughSteps([]); setWalkthroughIdx(0)
     setAcceptedDims(new Set()); setSelectedImages(new Map()); setIsApplying(false)
     setParsedQuestions([])
     hasInitializedView.current = false
+    // Clear fields that are re-injected on open so auto-select runs cleanly next time
+    if (!assessment) {
+      form.setValue('courseId', '')
+      form.setValue('curriculumId', '')
+    }
   }
 
   const subjectList = subjects ?? []
@@ -861,10 +899,32 @@ export function ExamDialog({
       }}>
         <DialogContent className={cn(
           'flex flex-col p-0 transition-all duration-300 overflow-hidden',
-          isWide
-            ? 'sm:max-w-[680px] max-h-[88vh]'
-            : 'sm:max-w-[560px] max-h-[88vh]',
+          isExpanded
+            ? 'sm:max-w-[95vw] w-[95vw] h-[94vh] max-h-[94vh]'
+            : isWide
+              ? 'sm:max-w-[680px] max-h-[88vh]'
+              : 'sm:max-w-[560px] max-h-[88vh]',
         )}>
+          {/* Expand / collapse button — sits left of the shadcn close button */}
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={() => setIsExpanded(e => !e)}
+                  className="absolute right-10 top-4 z-50 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                >
+                  {isExpanded
+                    ? <Minimize2 className="h-4 w-4" />
+                    : <Maximize2 className="h-4 w-4" />}
+                  <span className="sr-only">{isExpanded ? 'Collapse' : 'Expand'}</span>
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="left" className="text-[11px]">
+                {isExpanded ? 'Collapse view' : 'Expand to full view'}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
 
           {/* ════════════════════════════════════════════════════════════
               VIEW: FORM

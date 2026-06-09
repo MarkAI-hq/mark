@@ -7,25 +7,33 @@ import { formatDistanceToNow }     from 'date-fns'
 import {
   BookOpen, Clock, AlertCircle, CheckCircle2,
   XCircle, ChevronRight, GraduationCap, Hourglass,
-  Check, X, Loader2,
+  Check, X, Loader2, MessageSquare, Search,
 } from 'lucide-react'
 import Link   from 'next/link'
 import { toast } from 'sonner'
 
-import type { TeacherClass }      from '@/lib/actions/classes'
+import type { TeacherClass, ClassJoinRequest } from '@/lib/actions/classes'
+import type { Class }                          from '@/lib/types'
 import { acceptClassInvite, declineClassInvite } from '@/lib/actions/classes'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge }      from '@/components/ui/badge'
 import { Button }     from '@/components/ui/button'
 import { Separator }  from '@/components/ui/separator'
-import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Alert, AlertDescription }            from '@/components/ui/alert'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { BrowseClassesTab }   from './browse-classes-tab'
+import { ContactAdminDialog } from '@/components/teacher/contact-admin-dialog'
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
 interface TeacherClassesClientProps {
-  classes: TeacherClass[]
-  error?:  string
-  user:    { name?: string; role?: string }
+  classes:        TeacherClass[]
+  allClasses:     Class[]
+  joinRequests:   ClassJoinRequest[]
+  organizationId: string
+  defaultTab?:    'my' | 'browse'
+  error?:         string
+  user:           { name?: string; role?: string }
 }
 
 // ── Status helpers ─────────────────────────────────────────────────────────
@@ -53,8 +61,17 @@ const STATUS_CONFIG = {
 
 // ── Component ──────────────────────────────────────────────────────────────
 
-export function TeacherClassesClient({ classes: initialClasses, error, user }: TeacherClassesClientProps) {
-  const [classes, setClasses] = useState<TeacherClass[]>(initialClasses)
+export function TeacherClassesClient({
+  classes: initialClasses,
+  allClasses,
+  joinRequests,
+  organizationId,
+  defaultTab = 'my',
+  error,
+  user,
+}: TeacherClassesClientProps) {
+  const [classes, setClasses]       = useState<TeacherClass[]>(initialClasses)
+  const [contactOpen, setContactOpen] = useState(false)
 
   const activeClasses   = classes.filter((c) => c.status === 'active')
   const pendingClasses  = classes.filter((c) => c.status === 'pending')
@@ -81,21 +98,27 @@ export function TeacherClassesClient({ classes: initialClasses, error, user }: T
   }
 
   return (
+    <>
     <div className="space-y-6">
 
       {/* ── Header ───────────────────────────────────────────────────────── */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">My Classes</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Classes</h1>
           <p className="text-muted-foreground mt-1">
-            Classes assigned to you by your school administrator.
+            Your assigned classes and all classes at your school.
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <div className="text-right hidden sm:block">
-            <p className="text-sm font-medium">{activeClasses.length} active</p>
-            <p className="text-xs text-muted-foreground">{pendingClasses.length} pending</p>
-          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2 hidden sm:flex"
+            onClick={() => setContactOpen(true)}
+          >
+            <MessageSquare className="h-4 w-4" />
+            Contact Admin
+          </Button>
           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
             <GraduationCap className="h-5 w-5 text-primary" />
           </div>
@@ -110,74 +133,119 @@ export function TeacherClassesClient({ classes: initialClasses, error, user }: T
         </Alert>
       )}
 
-      {/* ── Pending notice ───────────────────────────────────────────────── */}
-      {pendingClasses.length > 0 && (
-        <Alert className="border-amber-200 bg-amber-50 text-amber-800">
-          <Hourglass className="h-4 w-4 text-amber-600" />
-          <AlertDescription>
-            You have <span className="font-semibold">{pendingClasses.length}</span> pending class{pendingClasses.length > 1 ? 'es' : ''}. Accept to get access.
-          </AlertDescription>
-        </Alert>
-      )}
+      {/* ── Tabs: My Classes / Browse School ─────────────────────────────── */}
+      <Tabs defaultValue={defaultTab} className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="my" className="gap-2">
+            <BookOpen className="h-3.5 w-3.5" />
+            My Classes
+            {pendingClasses.length > 0 && (
+              <span className="ml-1 rounded-full bg-amber-500 px-1.5 py-0.5 text-[10px] font-semibold text-white leading-none">
+                {pendingClasses.length}
+              </span>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="browse" className="gap-2">
+            <Search className="h-3.5 w-3.5" />
+            Browse School
+          </TabsTrigger>
+        </TabsList>
 
-      {/* ── Empty state ──────────────────────────────────────────────────── */}
-      {!error && classes.length === 0 && (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-16 text-center text-muted-foreground">
-            <BookOpen className="h-10 w-10 mb-3 opacity-30" />
-            <p className="text-sm font-medium">No classes assigned yet.</p>
-            <p className="text-xs mt-1 max-w-xs">
-              Once an administrator assigns you to a class, it will appear here.
-            </p>
-          </CardContent>
-        </Card>
-      )}
+        {/* ── My Classes tab ─────────────────────────────────────────────── */}
+        <TabsContent value="my" className="space-y-4 mt-0">
 
-      {/* ── Active classes ───────────────────────────────────────────────── */}
-      {activeClasses.length > 0 && (
-        <section className="space-y-3">
-          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-            Active Classes
-          </h2>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {activeClasses.map((cls) => (
-              <ClassCard key={cls.class_id} cls={cls} onAccept={handleAccept} onDecline={handleDecline} />
-            ))}
-          </div>
-        </section>
-      )}
+          {pendingClasses.length > 0 && (
+            <Alert className="border-amber-200 bg-amber-50 text-amber-800">
+              <Hourglass className="h-4 w-4 text-amber-600" />
+              <AlertDescription>
+                You have <span className="font-semibold">{pendingClasses.length}</span> pending class{pendingClasses.length > 1 ? 'es' : ''}. Accept to get access.
+              </AlertDescription>
+            </Alert>
+          )}
 
-      {activeClasses.length > 0 && pendingClasses.length > 0 && <Separator />}
+          {!error && classes.length === 0 && (
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center py-16 text-center text-muted-foreground gap-3">
+                <BookOpen className="h-10 w-10 opacity-30" />
+                <div>
+                  <p className="text-sm font-medium">No classes assigned yet.</p>
+                  <p className="text-xs mt-1 max-w-xs">
+                    Browse all school classes and request to be added, or contact your admin.
+                  </p>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-2 mt-1"
+                  onClick={() => setContactOpen(true)}
+                >
+                  <MessageSquare className="h-3.5 w-3.5" />
+                  Contact Admin
+                </Button>
+              </CardContent>
+            </Card>
+          )}
 
-      {/* ── Pending classes ──────────────────────────────────────────────── */}
-      {pendingClasses.length > 0 && (
-        <section className="space-y-3">
-          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-            Pending Invitations
-          </h2>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {pendingClasses.map((cls) => (
-              <ClassCard key={cls.class_id} cls={cls} onAccept={handleAccept} onDecline={handleDecline} />
-            ))}
-          </div>
-        </section>
-      )}
+          {activeClasses.length > 0 && (
+            <section className="space-y-3">
+              <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+                Active Classes
+              </h2>
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {activeClasses.map((cls) => (
+                  <ClassCard key={cls.class_id} cls={cls} onAccept={handleAccept} onDecline={handleDecline} />
+                ))}
+              </div>
+            </section>
+          )}
 
-      {/* ── Declined classes ─────────────────────────────────────────────── */}
-      {declinedClasses.length > 0 && (
-        <section className="space-y-3">
-          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-            Declined
-          </h2>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {declinedClasses.map((cls) => (
-              <ClassCard key={cls.class_id} cls={cls} onAccept={handleAccept} onDecline={handleDecline} />
-            ))}
-          </div>
-        </section>
-      )}
+          {activeClasses.length > 0 && pendingClasses.length > 0 && <Separator />}
+
+          {pendingClasses.length > 0 && (
+            <section className="space-y-3">
+              <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+                Pending Invitations
+              </h2>
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {pendingClasses.map((cls) => (
+                  <ClassCard key={cls.class_id} cls={cls} onAccept={handleAccept} onDecline={handleDecline} />
+                ))}
+              </div>
+            </section>
+          )}
+
+          {declinedClasses.length > 0 && (
+            <section className="space-y-3">
+              <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+                Declined
+              </h2>
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {declinedClasses.map((cls) => (
+                  <ClassCard key={cls.class_id} cls={cls} onAccept={handleAccept} onDecline={handleDecline} />
+                ))}
+              </div>
+            </section>
+          )}
+        </TabsContent>
+
+        {/* ── Browse School tab ──────────────────────────────────────────── */}
+        <TabsContent value="browse" className="mt-0">
+          <BrowseClassesTab
+            allClasses={allClasses}
+            myJoinRequests={joinRequests}
+            myClasses={classes}
+          />
+        </TabsContent>
+      </Tabs>
 
     </div>
+
+    <ContactAdminDialog
+      open={contactOpen}
+      onOpenChange={setContactOpen}
+      organizationId={organizationId}
+    />
+    </>
   )
 }
 

@@ -47,6 +47,16 @@ export interface Organization {
   timezone: string;
   onboarding_complete: boolean;
   sso_required: boolean;
+  is_public: boolean;
+  partner_config?: {
+    currency?: string;
+    marketplace_agreement?: {
+      signed_by: string;
+      signed_at: string;
+      version: string;
+    };
+    [key: string]: unknown;
+  } | null;
   createdAt: string;
   updatedAt: string;
 }

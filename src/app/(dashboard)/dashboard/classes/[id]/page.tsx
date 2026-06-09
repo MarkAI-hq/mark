@@ -8,6 +8,7 @@ import {
   getClassesWithTeachers,
   getClassAssessments,
   getClassGroups,
+  getClassJoinRequests,
 }                              from '@/lib/actions/classes'
 import { getOrganizationUsers }   from '@/lib/actions/organizations'
 import { getClassReteachHistory } from '@/lib/actions/reteach-history'
@@ -26,7 +27,7 @@ export default async function ClassDetailPage({ params }: ClassDetailPageProps) 
 
   const [
     classRes, coursesRes, analytics, classesWithTeachersRes,
-    assessmentsRes, interventionsRes, groupsRes,
+    assessmentsRes, interventionsRes, groupsRes, joinRequestsRes,
   ] = await Promise.all([
     getClassDetails(id),
     getAssignedCourses(id),
@@ -35,15 +36,17 @@ export default async function ClassDetailPage({ params }: ClassDetailPageProps) 
     getClassAssessments(id),
     getClassReteachHistory(id),
     getClassGroups(id),
+    getClassJoinRequests(id),
   ])
 
   if (classRes.error || !classRes.data) return notFound()
 
   const classDetails       = classRes.data
-  const courses            = coursesRes.data     ?? []
-  const assessments        = assessmentsRes.data  ?? []
-  const interventions      = interventionsRes.data ?? []
-  const groups             = groupsRes.data        ?? null
+  const courses            = coursesRes.data          ?? []
+  const assessments        = assessmentsRes.data       ?? []
+  const interventions      = interventionsRes.data      ?? []
+  const groups             = groupsRes.data             ?? null
+  const joinRequests       = joinRequestsRes.data       ?? []
   const latestAssessmentId = assessments[0]?.assessment_id ?? null
 
   const classWithTeachers = classesWithTeachersRes.data?.find((c) => c.class_id === id)
@@ -93,6 +96,7 @@ export default async function ClassDetailPage({ params }: ClassDetailPageProps) 
         latestAssessmentId={latestAssessmentId}
         interventions={interventions}
         groups={groups}
+        joinRequests={joinRequests}
       />
     </div>
   )

@@ -130,8 +130,8 @@ export function LearningToolsClient({ initialTools }: Props) {
       </div>
 
       {showNew && (
-        <div className="rounded-lg border border-dashed border-blue-300 bg-blue-50/30 p-4 space-y-3">
-          <p className="text-sm font-medium text-blue-900">New learning tool</p>
+        <div className="rounded-lg border border-dashed border-gold/30 bg-gold/5 p-4 space-y-3">
+          <p className="text-sm font-medium text-foreground">New learning tool</p>
           <ToolForm form={form} setForm={setForm} />
           <div className="flex gap-2">
             <Button size="sm" onClick={handleCreate} disabled={!form.name || !form.description || isPending}>
@@ -190,7 +190,7 @@ export function LearningToolsClient({ initialTools }: Props) {
                       {tool.delta_rating ? (
                         <div className="flex items-center gap-0.5">
                           {Array.from({ length: tool.delta_rating }).map((_, i) => (
-                            <Star key={i} className="h-3 w-3 fill-amber-400 text-amber-400" />
+                            <Star key={i} className="h-3 w-3 fill-gold text-gold" />
                           ))}
                         </div>
                       ) : (

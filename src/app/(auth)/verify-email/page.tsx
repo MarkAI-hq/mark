@@ -61,7 +61,7 @@ export default function VerifyEmailPage() {
         toast.error('Verification Failed', {
           description: error?.message || 'An error occurred. Redirecting to signup.',
         })
-        setTimeout(() => router.push('/register'), 3000)
+        setTimeout(() => router.push('/login'), 3000)
       }
     }
 

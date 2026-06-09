@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
@@ -168,38 +169,38 @@ export default function LearningCompassAssessment({
   const renderIntroduction = () => (
     <Card className="max-w-4xl mx-auto">
       <CardHeader className="text-center">
-        <CardTitle className="text-3xl font-bold text-blue-600">{assessment.title}</CardTitle>
+        <CardTitle className="text-3xl font-bold text-gold">{assessment.title}</CardTitle>
         <CardDescription className="text-lg">A Diagnostic Tool for Unlocking Student Potential</CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        <div className="bg-blue-50 p-6 rounded-lg">
+        <div className="bg-gold/5 border border-gold/20 p-6 rounded-xl">
           <h3 className="text-xl font-semibold mb-3">Hello, Future Scientist of Your Own Mind!</h3>
-          <p className="text-gray-700 mb-4">This is not a test. There are no right or wrong answers. This is your personal compass to help you become a &quot;Learning Scientist.&quot;</p>
-          <p className="text-gray-700">Your honest answers will give you a map to understand yourself. Let&apos;s begin our investigation!</p>
+          <p className="text-muted-foreground mb-4">This is not a test. There are no right or wrong answers. This is your personal compass to help you become a &quot;Learning Scientist.&quot;</p>
+          <p className="text-muted-foreground">Your honest answers will give you a map to understand yourself. Let&apos;s begin our investigation!</p>
         </div>
         <div className="space-y-4">
           <h3 className="text-xl font-semibold text-center">Assessment Overview</h3>
           <div className="grid md:grid-cols-2 gap-4">
             {sections.map((section) => (
-              <Card key={section.id} className="border-2 hover:border-blue-300 transition-colors">
+              <Card key={section.id} className="border-2 hover:border-gold/40 transition-colors">
                 <CardHeader className="pb-3">
                   <div className="flex items-center space-x-3">
-                    <Badge variant="secondary" className="text-lg px-3 py-1">{section.order}</Badge>
+                    <Badge variant="secondary" className="text-lg px-3 py-1 bg-gold/10 text-gold border-0">{section.order}</Badge>
                     <CardTitle className="text-lg">{section.title.replace(/Section [A-D]: /g, '')}</CardTitle>
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-sm text-gray-600 mb-3">{section.description}</p>
+                  <p className="text-sm text-muted-foreground mb-3">{section.description}</p>
                 </CardContent>
               </Card>
             ))}
           </div>
         </div>
-        <div className="space-y-4">
+        <div className="space-y-2">
           <Label htmlFor="student-name">Student Name:</Label>
-          <input id="student-name" type="text" value={studentName} onChange={(e) => setStudentName(e.target.value)} className="w-full p-3 border rounded-lg" placeholder="Enter student's name here..." />
+          <Input id="student-name" value={studentName} onChange={(e) => setStudentName(e.target.value)} placeholder="Enter student's name here..." />
         </div>
-        <Button onClick={() => setCurrentStep(1)} className="w-full" size="lg">Begin Assessment</Button>
+        <Button onClick={() => setCurrentStep(1)} className="w-full" size="lg" variant="gold">Begin Assessment</Button>
       </CardContent>
     </Card>
   );
@@ -211,7 +212,10 @@ export default function LearningCompassAssessment({
     return (
       <Card className="max-w-4xl mx-auto">
         <CardHeader>
-          <div className="flex items-center justify-between mb-4"><Badge variant="outline">Part 1: The Observation</Badge><span className="text-sm text-gray-500">Section {sectionIndex + 1} of {sections.length}</span></div>
+          <div className="flex items-center justify-between mb-4">
+            <Badge variant="outline" className="border-gold/30 text-gold">Part 1: The Observation</Badge>
+            <span className="text-sm text-muted-foreground">Section {sectionIndex + 1} of {sections.length}</span>
+          </div>
           <Progress value={sectionProgress} className="mb-4" />
           <CardTitle className="text-xl">{section.title}</CardTitle>
           <CardDescription>{section.description}</CardDescription>
@@ -219,12 +223,17 @@ export default function LearningCompassAssessment({
         <CardContent className="space-y-8">
           {section.questions.map((question, qIndex) => (
             <div key={question.id} className="space-y-4">
-              <div className="flex items-start space-x-3"><Badge variant="secondary" className="mt-1">{question.order + (section.order - 1) * 3}</Badge><p className="text-gray-800 font-medium">{question.text}</p></div>
+              <div className="flex items-start space-x-3">
+                <Badge variant="secondary" className="mt-1 bg-gold/10 text-gold border-0">{question.order + (section.order - 1) * 3}</Badge>
+                <p className="text-foreground font-medium">{question.text}</p>
+              </div>
               <RadioGroup value={answers[question.id] || ''} onValueChange={(value) => handleAnswerChange(question.id, value as 'a' | 'b' | 'c' | 'd')} className="ml-8">
                 {Object.entries(question.options).map(([key, text]) => (
-                  <div key={key} className="flex items-start space-x-3 p-3 rounded-lg hover:bg-gray-50">
+                  <div key={key} className="flex items-start space-x-3 p-3 rounded-lg hover:bg-muted/50">
                     <RadioGroupItem value={key} id={`q${question.id}-${key}`} className="mt-1" />
-                    <Label htmlFor={`q${question.id}-${key}`} className="flex-1 cursor-pointer text-gray-700 leading-relaxed"><span className="font-medium text-blue-600 mr-2">{key.toUpperCase()})</span>{text}</Label>
+                    <Label htmlFor={`q${question.id}-${key}`} className="flex-1 cursor-pointer text-muted-foreground leading-relaxed">
+                      <span className="font-medium text-gold mr-2">{key.toUpperCase()})</span>{text}
+                    </Label>
                   </div>
                 ))}
               </RadioGroup>
@@ -233,7 +242,7 @@ export default function LearningCompassAssessment({
           ))}
           <div className="flex justify-between pt-6">
             <Button variant="outline" onClick={() => setCurrentStep(currentStep - 1)} disabled={currentStep === 1}>Previous</Button>
-            <Button onClick={() => setCurrentStep(currentStep + 1)} disabled={!section.questions.every(q => answers[q.id])}>{currentStep === sections.length ? 'View Results' : 'Next Section'}</Button>
+            <Button onClick={() => setCurrentStep(currentStep + 1)} disabled={!section.questions.every(q => answers[q.id])} variant="gold">{currentStep === sections.length ? 'View Results' : 'Next Section'}</Button>
           </div>
         </CardContent>
       </Card>
@@ -242,27 +251,30 @@ export default function LearningCompassAssessment({
 
   const renderResults = () => (
     <Card className="max-w-4xl mx-auto">
-      <CardHeader className="text-center"><CardTitle className="text-2xl">Part 2: The Hypothesis</CardTitle><CardDescription>Discovering Your Learning Profile</CardDescription></CardHeader>
+      <CardHeader className="text-center">
+        <CardTitle className="text-2xl">Part 2: The Hypothesis</CardTitle>
+        <CardDescription>Discovering Your Learning Profile</CardDescription>
+      </CardHeader>
       <CardContent className="space-y-6">
         <div className="grid md:grid-cols-2 gap-6">
-          <div className="bg-blue-50 p-6 rounded-lg">
-            <h3 className="text-lg font-semibold text-blue-800 mb-2">Mental Energy Score</h3>
-            <div className="text-3xl font-bold text-blue-600">{scores.mentalEnergy}</div>
+          <div className="bg-gold/5 border border-gold/20 p-6 rounded-xl">
+            <h3 className="text-lg font-semibold text-foreground mb-2">Mental Energy Score</h3>
+            <div className="text-3xl font-bold text-gold">{scores.mentalEnergy}</div>
           </div>
-          <div className="bg-green-50 p-6 rounded-lg">
-            <h3 className="text-lg font-semibold text-green-800 mb-2">Learning Strategy Score</h3>
-            <div className="text-3xl font-bold text-green-600">{scores.learningStrategy}</div>
+          <div className="bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200/60 p-6 rounded-xl">
+            <h3 className="text-lg font-semibold text-foreground mb-2">Learning Strategy Score</h3>
+            <div className="text-3xl font-bold text-emerald-600">{scores.learningStrategy}</div>
           </div>
         </div>
         {profile && (
-          <div className="bg-gradient-to-r from-purple-50 to-blue-50 p-6 rounded-lg border-2 border-purple-200">
-            <div className="flex items-center space-x-3 mb-4">{profile.icon}<h2 className="text-2xl font-bold text-purple-800">{profile.profile_name}</h2></div>
-            <p className="text-gray-700 mb-3">{profile.description}</p>
+          <div className="bg-surface-raised p-6 rounded-xl border border-gold/20">
+            <div className="flex items-center space-x-3 mb-4 text-gold">{profile.icon}<h2 className="text-2xl font-bold text-foreground">{profile.profile_name}</h2></div>
+            <p className="text-muted-foreground mb-3">{profile.description}</p>
           </div>
         )}
         <div className="flex justify-between">
           <Button variant="outline" onClick={() => setCurrentStep(currentStep - 1)}>Previous</Button>
-          <Button onClick={() => setCurrentStep(currentStep + 1)}>Explore Your Toolkit</Button>
+          <Button onClick={() => setCurrentStep(currentStep + 1)} variant="gold">Explore Your Toolkit</Button>
         </div>
       </CardContent>
     </Card>
@@ -270,27 +282,35 @@ export default function LearningCompassAssessment({
 
   const renderToolkit = () => (
     <Card className="max-w-4xl mx-auto">
-      <CardHeader className="text-center"><CardTitle className="text-2xl">Part 3: The Experiment</CardTitle><CardDescription>Your Personalised Toolkit</CardDescription></CardHeader>
+      <CardHeader className="text-center">
+        <CardTitle className="text-2xl">Part 3: The Experiment</CardTitle>
+        <CardDescription>Your Personalised Toolkit</CardDescription>
+      </CardHeader>
       <CardContent className="space-y-6">
         {profile && (
           <>
-            <div className="bg-gradient-to-r from-purple-50 to-blue-50 p-6 rounded-lg">
-              <div className="flex items-center space-x-3 mb-4">{profile.icon}<h2 className="text-xl font-bold text-purple-800">{profile.profile_name}</h2></div>
-              <div className="space-y-3"><div><h3 className="font-semibold text-gray-800">Your Focus:</h3><p className="text-gray-700">{profile.focus}</p></div></div>
+            <div className="bg-surface-raised border border-gold/20 p-6 rounded-xl">
+              <div className="flex items-center space-x-3 mb-4 text-gold">{profile.icon}<h2 className="text-xl font-bold text-foreground">{profile.profile_name}</h2></div>
+              <div className="space-y-3">
+                <div>
+                  <h3 className="font-semibold text-foreground">Your Focus:</h3>
+                  <p className="text-muted-foreground">{profile.focus}</p>
+                </div>
+              </div>
             </div>
             <div className="space-y-4">
               <h3 className="text-xl font-semibold">Your Upgraded Tools:</h3>
               {profile.tools.map((tool) => (
-                <div key={tool.id} className="border rounded-lg p-5 hover:shadow-md transition-shadow">
+                <div key={tool.id} className="border border-border rounded-xl p-5 hover:shadow-sm transition-shadow bg-card">
                   <div className="flex items-start justify-between mb-3">
-                    <h4 className="text-lg font-semibold text-blue-700">{tool.name}</h4>
-                    <input type="checkbox" checked={selectedTools.includes(tool.name)} onChange={(e) => { if (e.target.checked) { setSelectedTools([...selectedTools, tool.name]); } else { setSelectedTools(selectedTools.filter(t => t !== tool.name)); } }} className="w-5 h-5 cursor-pointer" />
+                    <h4 className="text-base font-semibold text-foreground">{tool.name}</h4>
+                    <input type="checkbox" checked={selectedTools.includes(tool.name)} onChange={(e) => { if (e.target.checked) { setSelectedTools([...selectedTools, tool.name]); } else { setSelectedTools(selectedTools.filter(t => t !== tool.name)); } }} className="w-5 h-5 cursor-pointer accent-[hsl(var(--gold))]" />
                   </div>
-                  <p className="text-gray-700 mb-3">{tool.description}</p>
+                  <p className="text-muted-foreground mb-3">{tool.description}</p>
                   {tool.how_to && (
-                    <div className="bg-gray-50 p-4 rounded-lg">
-                      <h5 className="font-medium text-gray-800 mb-2">How to use it:</h5>
-                      <p className="text-sm text-gray-700">{tool.how_to}</p>
+                    <div className="bg-muted/50 p-4 rounded-lg">
+                      <h5 className="font-medium text-foreground mb-2">How to use it:</h5>
+                      <p className="text-sm text-muted-foreground">{tool.how_to}</p>
                     </div>
                   )}
                 </div>
@@ -300,7 +320,7 @@ export default function LearningCompassAssessment({
         )}
         <div className="flex justify-between">
           <Button variant="outline" onClick={() => setCurrentStep(currentStep - 1)}>Previous</Button>
-          <Button onClick={() => setCurrentStep(currentStep + 1)}>Create Action Plan</Button>
+          <Button onClick={() => setCurrentStep(currentStep + 1)} variant="gold">Create Action Plan</Button>
         </div>
       </CardContent>
     </Card>
@@ -308,18 +328,47 @@ export default function LearningCompassAssessment({
 
   const renderActionPlan = () => (
     <Card className="max-w-4xl mx-auto">
-      <CardHeader className="text-center"><CardTitle className="text-2xl">Part 4: My Learning Action Plan</CardTitle></CardHeader>
+      <CardHeader className="text-center">
+        <CardTitle className="text-2xl">Part 4: My Learning Action Plan</CardTitle>
+      </CardHeader>
       <CardContent className="space-y-6">
         <div className="space-y-6">
-          <div><Label className="text-lg font-semibold">Scientist&apos;s Name:</Label><div className="mt-2 p-3 border rounded-lg bg-gray-50">{studentName || 'Student Name'}</div></div>
+          <div>
+            <Label className="text-base font-semibold">Scientist&apos;s Name:</Label>
+            <div className="mt-2 p-3 border border-border rounded-lg bg-muted/40 text-foreground">{studentName || 'Student Name'}</div>
+          </div>
           <Separator />
-          <div><h3 className="text-lg font-semibold mb-3">My Learning Profile</h3>{profile && (<div className="space-y-4"><div><div className="mt-2 p-3 border rounded-lg bg-gray-50 flex items-center space-x-3">{profile.icon}<span className="font-semibold">{profile.profile_name}</span></div></div></div>)}</div>
+          <div>
+            <h3 className="text-base font-semibold mb-3">My Learning Profile</h3>
+            {profile && (
+              <div className="mt-2 p-3 border border-gold/20 rounded-xl bg-gold/5 flex items-center space-x-3 text-gold">
+                {profile.icon}
+                <span className="font-semibold text-foreground">{profile.profile_name}</span>
+              </div>
+            )}
+          </div>
           <Separator />
-          <div><h3 className="text-lg font-semibold mb-3">My Experimental Toolkit</h3><div className="mt-2 p-4 border rounded-lg bg-gray-50">{selectedTools.length > 0 ? (<ul className="space-y-2">{selectedTools.map((tool, index) => (<li key={index} className="flex items-center space-x-2"><CheckCircle2 className="w-5 h-5 text-green-600" /><span>{tool}</span></li>))}</ul>) : (<p className="text-gray-500 italic">No tools selected yet.</p>)}</div></div>
+          <div>
+            <h3 className="text-base font-semibold mb-3">My Experimental Toolkit</h3>
+            <div className="mt-2 p-4 border border-border rounded-xl bg-muted/40">
+              {selectedTools.length > 0 ? (
+                <ul className="space-y-2">
+                  {selectedTools.map((tool, index) => (
+                    <li key={index} className="flex items-center space-x-2">
+                      <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                      <span className="text-foreground">{tool}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-muted-foreground italic">No tools selected yet.</p>
+              )}
+            </div>
+          </div>
         </div>
         <div className="flex justify-between pt-6">
           <Button variant="outline" onClick={() => setCurrentStep(currentStep - 1)} disabled={isPending}>Previous</Button>
-          <Button onClick={handleSaveAndGenerateReport} disabled={isPending}>
+          <Button onClick={handleSaveAndGenerateReport} disabled={isPending} variant="gold">
             {isPending ? 'Saving & Generating...' : 'Save & Download PDF Report'}
           </Button>
         </div>
@@ -328,16 +377,16 @@ export default function LearningCompassAssessment({
   );
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4">
+    <div className="min-h-screen bg-background py-8 px-4">
       <div className="max-w-6xl mx-auto">
         <div className="mb-8">
-          <Card className="bg-gradient-to-r from-blue-50 to-purple-50 border-blue-200">
+          <Card className="glass border-gold/20">
             <CardContent className="p-6">
               <div className="flex items-center justify-between mb-6">
-                <h1 className="text-3xl font-bold text-blue-800">{assessment.title}</h1>
-                <Badge variant="secondary" className="text-lg px-4 py-2 bg-white/80">Step {currentStep + 1} of {steps.length}</Badge>
+                <h1 className="text-3xl font-bold text-foreground">{assessment.title}</h1>
+                <Badge variant="secondary" className="text-lg px-4 py-2 bg-gold/10 text-gold border-0">Step {currentStep + 1} of {steps.length}</Badge>
               </div>
-              <Progress value={(currentStep / (steps.length - 1)) * 100} className="h-3 bg-blue-100" />
+              <Progress value={(currentStep / (steps.length - 1)) * 100} className="h-3" />
             </CardContent>
           </Card>
         </div>

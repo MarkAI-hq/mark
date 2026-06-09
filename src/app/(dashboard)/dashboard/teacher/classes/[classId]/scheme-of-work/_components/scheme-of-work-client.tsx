@@ -2,11 +2,11 @@
 
 // src/app/(dashboard)/dashboard/teacher/classes/[classId]/scheme-of-work/_components/scheme-of-work-client.tsx
 
-import { useState, useTransition } from 'react'
+import { useState, useTransition, useRef } from 'react'
 import {
   BookOpen, CheckCircle2, Circle, Plus, Sparkles,
   FileText, Link2, ChevronDown, ChevronUp, Layers,
-  Send, Users, AlertCircle, Pencil,
+  Send, Users, AlertCircle, Pencil, FileUp,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { format, parseISO } from 'date-fns'
@@ -30,7 +30,7 @@ import {
 import {
   updateSchemeEntry, updateSchemeOfWork,
   assignSchemeToClass, generateSchemeFromNotes,
-  importSchemeFromCsv, createSchemeOfWork,
+  importSchemeFromCsv, importSchemeFromPdf, createSchemeOfWork,
   type SchemeOfWork, type SchemeOfWorkEntry,
 } from '@/lib/actions/scheme-of-work'
 import { dispatchStudyPlans } from '@/lib/actions/study-plans'
@@ -215,7 +215,7 @@ function EntryRow({
 
 // ── CreateSowDialog ─────────────────────────────────────────────────────────
 
-type CreateMode = 'manual' | 'notes' | 'csv'
+type CreateMode = 'manual' | 'notes' | 'csv' | 'pdf'
 
 function CreateSowDialog({
   open,
@@ -230,6 +230,8 @@ function CreateSowDialog({
 }) {
   const [mode, setMode]     = useState<CreateMode>('notes')
   const [isPending, startT] = useTransition()
+  const [pdfFile, setPdfFile] = useState<File | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [form, setForm] = useState({
     subject:        '',
@@ -267,6 +269,17 @@ function CreateSowDialog({
       } else if (mode === 'csv') {
         if (!form.csv.trim()) { toast.error('Please paste your CSV data.'); return }
         res = await importSchemeFromCsv({ ...base, csv: form.csv })
+      } else if (mode === 'pdf') {
+        if (!pdfFile) { toast.error('Please select a PDF file.'); return }
+        const fd = new FormData()
+        fd.append('file', pdfFile)
+        fd.append('subject', base.subject)
+        fd.append('grade_level', base.grade_level)
+        fd.append('term', base.term)
+        fd.append('academic_year', base.academic_year)
+        fd.append('term_start_date', base.term_start_date)
+        fd.append('total_weeks', String(base.total_weeks))
+        res = await importSchemeFromPdf(fd)
       } else {
         const title = form.title || `${base.subject} — ${base.term} ${base.academic_year}`
         res = await createSchemeOfWork({ ...base, title })
@@ -292,9 +305,10 @@ function CreateSowDialog({
         </DialogHeader>
 
         {/* Mode selector */}
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-4 gap-2">
           {([
             { id: 'notes', label: 'From Notes', icon: FileText },
+            { id: 'pdf',   label: 'Upload PDF', icon: FileUp },
             { id: 'csv',   label: 'From CSV',   icon: Layers },
             { id: 'manual',label: 'Manual',      icon: Plus },
           ] as const).map(({ id, label, icon: Icon }) => (
@@ -385,6 +399,51 @@ function CreateSowDialog({
             </div>
           )}
 
+          {mode === 'pdf' && (
+            <div className="space-y-1.5">
+              <Label>PDF file *</Label>
+              <p className="text-xs text-muted-foreground">
+                Upload a syllabus, textbook chapter, or teaching plan — AI will extract the weekly topic structure.
+              </p>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="application/pdf"
+                className="hidden"
+                onChange={(e) => setPdfFile(e.target.files?.[0] ?? null)}
+              />
+              {pdfFile ? (
+                <div className="flex items-center gap-3 rounded-xl border border-gold/40 bg-gold/5 px-4 py-3">
+                  <FileText className="h-8 w-8 shrink-0 text-gold" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{pdfFile.name}</p>
+                    <p className="text-xs text-muted-foreground">{(pdfFile.size / 1024 / 1024).toFixed(1)} MB</p>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-xs shrink-0"
+                    onClick={() => { setPdfFile(null); if (fileInputRef.current) fileInputRef.current.value = '' }}
+                  >
+                    Remove
+                  </Button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  className="flex w-full flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-border p-8 text-center transition-colors hover:border-muted-foreground/40 hover:bg-muted/30"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  <FileUp className="h-8 w-8 text-muted-foreground" />
+                  <div>
+                    <p className="text-sm font-medium">Click to browse or drop a PDF</p>
+                    <p className="text-xs text-muted-foreground">Max 20 MB</p>
+                  </div>
+                </button>
+              )}
+            </div>
+          )}
+
           {mode === 'manual' && (
             <div className="rounded-lg bg-muted/50 p-3 text-xs text-muted-foreground">
               A blank SoW header will be created. You can add entries manually after creation.
@@ -396,10 +455,10 @@ function CreateSowDialog({
           <Button variant="outline" onClick={onClose}>Cancel</Button>
           <Button onClick={handleSubmit} disabled={isPending} className="gap-2">
             {isPending ? (
-              <>Creating{mode === 'notes' ? ' with AI...' : '...'}</>
+              <>{mode === 'notes' || mode === 'pdf' ? 'Analysing with AI...' : 'Creating...'}</>
             ) : (
               <>
-                {mode === 'notes' && <Sparkles className="h-4 w-4" />}
+                {(mode === 'notes' || mode === 'pdf') && <Sparkles className="h-4 w-4" />}
                 Create SoW
               </>
             )}

@@ -124,6 +124,38 @@ export async function getStudentExamHistory(studentId: string): Promise<ExamHist
   }
 }
 
+// ── Social proof ───────────────────────────────────────────────────────────
+// ── Subject progress ───────────────────────────────────────────────────────
+export async function getStudentSubjectProgress(studentId: string): Promise<SubjectProgress[]> {
+  try {
+    const headers = await authHeaders()
+    const res = await fetch(`${API}/api/v1/analytics/student/${studentId}/subject-progress`, {
+      headers,
+      cache: 'no-store',
+    })
+    if (!res.ok) return []
+    return res.json()
+  } catch (err) {
+    console.error('[getStudentSubjectProgress]', err)
+    return []
+  }
+}
+
+export async function getStudentSocialProof(studentId: string): Promise<SocialProof | null> {
+  try {
+    const headers = await authHeaders()
+    const res = await fetch(`${API}/api/v1/analytics/student/${studentId}/social-proof`, {
+      headers,
+      cache: 'no-store',
+    })
+    if (!res.ok) return null
+    return res.json()
+  } catch (err) {
+    console.error('[getStudentSocialProof]', err)
+    return null
+  }
+}
+
 // ── Learning toolkits ──────────────────────────────────────────────────────
 export async function getStudentLearningTools(studentId: string): Promise<LearningTool[]> {
   try {
@@ -306,4 +338,18 @@ export interface ExamHistoryItem {
   original_submission_url?: string | null
   annotated_script_url?:    string | null
   responses:                StudentResponse[]
+}
+
+export interface SocialProof {
+  rank_percentile:           number | null
+  peers_completed_this_week: number
+  student_avg:               number
+}
+
+export interface SubjectProgress {
+  subject:          string
+  assessment_count: number
+  avg_percentage:   number
+  latest_score:     number
+  mastery_label:    'strong' | 'developing' | 'at_risk' | 'critical'
 }

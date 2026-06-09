@@ -77,7 +77,7 @@ export default function StudentLoginPage() {
       </div>
 
       {/* ── Right panel — form ───────────────────────────────────────── */}
-      <div className="flex flex-col justify-center items-center px-8 py-16 sm:px-16 lg:px-24 bg-slate-50">
+      <div className="flex flex-col justify-center items-center px-8 py-16 sm:px-16 lg:px-24 bg-background">
 
         {/* Mobile logo */}
         <div className="flex items-center gap-2.5 mb-8 lg:hidden self-start">
@@ -91,10 +91,10 @@ export default function StudentLoginPage() {
         </div>
 
         {/* Card */}
-        <div className="w-full max-w-sm bg-white rounded-2xl border border-slate-200 shadow-sm px-8 py-10 space-y-8">
+        <div className="w-full max-w-sm bg-card rounded-2xl border border-border shadow-sm px-8 py-10 space-y-8">
           <div className="space-y-1.5">
-            <h2 className="text-2xl font-bold text-slate-900">Student sign in</h2>
-            <p className="text-sm text-slate-500">
+            <h2 className="text-2xl font-bold text-foreground">Student sign in</h2>
+            <p className="text-sm text-muted-foreground">
               Use the details on your student card to access your portal.
             </p>
           </div>

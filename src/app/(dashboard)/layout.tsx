@@ -2,7 +2,10 @@ import { redirect } from 'next/navigation'
 import Script from 'next/script'
 import { getSession } from '@/lib/session'
 import { getOrganizationDetails } from '@/lib/actions/organizations'
+import { getSchoolStats } from '@/lib/actions/school-revenue'
+import { getUsdRates } from '@/lib/actions/exchange-rates'
 import { DashboardShell } from '@/components/layout/dashboard-shell'
+import { CurrencyProvider } from '@/components/providers/currency-provider'
 
 export default async function DashboardLayout({
   children,
@@ -15,9 +18,13 @@ export default async function DashboardLayout({
     redirect('/login')
   }
 
-  const { data: organization } = session.organizationId
-    ? await getOrganizationDetails(session.organizationId)
-    : { data: null }
+  const [orgResult, statsRes, rates] = await Promise.all([
+    session.organizationId
+      ? getOrganizationDetails(session.organizationId)
+      : Promise.resolve({ data: null }),
+    getSchoolStats(),
+    getUsdRates(),
+  ])
 
   return (
     <>
@@ -30,9 +37,11 @@ Cal("init", "30min", {origin:"https://app.cal.com"});
 Cal.ns["30min"]("ui", {"hideEventTypeDetails":false,"layout":"month_view"});`,
         }}
       />
-      <DashboardShell organizationName={organization?.name}>
-        {children}
-      </DashboardShell>
+      <CurrencyProvider initialCurrency={statsRes.data?.currency ?? 'USD'} rates={rates}>
+        <DashboardShell organizationName={orgResult.data?.name} isPublic={orgResult.data?.is_public ?? false}>
+          {children}
+        </DashboardShell>
+      </CurrencyProvider>
     </>
   )
 }

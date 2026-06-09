@@ -8,12 +8,19 @@ import { formatDistanceToNow }      from 'date-fns'
 import {
   Users, UserPlus, Trash2, MailCheck,
   CheckCircle2, Hourglass, XCircle, Loader2, Settings2, ChevronUp,
+  InboxIcon, Check, X, Plus, BookOpen,
 } from 'lucide-react'
 import { toast } from 'sonner'
 
-import type { ClassTeacher }     from '@/lib/actions/classes'
-import type { OrganizationUser } from '@/lib/actions/organizations'
-import { assignTeacherToClass, removeTeacherFromClass, updateTeacherPrivileges } from '@/lib/actions/classes'
+import type { ClassTeacher, AdminClassJoinRequest } from '@/lib/actions/classes'
+import type { AssignedCourse } from '@/lib/types'
+import type { OrganizationUser }                    from '@/lib/actions/organizations'
+import type { Subject }                             from '@/lib/types'
+import {
+  assignTeacherToClass, removeTeacherFromClass, updateTeacherPrivileges,
+  respondToJoinRequest, assignSubjectToClass, removeCourseFromClass,
+  getOrgSubjects,
+} from '@/lib/actions/classes'
 import { inviteUserToOrganization } from '@/lib/actions/organizations'
 
 import { Button }                 from '@/components/ui/button'
@@ -71,29 +78,105 @@ const STATUS_CONFIG = {
 } satisfies Record<ClassTeacher['status'], { label: string; icon: React.ElementType; className: string }>
 
 interface ClassTeachersTabProps {
-  classId:        string
-  teachers:       ClassTeacher[]
-  orgTeachers:    OrganizationUser[]
-  organizationId: string
+  classId:          string
+  teachers:         ClassTeacher[]
+  orgTeachers:      OrganizationUser[]
+  organizationId:   string
+  joinRequests?:    AdminClassJoinRequest[]
+  initialCourses?:  AssignedCourse[]
+  onCourseAssigned?: (course: AssignedCourse) => void
+  onCourseRemoved?:  (courseId: string) => void
 }
 
 // ── Component ──────────────────────────────────────────────────────────────
 
-export function ClassTeachersTab({ classId, teachers: initialTeachers, orgTeachers, organizationId }: ClassTeachersTabProps) {
+export function ClassTeachersTab({
+  classId, teachers: initialTeachers, orgTeachers, organizationId,
+  joinRequests: initialRequests = [],
+  initialCourses = [],
+  onCourseAssigned,
+  onCourseRemoved,
+}: ClassTeachersTabProps) {
   const router = useRouter()
   const [isPending,       startTransition]  = useTransition()
   const [teachers,        setTeachers]      = useState<ClassTeacher[]>(initialTeachers)
+  const [joinReqs,        setJoinReqs]      = useState<AdminClassJoinRequest[]>(initialRequests)
+  const [localCourses,    setLocalCourses]  = useState<AssignedCourse[]>(initialCourses)
+  const [allSubjects,     setAllSubjects]   = useState<Subject[]>([])
+  const [subjectsLoaded,  setSubjectsLoaded] = useState(false)
   const [selectedEmail,   setSelectedEmail] = useState('')
   const [newPrivileges,   setNewPrivileges] = useState<Privileges>(DEFAULT_PRIVILEGES)
   const [showPrivileges,  setShowPrivileges] = useState(false)
   const [teacherToRemove, setTeacherToRemove] = useState<ClassTeacher | null>(null)
   const [expandedTeacher, setExpandedTeacher] = useState<string | null>(null)
-
   const [inviteEmail,     setInviteEmail]    = useState('')
   const [isInviting,      setIsInviting]     = useState(false)
 
+  // Subject picker state
+  const [subjectTeacherId,  setSubjectTeacherId]  = useState<string | null>(null)
+  const [selectedCourseId,  setSelectedCourseId]  = useState('')
+  const [courseAssigning,   setCourseAssigning]   = useState(false)
+  const [courseRemoving,    setCourseRemoving]    = useState<string | null>(null)
+
   const assignedEmails    = new Set(teachers.map((t) => t.email))
   const availableTeachers = orgTeachers.filter((t) => !assignedEmails.has(t.email))
+
+  async function loadSubjects() {
+    if (subjectsLoaded) return
+    const { data } = await getOrgSubjects()
+    if (data) setAllSubjects(data)
+    setSubjectsLoaded(true)
+  }
+
+  async function openSubjectPicker(teacherId: string) {
+    setSubjectTeacherId(teacherId)
+    setSelectedCourseId('')
+    await loadSubjects()
+  }
+
+  async function handleAssignCourse(teacherId: string) {
+    if (!selectedCourseId) return
+    setCourseAssigning(true)
+    try {
+      await assignSubjectToClass(classId, selectedCourseId, teacherId)
+      const subject  = allSubjects.find((s) => s.id === selectedCourseId)!
+      const teacher  = teachers.find((t) => t.teacher_id === teacherId)!
+      const newEntry: AssignedCourse = {
+        id:                 `${selectedCourseId}-${teacherId}`,
+        course_id:          selectedCourseId,
+        course_title:       subject.name,
+        course_code:        subject.code ?? '',
+        course_description: subject.description ?? null,
+        teacher_id:         teacherId,
+        teacher_name:       teacher.first_name,
+        teacher_lastname:   teacher.last_name,
+        assigned_at:        new Date().toISOString(),
+      } as AssignedCourse
+      setLocalCourses((prev) => [...prev, newEntry])
+      onCourseAssigned?.(newEntry)
+      setSubjectTeacherId(null)
+      setSelectedCourseId('')
+      toast.success(`"${subject.name}" assigned to ${teacher.first_name}.`)
+    } catch (err: any) {
+      toast.error(err.message ?? 'Failed to assign subject.')
+    } finally {
+      setCourseAssigning(false)
+    }
+  }
+
+  async function handleRemoveCourse(courseId: string, courseTitle: string) {
+    setCourseRemoving(courseId)
+    try {
+      await removeCourseFromClass(classId, courseId)
+      setLocalCourses((prev) => prev.filter((c) => c.course_id !== courseId))
+      onCourseRemoved?.(courseId)
+      toast.success(`"${courseTitle}" removed.`)
+    } catch (err: any) {
+      toast.error(err.message ?? 'Failed to remove subject.')
+    } finally {
+      setCourseRemoving(null)
+    }
+  }
 
   const handleInviteTeacher = async () => {
     if (!inviteEmail || isInviting) return
@@ -173,25 +256,103 @@ export function ClassTeachersTab({ classId, teachers: initialTeachers, orgTeache
       ) : (
         <div className="divide-y rounded-lg border overflow-hidden">
           {teachers.map((teacher) => {
-            const config     = STATUS_CONFIG[teacher.status]
-            const StatusIcon = config.icon
-            const initials   = `${teacher.first_name[0]}${teacher.last_name[0]}`.toUpperCase()
-            const isExpanded = expandedTeacher === teacher.teacher_id
+            const config          = STATUS_CONFIG[teacher.status]
+            const StatusIcon      = config.icon
+            const initials        = `${teacher.first_name[0]}${teacher.last_name[0]}`.toUpperCase()
+            const isExpanded      = expandedTeacher === teacher.teacher_id
+            const isPickerOpen    = subjectTeacherId === teacher.teacher_id
+            const teacherCourses  = localCourses.filter((c) => c.teacher_id === teacher.teacher_id)
+            const unassignedSubjects = allSubjects.filter(
+              (s) => !localCourses.some((lc) => lc.course_id === s.id),
+            )
 
             return (
               <div key={teacher.class_teacher_id} className="bg-card">
-                <div className="flex items-center gap-3 px-4 py-3">
-                  <Avatar className="h-8 w-8 shrink-0">
+                <div className="flex items-start gap-3 px-4 py-3">
+                  <Avatar className="h-8 w-8 shrink-0 mt-0.5">
                     <AvatarFallback className="text-xs bg-primary/10 text-primary font-medium">
                       {initials}
                     </AvatarFallback>
                   </Avatar>
 
                   <div className="flex-1 min-w-0">
+                    {/* Name + email */}
                     <p className="text-sm font-medium truncate">
                       {teacher.first_name} {teacher.last_name}
                     </p>
                     <p className="text-xs text-muted-foreground truncate">{teacher.email}</p>
+
+                    {/* Subject chips */}
+                    <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                      {teacherCourses.map((c) => (
+                        <span
+                          key={c.course_id}
+                          className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary"
+                        >
+                          <BookOpen className="h-2.5 w-2.5" />
+                          {c.course_title}
+                          <button
+                            onClick={() => handleRemoveCourse(c.course_id, c.course_title)}
+                            disabled={courseRemoving === c.course_id}
+                            className="ml-0.5 hover:text-destructive transition-colors disabled:opacity-50"
+                            title={`Remove ${c.course_title}`}
+                          >
+                            <X className="h-2.5 w-2.5" />
+                          </button>
+                        </span>
+                      ))}
+
+                      {teacher.status === 'active' && (
+                        <button
+                          onClick={() => isPickerOpen ? setSubjectTeacherId(null) : openSubjectPicker(teacher.teacher_id)}
+                          className="inline-flex items-center gap-0.5 rounded-full border border-dashed border-muted-foreground/40 px-2 py-0.5 text-xs text-muted-foreground hover:border-primary hover:text-primary transition-colors"
+                        >
+                          <Plus className="h-2.5 w-2.5" />
+                          {teacherCourses.length === 0 ? 'Assign subject' : 'Subject'}
+                        </button>
+                      )}
+
+                      {teacher.status === 'pending' && teacherCourses.length === 0 && (
+                        <span className="text-xs text-muted-foreground italic">
+                          Awaiting invite acceptance — assign subjects once active
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Inline subject picker */}
+                    {isPickerOpen && (
+                      <div className="mt-2 flex items-center gap-2">
+                        <Select value={selectedCourseId} onValueChange={setSelectedCourseId}>
+                          <SelectTrigger className="h-8 flex-1 text-xs">
+                            <SelectValue placeholder={!subjectsLoaded ? 'Loading…' : unassignedSubjects.length === 0 ? 'No subjects available' : 'Select subject'} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {unassignedSubjects.map((s) => (
+                              <SelectItem key={s.id} value={s.id} className="text-xs">
+                                {s.name}
+                                {s.code && <span className="text-muted-foreground ml-1.5">· {s.code}</span>}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Button
+                          size="sm"
+                          className="h-8 text-xs px-3"
+                          onClick={() => handleAssignCourse(teacher.teacher_id)}
+                          disabled={!selectedCourseId || courseAssigning || unassignedSubjects.length === 0}
+                        >
+                          {courseAssigning ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Assign'}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-8 text-xs px-2"
+                          onClick={() => setSubjectTeacherId(null)}
+                        >
+                          Cancel
+                        </Button>
+                      </div>
+                    )}
                   </div>
 
                   <div className="flex items-center gap-2 shrink-0">
@@ -348,6 +509,80 @@ export function ClassTeachersTab({ classId, teachers: initialTeachers, orgTeache
           </div>
         )}
       </div>
+
+      {/* ── Join Requests ────────────────────────────────────────────────── */}
+      {joinReqs.length > 0 && (
+        <>
+          <Separator />
+          <div className="space-y-3">
+            <p className="text-sm font-medium flex items-center gap-1.5">
+              <InboxIcon className="h-3.5 w-3.5 text-muted-foreground" />
+              Join Requests
+              <span className="ml-1 rounded-full bg-amber-500 px-1.5 py-0.5 text-[10px] font-semibold text-white leading-none">
+                {joinReqs.filter(r => r.status === 'pending').length}
+              </span>
+            </p>
+            <div className="divide-y rounded-lg border overflow-hidden">
+              {joinReqs.map(req => (
+                <div key={req.request_id} className="flex items-center gap-3 px-4 py-3 bg-card">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-amber-100 text-xs font-medium text-amber-800">
+                    {req.first_name[0]}{req.last_name[0]}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium">{req.first_name} {req.last_name}</p>
+                    <p className="text-xs text-muted-foreground">{req.email}</p>
+                    {req.message && (
+                      <p className="text-xs text-muted-foreground mt-0.5 italic">&ldquo;{req.message}&rdquo;</p>
+                    )}
+                  </div>
+                  {req.status === 'pending' ? (
+                    <div className="flex items-center gap-2 shrink-0">
+                      <Button
+                        size="sm"
+                        className="h-7 gap-1 text-xs bg-emerald-600 hover:bg-emerald-700 text-white"
+                        disabled={isPending}
+                        onClick={() => {
+                          startTransition(async () => {
+                            const { error } = await respondToJoinRequest(classId, req.request_id, 'approve')
+                            if (error) { toast.error(error.message); return }
+                            setJoinReqs(prev => prev.filter(r => r.request_id !== req.request_id))
+                            router.refresh()
+                            toast.success(`${req.first_name} added to class.`)
+                          })
+                        }}
+                      >
+                        <Check className="h-3 w-3" /> Approve
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 gap-1 text-xs text-destructive border-destructive/40 hover:bg-destructive/5"
+                        disabled={isPending}
+                        onClick={() => {
+                          startTransition(async () => {
+                            const { error } = await respondToJoinRequest(classId, req.request_id, 'decline')
+                            if (error) { toast.error(error.message); return }
+                            setJoinReqs(prev => prev.map(r => r.request_id === req.request_id ? { ...r, status: 'declined' } : r))
+                            toast.info(`Request from ${req.first_name} declined.`)
+                          })
+                        }}
+                      >
+                        <X className="h-3 w-3" /> Decline
+                      </Button>
+                    </div>
+                  ) : (
+                    <Badge variant="outline" className={req.status === 'approved'
+                      ? 'text-emerald-700 border-emerald-200 bg-emerald-50 text-xs'
+                      : 'text-rose-700 border-rose-200 bg-rose-50 text-xs'}>
+                      {req.status === 'approved' ? 'Approved' : 'Declined'}
+                    </Badge>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
 
       <ConfirmDialog
         open={!!teacherToRemove}

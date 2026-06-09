@@ -2,8 +2,9 @@
 
 // src/lib/actions/auth.ts
 
-import { cookies } from 'next/headers'
-import { fetcher } from '../fetch'
+import { cookies }        from 'next/headers'
+import { revalidatePath } from 'next/cache'
+import { fetcher }        from '../fetch'
 import type {
   LoginResponse,
   RegisterResponse,
@@ -199,6 +200,7 @@ export async function verifyEmail(token: string) {
       })
     }
 
+    revalidatePath('/dashboard/settings/members')
     return { data, error: null }
   } catch (err) {
     return {

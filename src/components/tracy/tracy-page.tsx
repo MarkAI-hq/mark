@@ -1,10 +1,11 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
+import { useAuth } from "@/hooks/use-auth";
 import {
-  Paperclip, ArrowUp, RotateCcw, Sparkles, X,
+  Paperclip, ArrowUp, RotateCcw, X,
   FileText, Image as ImageIcon, PanelRightClose, PanelRightOpen,
-  ChevronRight, ClipboardList, BarChart2, BookOpen, Brain,
+  ChevronRight, ChevronLeft, ClipboardList, BarChart2, BookOpen, Brain,
   AlertCircle, Copy, Check, Square, ChevronDown, History,
   PenSquare, PenLine, Trash2, Search, ExternalLink,
 } from "lucide-react";
@@ -28,6 +29,7 @@ interface Message {
   attachments?: UploadedFile[];
   artifactId?: string;
   nextOptions?: ConfirmationOption[];
+  widgetHtml?: string;
 }
 
 interface UploadedFile {
@@ -105,9 +107,11 @@ const ARTIFACT_ICONS: Record<ArtifactType, React.ReactNode> = {
 
 // ── Regex patterns ────────────────────────────────────────────────────────────
 
-const ARTIFACT_RE = /(?:^|\n)(?:__)?ARTIFACT(?:__)?\s*:\s*(\{[\s\S]*)/;
-const CONFIRM_RE  = /(?:^|\n)(?:__)?CONFIRM(?:__)?\s*:\s*(\{[\s\S]*)/;
-const NEXT_RE     = /(?:^|\n)(?:__)?NEXT(?:__)?\s*:\s*(\{[\s\S]*)/;
+const ARTIFACT_RE        = /(?:^|\n)(?:__)?ARTIFACT(?:__)?\s*:\s*(\{[\s\S]*)/;
+const CONFIRM_RE         = /(?:^|\n)(?:__)?CONFIRM(?:__)?\s*:\s*(\{[\s\S]*)/;
+const NEXT_RE            = /(?:^|\n)(?:__)?NEXT(?:__)?\s*:\s*(\{[\s\S]*)/;
+const WIDGET_RE          = /(?:^|\n)(?:__)?WIDGET(?:__)?\s*:\s*([\s\S]+)/;
+const NEXT_RE_IN_WIDGET  = /\n(?:__)?NEXT(?:__)?\s*:\s*(\{[\s\S]*)/;
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -491,34 +495,49 @@ function ArtifactPanel({
   );
 }
 
-// ── Form View ─────────────────────────────────────────────────────────────────
+// ── Form View (multi-step wizard) ────────────────────────────────────────────
 
 function FormView({ data, onSendMessage }: { data: any; onSendMessage: (msg: string) => void }) {
   const allFields: any[] = data.fields ?? [];
-  const visibleFields = allFields.filter((f) => f.type !== "hidden");
-  const hiddenFields  = allFields.filter((f) => f.type === "hidden");
+  const hiddenFields  = allFields.filter((f: any) => f.type === "hidden");
+  const selectFields  = allFields.filter((f: any) => f.type === "select");
+  const detailFields  = allFields.filter((f: any) => f.type !== "hidden" && f.type !== "select");
+
+  type WizardStep =
+    | { kind: "select"; field: any }
+    | { kind: "details"; fields: any[] };
+
+  const steps: WizardStep[] = [
+    ...selectFields.map((f: any) => ({ kind: "select" as const, field: f })),
+    ...(detailFields.length > 0 ? [{ kind: "details" as const, fields: detailFields }] : []),
+  ];
+  const totalSteps = steps.length;
 
   const initialValues: Record<string, any> = {};
-  hiddenFields.forEach((f) => { initialValues[f.id] = f.value ?? ""; });
-  visibleFields.forEach((f) => {
+  hiddenFields.forEach((f: any) => { initialValues[f.id] = f.value ?? ""; });
+  allFields.forEach((f: any) => {
     if (f.type === "multiselect") initialValues[f.id] = Array.isArray(f.default) ? f.default : [];
   });
 
   const [values, setValues]             = useState<Record<string, any>>(initialValues);
+  const [currentStep, setCurrentStep]   = useState(0);
+  const [direction, setDirection]       = useState<"fwd" | "bck">("fwd");
+  const [animKey, setAnimKey]           = useState(0);
+  const [otherActive, setOtherActive]   = useState<Record<string, boolean>>({});
+  const [otherText, setOtherText]       = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted]       = useState(false);
   const [errors, setErrors]             = useState<Record<string, string>>({});
+  const otherInputRef                   = useRef<HTMLInputElement>(null);
 
-  const validate = () => {
-    const errs: Record<string, string> = {};
-    visibleFields.forEach((f) => {
-      const v = values[f.id];
-      const empty = Array.isArray(v) ? v.length === 0 : !v;
-      if (f.required && empty) errs[f.id] = `${f.label} is required`;
-    });
-    setErrors(errs);
-    return Object.keys(errs).length === 0;
-  };
+  const currentStepDef = steps[currentStep] as WizardStep | undefined;
+  const isLastStep = currentStep === totalSteps - 1;
+
+  useEffect(() => {
+    if (currentStepDef?.kind === "select" && otherActive[currentStepDef.field.id]) {
+      otherInputRef.current?.focus();
+    }
+  }, [otherActive, currentStep, currentStepDef]);
 
   const setField = (id: string, value: any) => {
     setValues((v) => ({ ...v, [id]: value }));
@@ -534,13 +553,43 @@ function FormView({ data, onSendMessage }: { data: any; onSendMessage: (msg: str
     if (errors[id]) setErrors((e) => { const n = { ...e }; delete n[id]; return n; });
   };
 
+  const advance = () => {
+    setDirection("fwd");
+    setAnimKey((k) => k + 1);
+    setCurrentStep((s) => s + 1);
+  };
+
+  const handleSelectOption = (fieldId: string, value: string) => {
+    setField(fieldId, value);
+    setOtherActive((prev) => ({ ...prev, [fieldId]: false }));
+    if (!isLastStep) setTimeout(advance, 160);
+  };
+
+  const handleOtherClick = (fieldId: string) => {
+    const nowActive = !otherActive[fieldId];
+    setOtherActive((prev) => ({ ...prev, [fieldId]: nowActive }));
+    setField(fieldId, nowActive ? (otherText[fieldId] ?? "") : "");
+  };
+
+  const handleOtherInput = (fieldId: string, text: string) => {
+    setOtherText((prev) => ({ ...prev, [fieldId]: text }));
+    setField(fieldId, text);
+  };
+
   const handleSubmit = async () => {
-    if (!validate()) return;
+    const errs: Record<string, string> = {};
+    allFields.forEach((f: any) => {
+      if (f.type === "hidden") return;
+      const v = values[f.id];
+      const empty = Array.isArray(v) ? v.length === 0 : !v;
+      if (f.required && empty) errs[f.id] = `${f.label} is required`;
+    });
+    if (Object.keys(errs).length > 0) { setErrors(errs); return; }
     setIsSubmitting(true);
     try {
       const allValues = { ...values };
-      hiddenFields.forEach((f) => { allValues[f.id] = f.value ?? ""; });
-      const formSummary = allFields.map((f) => {
+      hiddenFields.forEach((f: any) => { allValues[f.id] = f.value ?? ""; });
+      const formSummary = allFields.map((f: any) => {
         const v = allValues[f.id];
         const display = Array.isArray(v) ? v.join(", ") : (v ?? "not provided");
         return `${f.label}: ${display}`;
@@ -552,9 +601,22 @@ function FormView({ data, onSendMessage }: { data: any; onSendMessage: (msg: str
     }
   };
 
-  // shared input classes using --tracy-* tokens
+  // canAdvance: required field must be filled before Continue/Submit
+  const canAdvance = (() => {
+    if (!currentStepDef) return false;
+    if (currentStepDef.kind === "select") {
+      if (!currentStepDef.field.required) return true;
+      const v = values[currentStepDef.field.id];
+      return !!(v && String(v).trim() !== "");
+    }
+    return currentStepDef.fields.every((f: any) => {
+      if (!f.required) return true;
+      const v = values[f.id];
+      return Array.isArray(v) ? v.length > 0 : !!(v && String(v).trim() !== "");
+    });
+  })();
+
   const inputBase = "w-full bg-[hsl(var(--tracy-bg-surface))] border border-[hsl(var(--tracy-border))] rounded-[var(--tracy-radius)] px-3 py-2 text-sm text-[hsl(var(--tracy-text))] outline-none transition-all placeholder:text-[hsl(var(--tracy-text-muted))] hover:border-[hsl(var(--tracy-brand)/0.4)] focus:border-[hsl(var(--tracy-brand)/0.6)] focus:ring-2 focus:ring-[hsl(var(--tracy-ring)/0.2)]";
-  const inputError = "border-[hsl(var(--tracy-error))]";
 
   if (submitted) {
     return (
@@ -566,108 +628,198 @@ function FormView({ data, onSendMessage }: { data: any; onSendMessage: (msg: str
     );
   }
 
+  // Edge case: only hidden fields — no steps
+  if (steps.length === 0) {
+    return (
+      <div className="px-5 py-5">
+        <button type="button" onClick={handleSubmit} disabled={isSubmitting}
+          className="w-full bg-[hsl(var(--tracy-brand))] text-white rounded-[var(--tracy-radius)] py-2.5 text-sm font-semibold hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-all">
+          {isSubmitting ? <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />Submitting…</> : (data.submitLabel ?? "Submit")}
+        </button>
+      </div>
+    );
+  }
+
   return (
-    <div className="px-5 py-5 space-y-5">
-      {visibleFields.map((field: any) => (
-        <div key={field.id} className="space-y-1.5">
-          <label className="text-[11px] font-semibold uppercase tracking-widest text-[hsl(var(--tracy-text-muted))] flex items-center gap-1">
-            {field.label}
-            {field.required && <span className="text-[hsl(var(--tracy-brand))]">*</span>}
-          </label>
-
-          {field.type === "text" && (
-            <input
-              value={values[field.id] ?? ""}
-              onChange={(e) => setField(field.id, e.target.value)}
-              placeholder={field.placeholder}
-              className={`${inputBase} ${errors[field.id] ? inputError : ""}`}
-            />
-          )}
-
-          {field.type === "select" && (
-            <select
-              value={values[field.id] ?? ""}
-              onChange={(e) => setField(field.id, e.target.value)}
-              className={`${inputBase} appearance-none cursor-pointer ${errors[field.id] ? inputError : ""}`}
-            >
-              <option value="">Select {field.label}…</option>
-              {field.options?.map((opt: any) => (
-                <option key={opt.value} value={opt.value}>{opt.label}</option>
-              ))}
-            </select>
-          )}
-
-          {field.type === "textarea" && (
-            <textarea
-              value={values[field.id] ?? ""}
-              onChange={(e) => setField(field.id, e.target.value)}
-              placeholder={field.placeholder}
-              rows={3}
-              className={`${inputBase} resize-none ${errors[field.id] ? inputError : ""}`}
-            />
-          )}
-
-          {field.type === "multiselect" && (
-            <div className={`grid grid-cols-2 gap-1.5 ${errors[field.id] ? "ring-1 ring-[hsl(var(--tracy-error))] rounded-[var(--tracy-radius)]" : ""}`}>
-              {field.options?.map((opt: any) => {
-                const checked = (Array.isArray(values[field.id]) ? values[field.id] : []).includes(opt.value);
-                return (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    onClick={() => toggleMultiselect(field.id, opt.value)}
-                    className={`flex items-center gap-2 px-3 py-2 rounded-[var(--tracy-radius)] border text-sm text-left transition-all ${
-                      checked
-                        ? "bg-[hsl(var(--tracy-brand)/0.15)] border-[hsl(var(--tracy-brand)/0.4)] text-[hsl(var(--tracy-brand))]"
-                        : "bg-[hsl(var(--tracy-bg-surface))] border-[hsl(var(--tracy-border))] text-[hsl(var(--tracy-text-muted))] hover:border-[hsl(var(--tracy-brand)/0.4)] hover:text-[hsl(var(--tracy-text))]"
-                    }`}
-                  >
-                    <div className={`w-3.5 h-3.5 rounded-sm border flex items-center justify-center flex-shrink-0 transition-all ${
-                      checked ? "bg-[hsl(var(--tracy-brand))] border-[hsl(var(--tracy-brand))]" : "border-[hsl(var(--tracy-border))]"
-                    }`}>
-                      {checked && <Check className="w-2 h-2 text-white" />}
-                    </div>
-                    {opt.label}
-                  </button>
-                );
-              })}
-            </div>
-          )}
-
-          {field.type === "toggle" && (
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                onClick={() => setField(field.id, !values[field.id])}
-                className={`relative w-10 h-[22px] rounded-full transition-colors flex-shrink-0 ${
-                  values[field.id]
-                    ? "bg-[hsl(var(--tracy-brand))]"
-                    : "bg-[hsl(var(--tracy-bg-hover))] border border-[hsl(var(--tracy-border))]"
-                }`}
-              >
-                <span className={`absolute top-0.5 w-[18px] h-[18px] rounded-full bg-white shadow-sm transition-all duration-150 ${values[field.id] ? "left-[calc(100%-20px)]" : "left-0.5"}`} />
-              </button>
-              <span className="text-xs text-[hsl(var(--tracy-text-muted))]">{values[field.id] ? "Enabled" : "Disabled"}</span>
-            </div>
-          )}
-
-          {errors[field.id] && <p className="text-[11px] text-[hsl(var(--tracy-error))] mt-0.5">{errors[field.id]}</p>}
-          {field.hint && <p className="text-[11px] text-[hsl(var(--tracy-text-muted))]">{field.hint}</p>}
-        </div>
-      ))}
-
-      <button
-        type="button"
-        onClick={handleSubmit}
-        disabled={isSubmitting}
-        className="w-full mt-3 bg-[hsl(var(--tracy-brand))] text-white rounded-[var(--tracy-radius)] py-2.5 text-sm font-semibold hover:opacity-90 active:scale-[0.99] transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed focus:ring-2 focus:ring-[hsl(var(--tracy-ring)/0.3)] focus:outline-none"
-      >
-        {isSubmitting ? (
-          <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />Submitting…</>
-        ) : (
-          data.submitLabel ?? "Submit"
+    <div className="flex flex-col h-full">
+      {/* Header: title + step counter + progress bar */}
+      <div className="flex-shrink-0 px-5 pt-5 pb-4">
+        {data.title && (
+          <p className="text-xs font-semibold uppercase tracking-widest text-[hsl(var(--tracy-brand))] mb-2">
+            {data.title}
+          </p>
         )}
-      </button>
+        {totalSteps > 1 && (
+          <p className="text-[11px] text-[hsl(var(--tracy-text-muted))] mb-3" data-step-label>
+            Step {currentStep + 1} of {totalSteps}
+            {currentStepDef?.kind === "select" && (
+              <> — <span className="text-[hsl(var(--tracy-text))]">{currentStepDef.field.label}</span></>
+            )}
+            {currentStepDef?.kind === "details" && (
+              <> — <span className="text-[hsl(var(--tracy-text))]">Details</span></>
+            )}
+          </p>
+        )}
+        {totalSteps > 1 && (
+          <div className="flex items-center gap-1.5">
+            {steps.map((_, i) => (
+              <div key={i} className="h-1 rounded-full flex-1 transition-all duration-300"
+                style={{ background: i < currentStep ? "hsl(var(--tracy-brand))" : i === currentStep ? "hsl(var(--tracy-brand) / 0.45)" : "hsl(var(--tracy-border))" }} />
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Step content — keyed so animation replays on step change */}
+      <div key={animKey} className={direction === "fwd" ? "wiz-fwd" : "wiz-bck"}
+        style={{ flex: 1, overflowY: "auto", minHeight: 0 }}>
+
+        {currentStepDef?.kind === "select" && (() => {
+          const field = currentStepDef.field;
+          const isOther = !!otherActive[field.id];
+          return (
+            <div className="px-5 pb-4 space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                {(field.options ?? []).map((opt: any) => {
+                  const isSelected = values[field.id] === opt.value && !isOther;
+                  return (
+                    <button key={opt.value} type="button" onClick={() => handleSelectOption(field.id, opt.value)}
+                      aria-pressed={isSelected}
+                      className={`relative flex flex-col items-start gap-1 px-4 py-4 rounded-xl border text-left transition-all duration-150 cursor-pointer min-h-[64px] ${
+                        isSelected
+                          ? "bg-[hsl(var(--tracy-brand)/0.1)] border-[hsl(var(--tracy-brand)/0.5)] shadow-[0_0_0_1px_hsl(var(--tracy-brand)/0.2)]"
+                          : "bg-[hsl(var(--tracy-bg-surface))] border-[hsl(var(--tracy-border))] hover:border-[hsl(var(--tracy-brand)/0.35)] hover:bg-[hsl(var(--tracy-brand)/0.04)]"
+                      }`}>
+                      <span className={`absolute top-3 right-3 w-4 h-4 rounded-full border-2 flex items-center justify-center transition-all flex-shrink-0 ${
+                        isSelected ? "border-[hsl(var(--tracy-brand))] bg-[hsl(var(--tracy-brand))]" : "border-[hsl(var(--tracy-border))]"
+                      }`}>
+                        {isSelected && <Check className="w-2.5 h-2.5 text-white" />}
+                      </span>
+                      <span className={`text-sm font-semibold leading-snug pr-6 ${isSelected ? "text-[hsl(var(--tracy-brand))]" : "text-[hsl(var(--tracy-text))]"}`}>
+                        {opt.label}
+                      </span>
+                    </button>
+                  );
+                })}
+
+                {/* Other card */}
+                <button type="button" onClick={() => handleOtherClick(field.id)}
+                  aria-pressed={isOther} data-other-card
+                  className={`relative flex flex-col items-start gap-1 px-4 py-4 rounded-xl border text-left transition-all duration-150 cursor-pointer min-h-[64px] ${
+                    isOther
+                      ? "bg-[hsl(var(--tracy-brand)/0.1)] border-[hsl(var(--tracy-brand)/0.5)] shadow-[0_0_0_1px_hsl(var(--tracy-brand)/0.2)]"
+                      : "bg-[hsl(var(--tracy-bg-surface))] border-[hsl(var(--tracy-border))] hover:border-[hsl(var(--tracy-brand)/0.35)] hover:bg-[hsl(var(--tracy-brand)/0.04)]"
+                  }`}>
+                  <span className={`absolute top-3 right-3 w-4 h-4 rounded-full border-2 flex items-center justify-center transition-all flex-shrink-0 ${
+                    isOther ? "border-[hsl(var(--tracy-brand))] bg-[hsl(var(--tracy-brand))]" : "border-[hsl(var(--tracy-border))]"
+                  }`}>
+                    {isOther && <Check className="w-2.5 h-2.5 text-white" />}
+                  </span>
+                  <span className={`text-sm font-semibold leading-snug ${isOther ? "text-[hsl(var(--tracy-brand))]" : "text-[hsl(var(--tracy-text-muted))]"}`}>Other</span>
+                  <span className="text-[11px] text-[hsl(var(--tracy-text-muted))] leading-tight pr-6">Type your own</span>
+                </button>
+              </div>
+
+              {/* Other free-text input */}
+              {isOther && (
+                <div style={{ animation: "slideUp 0.18s ease" }}>
+                  <input ref={otherInputRef} type="text"
+                    value={otherText[field.id] ?? ""}
+                    onChange={(e) => handleOtherInput(field.id, e.target.value)}
+                    placeholder={`Enter ${field.label.toLowerCase()}…`}
+                    className={inputBase} />
+                </div>
+              )}
+            </div>
+          );
+        })()}
+
+        {currentStepDef?.kind === "details" && (
+          <div className="px-5 pb-4 space-y-5">
+            {currentStepDef.fields.map((field: any) => (
+              <div key={field.id} className="space-y-1.5">
+                <label className="text-[11px] font-semibold uppercase tracking-widest text-[hsl(var(--tracy-text-muted))] flex items-center gap-1">
+                  {field.label}
+                  {field.required && <span className="text-[hsl(var(--tracy-brand))]">*</span>}
+                </label>
+
+                {field.type === "text" && (
+                  <input value={values[field.id] ?? ""} onChange={(e) => setField(field.id, e.target.value)}
+                    placeholder={field.placeholder}
+                    className={`${inputBase} ${errors[field.id] ? "border-[hsl(var(--tracy-error))]" : ""}`} />
+                )}
+
+                {field.type === "textarea" && (
+                  <textarea value={values[field.id] ?? ""} onChange={(e) => setField(field.id, e.target.value)}
+                    placeholder={field.placeholder} rows={3}
+                    className={`${inputBase} resize-none ${errors[field.id] ? "border-[hsl(var(--tracy-error))]" : ""}`} />
+                )}
+
+                {field.type === "multiselect" && (
+                  <div className={`grid grid-cols-2 gap-1.5 ${errors[field.id] ? "ring-1 ring-[hsl(var(--tracy-error))] rounded-[var(--tracy-radius)]" : ""}`}>
+                    {field.options?.map((opt: any) => {
+                      const checked = (Array.isArray(values[field.id]) ? values[field.id] : []).includes(opt.value);
+                      return (
+                        <button key={opt.value} type="button" onClick={() => toggleMultiselect(field.id, opt.value)}
+                          className={`flex items-center gap-2 px-3 py-2 rounded-[var(--tracy-radius)] border text-sm text-left transition-all ${
+                            checked
+                              ? "bg-[hsl(var(--tracy-brand)/0.15)] border-[hsl(var(--tracy-brand)/0.4)] text-[hsl(var(--tracy-brand))]"
+                              : "bg-[hsl(var(--tracy-bg-surface))] border-[hsl(var(--tracy-border))] text-[hsl(var(--tracy-text-muted))] hover:border-[hsl(var(--tracy-brand)/0.4)] hover:text-[hsl(var(--tracy-text))]"
+                          }`}>
+                          <div className={`w-3.5 h-3.5 rounded-sm border flex items-center justify-center flex-shrink-0 transition-all ${
+                            checked ? "bg-[hsl(var(--tracy-brand))] border-[hsl(var(--tracy-brand))]" : "border-[hsl(var(--tracy-border))]"
+                          }`}>
+                            {checked && <Check className="w-2 h-2 text-white" />}
+                          </div>
+                          {opt.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {field.type === "toggle" && (
+                  <div className="flex items-center gap-3">
+                    <button type="button" onClick={() => setField(field.id, !values[field.id])}
+                      className={`relative w-10 h-[22px] rounded-full transition-colors flex-shrink-0 ${
+                        values[field.id] ? "bg-[hsl(var(--tracy-brand))]" : "bg-[hsl(var(--tracy-bg-hover))] border border-[hsl(var(--tracy-border))]"
+                      }`}>
+                      <span className={`absolute top-0.5 w-[18px] h-[18px] rounded-full bg-white shadow-sm transition-all duration-150 ${values[field.id] ? "left-[calc(100%-20px)]" : "left-0.5"}`} />
+                    </button>
+                    <span className="text-xs text-[hsl(var(--tracy-text-muted))]">{values[field.id] ? "Enabled" : "Disabled"}</span>
+                  </div>
+                )}
+
+                {errors[field.id] && <p className="text-[11px] text-[hsl(var(--tracy-error))] mt-0.5">{errors[field.id]}</p>}
+                {field.hint && <p className="text-[11px] text-[hsl(var(--tracy-text-muted))]">{field.hint}</p>}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Footer: Back + Continue/Submit */}
+      <div className="flex-shrink-0 px-5 pb-5 pt-3 flex items-center gap-3 border-t border-[hsl(var(--tracy-border)/0.4)]">
+        {currentStep > 0 ? (
+          <button type="button" data-testid="wizard-back"
+            onClick={() => { setDirection("bck"); setAnimKey((k) => k + 1); setCurrentStep((s) => s - 1); }}
+            className="flex items-center gap-1 px-4 py-2.5 rounded-[var(--tracy-radius)] border border-[hsl(var(--tracy-border))] text-sm text-[hsl(var(--tracy-text-muted))] hover:text-[hsl(var(--tracy-text))] hover:border-[hsl(var(--tracy-brand)/0.3)] transition-all">
+            <ChevronLeft className="w-3.5 h-3.5" />Back
+          </button>
+        ) : (
+          <div className="w-[72px] flex-shrink-0" />
+        )}
+
+        <button type="button" data-testid="wizard-advance"
+          onClick={isLastStep ? handleSubmit : advance}
+          disabled={!canAdvance || isSubmitting}
+          className="flex-1 bg-[hsl(var(--tracy-brand))] text-white rounded-[var(--tracy-radius)] py-2.5 text-sm font-semibold hover:opacity-90 active:scale-[0.99] transition-all flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed">
+          {isSubmitting
+            ? <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />Submitting…</>
+            : isLastStep ? (data.submitLabel ?? "Submit")
+            : <>Continue <ChevronRight className="w-3.5 h-3.5" /></>}
+        </button>
+      </div>
     </div>
   );
 }
@@ -988,6 +1140,141 @@ function TracyMarkdown({ content }: { content: string }) {
   );
 }
 
+// ── Widget Renderer ───────────────────────────────────────────────────────────
+
+function WidgetRenderer({ html, messageId }: { html: string; messageId: string }) {
+  const [height, setHeight]   = useState(200);
+  const [srcDoc, setSrcDoc]   = useState("");
+  const lastHeightRef         = useRef(0);
+
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+
+    const cs   = getComputedStyle(document.documentElement);
+    const vars = ["--background","--foreground","--muted","--muted-foreground","--border","--card","--radius"]
+      .map((v) => { const val = cs.getPropertyValue(v).trim(); return val ? `${v}:${val}` : ""; })
+      .filter(Boolean)
+      .join(";");
+
+    // Debounced resize — fires 80 ms after the last layout change settles
+    const resizeScript =
+      `(function(){var t,last=0;` +
+      `function r(){clearTimeout(t);t=setTimeout(function(){` +
+      `var h=document.body.scrollHeight;` +
+      `if(Math.abs(h-last)>2){last=h;` +
+      `window.parent.postMessage({type:"tracy-widget-resize",id:"${messageId}",height:h},"*");}` +
+      `},80);}` +
+      `window.addEventListener("load",r);` +
+      `if(window.ResizeObserver){new ResizeObserver(r).observe(document.body);}` +
+      `})();`;
+
+    // Strip full-document wrapper tags Tracy may have included
+    let clean = html
+      .replace(/<\/body>\s*(<\/html>)?\s*$/i, "")
+      .replace(/<\/html>\s*$/i, "")
+      .replace(/<!DOCTYPE[^>]*>/gi, "")
+      .replace(/<html[^>]*>/gi, "")
+      .replace(/<head>[\s\S]*?<\/head>/gi, "")
+      .replace(/<body[^>]*>/gi, "")
+      // Remove any Chart.js CDN Tracy included — we inject it ourselves below
+      .replace(/<script[^>]*(?:cdnjs\.cloudflare\.com|cdn\.jsdelivr\.net)[^>]*chart[^>]*>\s*<\/script>/gi, "")
+      .trim();
+
+    // Palette: visually distinct, works on both light and dark backgrounds
+    const palette = [
+      "#6366f1","#10b981","#f59e0b","#ef4444",
+      "#3b82f6","#a855f7","#14b8a6","#f97316",
+    ];
+    const paletteAlpha = palette.map((c) => c + "cc");
+
+    // Plugin: assign per-bar colors when Tracy hasn't specified them explicitly
+    const palettePlugin =
+      `Chart.register({id:"tracyPalette",beforeRender:function(chart){` +
+      `var P=${JSON.stringify(palette)},A=${JSON.stringify(paletteAlpha)};` +
+      `chart.data.datasets.forEach(function(ds){` +
+      `var isSingleColor=!Array.isArray(ds.backgroundColor)&&` +
+      `(ds.backgroundColor==null||typeof ds.backgroundColor==="string");` +
+      `if((chart.config.type==="bar"||chart.config.type==="horizontalBar")&&isSingleColor){` +
+      `var n=ds.data.length;` +
+      `ds.backgroundColor=Array.from({length:n},function(_,i){return A[i%A.length];});` +
+      `ds.borderColor=Array.from({length:n},function(_,i){return P[i%P.length];});` +
+      `ds.borderWidth=1;` +
+      `}})}});`;
+
+    // JS that fixes hardcoded light-mode inline colors after Tracy's HTML renders.
+    // Uses raw getAttribute("style") for color checks because browsers normalize hex (#333)
+    // to rgb(51,51,51) before el.style.color is readable, making hex-based regex unreliable.
+    const darkModeFixer =
+      `document.addEventListener("DOMContentLoaded",function(){` +
+      `var LIGHT_BG=/^(#fff(fff)?|white|rgb\\(255,\\s*255,\\s*255\\)|rgba\\(255,\\s*255,\\s*255,\\s*1\\))$/i;` +
+      `document.querySelectorAll("[style]").forEach(function(el){` +
+      `var s=el.style;` +
+      `var raw=el.getAttribute("style")||"";` +
+      `var bg=(s.background||s.backgroundColor||"").trim();` +
+      `if(LIGHT_BG.test(bg)){s.background="hsl(var(--card))";s.backgroundColor="";}` +
+      `if(/(?:^|[;\\s])color\\s*:\\s*(#(?:0{3,6}|1{3,6}|2{3,6}|3{3,6})|black)\\b/i.test(raw)){` +
+      `s.color="hsl(var(--foreground))";}` +
+      `});` +
+      `});`;
+
+    setSrcDoc(
+      `<!DOCTYPE html><html><head><meta charset="utf-8"><style>` +
+      `:root{${vars};--brand:#c9a84c;}` +
+      `*{box-sizing:border-box;margin:0;padding:0;}` +
+      `html,body{background:hsl(var(--card));color:hsl(var(--foreground));` +
+      `font-family:system-ui,-apple-system,BlinkMacSystemFont,sans-serif;` +
+      `font-size:13px;line-height:1.5;}` +
+      // 16 px breathing room on all sides — prevents text running edge-to-edge
+      `body{padding:16px;}` +
+      // Typography resets so Tracy's prose looks clean
+      `p{margin-bottom:8px;}p:last-child{margin-bottom:0;}` +
+      `b,strong{font-weight:600;}` +
+      `h1,h2,h3,h4{font-weight:600;line-height:1.3;margin-bottom:6px;}` +
+      `canvas{max-width:100%;display:block;}` +
+      `</style></head><body>` +
+      `<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>` +
+      `<script>if(window.Chart){` +
+      `Chart.defaults.color="hsl(var(--muted-foreground))";` +
+      `Chart.defaults.borderColor="hsl(var(--border))";` +
+      `Chart.defaults.plugins.legend.labels.color="hsl(var(--foreground))";` +
+      `Chart.defaults.scale.grid.color="hsl(var(--border))";` +
+      `Chart.defaults.scale.ticks.color="hsl(var(--muted-foreground))";` +
+      palettePlugin +
+      `}</script>` +
+      clean +
+      `<scr` + `ipt>${darkModeFixer}${resizeScript}<\/scr` + `ipt>` +
+      `</body></html>`
+    );
+  }, [html, messageId]);
+
+  useEffect(() => {
+    const handler = (e: MessageEvent) => {
+      if (e.data?.type === "tracy-widget-resize" && e.data?.id === messageId) {
+        const h = Math.max(80, Math.min(600, (e.data.height as number) + 16));
+        if (Math.abs(h - lastHeightRef.current) > 2) {
+          lastHeightRef.current = h;
+          setHeight(h);
+        }
+      }
+    };
+    window.addEventListener("message", handler);
+    return () => window.removeEventListener("message", handler);
+  }, [messageId]);
+
+  if (!srcDoc) {
+    return <div style={{ height: "200px" }} className="bg-muted/40 animate-pulse" />;
+  }
+
+  return (
+    <iframe
+      sandbox="allow-scripts"
+      srcDoc={srcDoc}
+      style={{ width: "100%", height: `${height}px`, border: "none", display: "block" }}
+      title="Tracy visualization"
+    />
+  );
+}
+
 // ── Message Bubble ────────────────────────────────────────────────────────────
 
 function MessageBubble({
@@ -1007,7 +1294,7 @@ function MessageBubble({
 }) {
   const isUser        = message.role === "user";
   const hasAttachments = message.attachments && message.attachments.length > 0;
-  const hasContent    = message.isLoading || !!message.content;
+  const hasContent    = message.isLoading || !!message.content || !!message.widgetHtml;
   const [copied, setCopied] = useState(false);
 
   const FORM_SUBMIT_RE = /^__FORM_SUBMIT__:\{[\s\S]*?\}\n\n/;
@@ -1020,20 +1307,15 @@ function MessageBubble({
     });
   };
 
-  return (
-    <div className={`flex w-full ${isUser ? "justify-end" : "justify-start"}`}>
-      <div
-        className={`flex gap-3 items-end ${isUser ? "flex-row-reverse" : "flex-row"} max-w-[80%] lg:max-w-[70%] group`}
-        style={{ animation: "fadeUp 0.2s ease" }}
-      >
-        {!isUser && (
-          <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center flex-shrink-0 mb-0.5 shadow-sm">
-            <Sparkles className="w-4 h-4 text-primary-foreground" />
-          </div>
-        )}
-        <div className={`flex flex-col gap-1.5 ${isUser ? "items-end" : "items-start"}`}>
-          {isUser ? (
-            (hasAttachments || hasContent) && (
+  const hasWidget = !isUser && !!message.widgetHtml && !message.isLoading;
+
+  // ── User message ────────────────────────────────────────────────────────────
+  if (isUser) {
+    return (
+      <div className="flex w-full justify-end" style={{ animation: "fadeUp 0.2s ease" }}>
+        <div className="flex gap-3 items-end flex-row-reverse max-w-[80%] lg:max-w-[70%] group">
+          <div className="flex flex-col gap-1.5 items-end">
+            {(hasAttachments || hasContent) && (
               <div className="bg-[#c9a84c] text-white rounded-2xl rounded-br-sm shadow-sm px-4 py-2.5 flex flex-col gap-2">
                 {hasAttachments && (
                   <div className="flex flex-wrap gap-2">
@@ -1046,54 +1328,121 @@ function MessageBubble({
                     : <p className="whitespace-pre-wrap break-words text-sm">{visibleContent}</p>
                 )}
               </div>
-            )
-          ) : (
-            <>
+            )}
+            <span className="text-[10px] text-muted-foreground px-1 opacity-0 group-hover:opacity-100 transition-opacity">
+              {formatTime(message.timestamp instanceof Date ? message.timestamp : new Date(message.timestamp))}
+            </span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Tracy message with widget — full chat-column width ──────────────────────
+  if (hasWidget) {
+    return (
+      <div className="flex flex-col w-full group" style={{ animation: "fadeUp 0.2s ease" }}>
+        {/* Text bubble — normal constrained width, only if there's prose */}
+        {message.content && (
+          <div className="flex justify-start mb-3">
+            <div className="max-w-[80%] lg:max-w-[70%]">
               {hasAttachments && (
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-2 mb-1.5">
                   {message.attachments!.map((f) => <ChatFileCard key={f.id} file={f} />)}
                 </div>
               )}
-              {hasContent && (
-                <div className="rounded-2xl px-4 py-2.5 text-sm leading-relaxed bg-muted/50 border border-border text-foreground rounded-bl-sm">
-                  {message.isLoading ? <TypingDots /> : <TracyMarkdown content={message.content} />}
-                  {/* Tool status inline for the loading message */}
-                  {message.isLoading && toolStatuses && toolStatuses.length > 0 && (
-                    <ToolStatusPanel tools={toolStatuses} />
-                  )}
-                </div>
-              )}
-              {/* Copy button — shown on hover */}
-              {!message.isLoading && message.content && (
-                <button
-                  onClick={handleCopy}
-                  aria-label="Copy message"
-                  className="flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] text-muted-foreground hover:text-foreground hover:bg-muted border border-transparent hover:border-border transition-all opacity-0 group-hover:opacity-100"
-                >
-                  {copied ? <Check className="w-3 h-3 text-emerald-500" /> : <Copy className="w-3 h-3" />}
-                  {copied ? "Copied" : "Copy"}
-                </button>
-              )}
-              {artifact && onArtifactClick && (
-                <ArtifactChip artifact={artifact} onClick={() => onArtifactClick(artifact)} isActive={isArtifactActive} />
-              )}
-              {/* __NEXT__: inline suggestion chips */}
-              {message.nextOptions && message.nextOptions.length > 0 && onSend && (
-                <div className="flex flex-wrap gap-2 mt-1">
-                  {message.nextOptions.map((opt) => (
-                    <button
-                      key={opt.value}
-                      onClick={() => onSend(opt.value)}
-                      className="px-3 py-1.5 rounded-xl text-xs font-medium border border-[#c9a84c]/30 bg-[#c9a84c]/5 text-[#c9a84c] hover:bg-[#c9a84c]/15 hover:border-[#c9a84c]/50 transition-all"
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </>
+              <div className="rounded-2xl px-4 py-2.5 text-sm leading-relaxed bg-muted/50 border border-border text-foreground rounded-bl-sm">
+                <TracyMarkdown content={message.content} />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Widget card — full width, clean card that inherits theme from iframe */}
+        <div className="w-full rounded-2xl overflow-hidden border border-border shadow-sm">
+          <WidgetRenderer html={message.widgetHtml!} messageId={message.id} />
+        </div>
+
+        {/* Actions row */}
+        <div className="flex flex-col items-start gap-1.5 mt-2 pl-0.5">
+          {(message.content || message.widgetHtml) && (
+            <button
+              onClick={handleCopy}
+              aria-label="Copy message"
+              className="flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] text-muted-foreground hover:text-foreground hover:bg-muted border border-transparent hover:border-border transition-all opacity-0 group-hover:opacity-100"
+            >
+              {copied ? <Check className="w-3 h-3 text-emerald-500" /> : <Copy className="w-3 h-3" />}
+              {copied ? "Copied" : "Copy"}
+            </button>
           )}
-          {/* Timestamp — visible on hover only */}
+          {artifact && onArtifactClick && (
+            <ArtifactChip artifact={artifact} onClick={() => onArtifactClick(artifact)} isActive={isArtifactActive} />
+          )}
+          {message.nextOptions && message.nextOptions.length > 0 && onSend && (
+            <div className="flex flex-wrap gap-2">
+              {message.nextOptions.map((opt) => (
+                <button
+                  key={opt.value}
+                  onClick={() => onSend(opt.value)}
+                  className="px-3 py-1.5 rounded-xl text-xs font-medium border border-[#c9a84c]/30 bg-[#c9a84c]/5 text-[#c9a84c] hover:bg-[#c9a84c]/15 hover:border-[#c9a84c]/50 transition-all"
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          )}
+          <span className="text-[10px] text-muted-foreground px-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            {formatTime(message.timestamp instanceof Date ? message.timestamp : new Date(message.timestamp))}
+          </span>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Tracy message — text only (original layout) ─────────────────────────────
+  return (
+    <div className="flex w-full justify-start" style={{ animation: "fadeUp 0.2s ease" }}>
+      <div className="flex gap-3 items-end flex-row max-w-[80%] lg:max-w-[70%] group">
+        <div className="flex flex-col gap-1.5 items-start">
+          {hasAttachments && (
+            <div className="flex flex-wrap gap-2">
+              {message.attachments!.map((f) => <ChatFileCard key={f.id} file={f} />)}
+            </div>
+          )}
+          {hasContent && (
+            <div className="rounded-2xl px-4 py-2.5 text-sm leading-relaxed bg-muted/50 border border-border text-foreground rounded-bl-sm">
+              {message.isLoading ? <TypingDots /> : <TracyMarkdown content={message.content} />}
+              {message.isLoading && toolStatuses && toolStatuses.length > 0 && (
+                <ToolStatusPanel tools={toolStatuses} />
+              )}
+            </div>
+          )}
+          {!message.isLoading && message.content && (
+            <button
+              onClick={handleCopy}
+              aria-label="Copy message"
+              className="flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] text-muted-foreground hover:text-foreground hover:bg-muted border border-transparent hover:border-border transition-all opacity-0 group-hover:opacity-100"
+            >
+              {copied ? <Check className="w-3 h-3 text-emerald-500" /> : <Copy className="w-3 h-3" />}
+              {copied ? "Copied" : "Copy"}
+            </button>
+          )}
+          {artifact && onArtifactClick && (
+            <ArtifactChip artifact={artifact} onClick={() => onArtifactClick(artifact)} isActive={isArtifactActive} />
+          )}
+          {message.nextOptions && message.nextOptions.length > 0 && onSend && (
+            <div className="flex flex-wrap gap-2 mt-1">
+              {message.nextOptions.map((opt) => (
+                <button
+                  key={opt.value}
+                  onClick={() => onSend(opt.value)}
+                  className="px-3 py-1.5 rounded-xl text-xs font-medium border border-[#c9a84c]/30 bg-[#c9a84c]/5 text-[#c9a84c] hover:bg-[#c9a84c]/15 hover:border-[#c9a84c]/50 transition-all"
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          )}
           <span className="text-[10px] text-muted-foreground px-1 opacity-0 group-hover:opacity-100 transition-opacity">
             {formatTime(message.timestamp instanceof Date ? message.timestamp : new Date(message.timestamp))}
           </span>
@@ -1109,7 +1458,6 @@ function ConfirmationTray({ payload, onSelect }: { payload: ConfirmationPayload;
   return (
     <div className="mb-2 bg-background border border-[#c9a84c]/30 rounded-2xl shadow-lg overflow-hidden" style={{ animation: "slideUp 0.18s ease" }}>
       <div className="px-4 pt-3 pb-2 flex items-center gap-2 border-b border-border/50">
-        <Sparkles className="w-3.5 h-3.5 text-[#c9a84c]" />
         <span className="text-xs font-semibold text-[#c9a84c] uppercase tracking-wider">Tracy</span>
       </div>
       <div className="px-4 py-3">
@@ -1307,13 +1655,14 @@ function ConversationSidebar({
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
 export default function TracyPage() {
+  const { user }                                      = useAuth();
+  const firstName = user?.name?.split(" ")[0] || "there";
   const [messages,            setMessages]            = useState<Message[]>([]);
   const [input,               setInput]               = useState("");
   const [isLoading,           setIsLoading]           = useState(false);
   const [pendingFiles,        setPendingFiles]        = useState<UploadedFile[]>([]);
   const [pendingFileContents, setPendingFileContents] = useState<Record<string, string>>({});
   const [isDragging,          setIsDragging]          = useState(false);
-  const [firstName,           setFirstName]           = useState("there");
   const [confirmation,        setConfirmation]        = useState<ConfirmationPayload | null>(null);
   const [toolStatuses,        setToolStatuses]        = useState<ToolStatus[]>([]);
   const [historyOpen,         setHistoryOpen]         = useState(false);
@@ -1340,7 +1689,6 @@ export default function TracyPage() {
   // Load history and bootstrap personalised suggestions
   useEffect(() => {
     setConversations(loadHistory());
-    setFirstName(getFirstName());
 
     // Suggestions: serve from cache if fresh, otherwise fetch in background
     try {
@@ -1701,6 +2049,43 @@ export default function TracyPage() {
               }
             }
 
+            // Parse __WIDGET__
+            const widgetMatch = trimmed.match(WIDGET_RE);
+            if (widgetMatch) {
+              const widgetStart  = trimmed.search(WIDGET_RE);
+              const beforeWidget = widgetStart > 0 ? trimmed.slice(0, widgetStart).trim() : "";
+
+              let rawHtml = widgetMatch[1];
+              let nextOptionsFromWidget: ConfirmationOption[] | undefined;
+              const nextInWidget = rawHtml.match(NEXT_RE_IN_WIDGET);
+              if (nextInWidget) {
+                rawHtml = rawHtml.slice(0, rawHtml.search(NEXT_RE_IN_WIDGET)).trim();
+                const nextJson = extractJson(nextInWidget[1]);
+                if (nextJson) {
+                  try {
+                    const parsed: ConfirmationPayload = JSON.parse(nextJson);
+                    nextOptionsFromWidget = parsed.options;
+                  } catch { /* ignore */ }
+                }
+              }
+
+              setMessages((prev) =>
+                prev.map((m) =>
+                  m.isLoading
+                    ? {
+                        ...m,
+                        content:     beforeWidget,
+                        isLoading:   false,
+                        widgetHtml:  rawHtml,
+                        nextOptions: nextOptionsFromWidget,
+                      }
+                    : m
+                )
+              );
+              setMessages((current) => { saveConversation(current, finalArtifacts); return current; });
+              return;
+            }
+
             // Parse __NEXT__: extract preceding text + options
             const nextMatch = trimmed.match(NEXT_RE);
             if (nextMatch) {
@@ -1846,6 +2231,16 @@ export default function TracyPage() {
           from { opacity: 0; transform: translateX(-16px); }
           to   { opacity: 1; transform: translateX(0); }
         }
+        @keyframes wizFwd {
+          from { opacity: 0; transform: translateX(20px); }
+          to   { opacity: 1; transform: translateX(0); }
+        }
+        @keyframes wizBck {
+          from { opacity: 0; transform: translateX(-20px); }
+          to   { opacity: 1; transform: translateX(0); }
+        }
+        .wiz-fwd { animation: wizFwd 0.22s cubic-bezier(0.22,1,0.36,1) both; }
+        .wiz-bck { animation: wizBck 0.22s cubic-bezier(0.22,1,0.36,1) both; }
         .scrollbar-hide::-webkit-scrollbar { display: none; }
         .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
         .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
@@ -1939,9 +2334,6 @@ export default function TracyPage() {
 
                   {isEmpty ? (
                     <div className="flex flex-col items-center text-center pt-8">
-                      <div className="w-14 h-14 rounded-2xl bg-[#c9a84c]/10 border border-[#c9a84c]/20 flex items-center justify-center mb-6 shadow-sm">
-                        <Sparkles className="w-6 h-6 text-[#c9a84c]" />
-                      </div>
                       <h1 className="text-2xl font-semibold text-foreground tracking-tight mb-2">
                         {getGreeting()}, {firstName}
                       </h1>

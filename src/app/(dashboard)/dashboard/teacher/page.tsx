@@ -4,19 +4,35 @@ import { redirect }          from 'next/navigation'
 import { getSession }        from '@/lib/session'
 import { getStats }          from '@/lib/actions/stats'
 import { getMyClasses, getClassAnalytics, getClassAssessments, getAssignedCourses } from '@/lib/actions/classes'
-import { TeacherDashboardClient } from '@/components/dashboard/teacher-dashboard-client'
+import { TeacherDashboardClient }  from '@/components/dashboard/teacher-dashboard-client'
+import { TeacherOnboardingState }  from '@/components/teacher/teacher-onboarding-state'
+import { getOrganizationDetails }  from '@/lib/actions/organizations'
 
 export default async function TeacherDashboardPage() {
   const user = await getSession()
   if (!user)                   redirect('/login')
   if (user.role !== 'Teacher') redirect('/dashboard')
 
-  const [stats, { data: classes }] = await Promise.all([
+  const [stats, { data: classes }, orgRes] = await Promise.all([
     getStats(),
     getMyClasses(),
+    user.organizationId ? getOrganizationDetails(user.organizationId) : Promise.resolve({ data: null, error: null }),
   ])
 
-  const activeClasses = (classes ?? []).filter((c) => c.status === 'active')
+  const allClasses    = classes ?? []
+  const activeClasses = allClasses.filter((c) => c.status === 'active')
+  const hasPending    = allClasses.some((c) => c.status === 'pending')
+
+  // No classes at all (not even pending invites) → show onboarding state
+  if (allClasses.length === 0 && !hasPending) {
+    return (
+      <TeacherOnboardingState
+        name={user.name?.split(' ')[0] ?? 'Teacher'}
+        schoolName={orgRes.data?.name ?? 'your school'}
+        organizationId={user.organizationId ?? ''}
+      />
+    )
+  }
 
   // Fetch analytics + assessments + courses for all active classes in parallel
   const [classAnalytics, classAssessments, classCoursesRes] = await Promise.all([

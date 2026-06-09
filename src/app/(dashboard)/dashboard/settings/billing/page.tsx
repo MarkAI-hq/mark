@@ -1,4 +1,3 @@
-// src/app/(dashboard)/dashboard/settings/billing/page.tsx
 import { Metadata }  from 'next'
 import { redirect }  from 'next/navigation'
 import { getSession }        from '@/lib/session'
@@ -6,7 +5,7 @@ import { getSubscription, getGradingQuota } from '@/lib/actions/subscriptions'
 import { BillingClient }     from './_components/billing-client'
 
 export const metadata: Metadata = {
-  title:       'Billing — Mark',
+  title:       'Billing — Mirror Intelligence',
   description: 'Manage your subscription',
 }
 
@@ -22,10 +21,10 @@ export default async function BillingPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h3 className="text-lg font-medium">Billing &amp; Subscription</h3>
+      <div className="space-y-1">
+        <h3 className="text-xl font-semibold tracking-tight">Billing &amp; Subscription</h3>
         <p className="text-sm text-muted-foreground">
-          Manage your plan and payment details.
+          Manage your plan, usage limits, and payment details.
         </p>
       </div>
       <BillingClient

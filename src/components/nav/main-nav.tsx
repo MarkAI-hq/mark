@@ -4,7 +4,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useState } from 'react'
-import { Building, Menu, X, PanelLeftClose, PanelLeftOpen } from 'lucide-react'
+import { Building, Menu, PanelLeftClose, PanelLeftOpen } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/hooks/use-auth'
 import { dashboardConfig, NavItem } from '@/config/dashboard'
@@ -19,34 +19,39 @@ import { UserRole } from '@/lib/types'
 
 interface MainNavProps extends React.HTMLAttributes<HTMLElement> {
   organizationName?: string | null
+  isPublic?: boolean
   collapsed: boolean
   onToggleCollapse: () => void
 }
 
-export function MainNav({ className, organizationName, collapsed, onToggleCollapse, ...props }: MainNavProps) {
+export function MainNav({ className, organizationName, isPublic, collapsed, onToggleCollapse, ...props }: MainNavProps) {
   const pathname                    = usePathname()
   const { user }                    = useAuth()
   const [mobileOpen, setMobileOpen] = useState(false)
 
-  const accessibleNavItems = dashboardConfig.mainNav.filter(
-    (item) => user?.role && item.roles.includes(user.role as UserRole)
-  )
+  const accessibleNavItems = dashboardConfig.mainNav.filter((item) => {
+    if (!user?.role || !item.roles.includes(user.role as UserRole)) return false
+    if (item.requiresPublicListing && !isPublic) return false
+    return true
+  })
 
   return (
     <TooltipProvider delayDuration={0}>
-      {/* Mobile hamburger button */}
-      <Button
-        variant="ghost"
-        className="fixed top-4 left-4 z-50 lg:hidden"
-        onClick={() => setMobileOpen(!mobileOpen)}
-      >
-        {mobileOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-      </Button>
+      {/* Mobile hamburger button — only visible when sidebar is closed */}
+      {!mobileOpen && (
+        <Button
+          variant="ghost"
+          className="fixed top-4 left-4 z-50 lg:hidden"
+          onClick={() => setMobileOpen(true)}
+        >
+          <Menu className="w-6 h-6" />
+        </Button>
+      )}
 
       {/* Desktop sidebar */}
       <nav
         className={cn(
-          'hidden lg:flex fixed left-0 top-0 z-40 h-screen flex-col border-r border-border/50 bg-surface-raised overflow-y-auto transition-all duration-300 ease-in-out',
+          'hidden lg:flex fixed left-0 top-0 z-40 h-screen flex-col border-r border-border/50 bg-surface-raised overflow-hidden transition-all duration-300 ease-in-out',
           collapsed ? 'w-[60px] bg-background/80 backdrop-blur-md' : 'w-64',
           className
         )}
@@ -69,14 +74,14 @@ export function MainNav({ className, organizationName, collapsed, onToggleCollap
             className="fixed inset-0 z-30 bg-black/40 backdrop-blur-md lg:hidden"
             onClick={() => setMobileOpen(false)}
           />
-          <div className="fixed inset-y-0 left-0 z-40 w-64 bg-background border-r shadow-xl lg:hidden">
+          <div className="fixed inset-y-0 left-0 z-40 w-64 bg-background border-r shadow-xl lg:hidden overflow-hidden">
             <NavContent
               organizationName={organizationName}
               accessibleNavItems={accessibleNavItems}
               pathname={pathname}
               userRole={user?.role as UserRole}
               collapsed={false}
-              onToggleCollapse={() => {}}
+              onToggleCollapse={() => setMobileOpen(false)}
             />
           </div>
         </>
@@ -153,7 +158,7 @@ function NavContent({
       </div>
 
       {/* Nav links */}
-      <div className="flex flex-col space-y-1 px-3 flex-1">
+      <div className="flex flex-col space-y-1 px-3 flex-1 overflow-y-auto">
         {accessibleNavItems.map((item) => {
           const href     = item.roleHref?.[userRole] ?? item.href
           const isActive =

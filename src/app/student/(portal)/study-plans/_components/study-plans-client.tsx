@@ -21,6 +21,7 @@ import {
 
 import { markStudyPlanComplete } from '@/lib/actions/study-plans'
 import type { StudyPlan, StudyPlanContent } from '@/lib/actions/student-dashboard'
+import { useCelebration } from '@/hooks/use-celebration'
 
 // ── Config ──────────────────────────────────────────────────────────────────
 
@@ -219,10 +220,10 @@ function LessonViewer({ plan, onClose, onComplete, completing }: LessonViewerPro
               </Card>
             )}
             {content.worked_example && (
-              <Card className="border-blue-200/60 bg-blue-50/40 dark:border-blue-900/60 dark:bg-blue-950/20">
+              <Card className="border-gold/20 bg-gold/5">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm flex items-center gap-2">
-                    <Star className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                    <Star className="h-4 w-4 text-gold" />
                     Worked Example
                   </CardTitle>
                 </CardHeader>
@@ -397,6 +398,7 @@ export function StudyPlansClient({ user, initialPlans, error, activeFilter }: Pr
   const [plans, setPlans] = useState<StudyPlan[]>(initialPlans)
   const [selectedPlan, setSelectedPlan] = useState<StudyPlan | null>(null)
   const [completing, startTransition] = useTransition()
+  const { celebrate } = useCelebration()
 
   const firstName = user?.name?.split(' ')[0] ?? user?.first_name ?? 'Student'
 
@@ -427,6 +429,7 @@ export function StudyPlansClient({ user, initialPlans, error, activeFilter }: Pr
       }
       setPlans((prev) => prev.map((p) => p.id === plan.id ? { ...p, status: 'completed', score_after: score ?? null, completed_at: new Date().toISOString() } : p))
       toast.success('Study plan marked as complete!')
+      celebrate('plan')
     })
   }
 

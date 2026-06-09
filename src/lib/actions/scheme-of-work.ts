@@ -138,6 +138,15 @@ export async function importSchemeFromCsv(data: {
   return res
 }
 
+export async function importSchemeFromPdf(formData: FormData) {
+  const res = await fetcher<SchemeOfWork>('/scheme-of-work/from-pdf', {
+    method: 'POST',
+    body: formData,
+  })
+  if (!res.error) revalidatePath('/dashboard/teacher/classes')
+  return res
+}
+
 export async function updateSchemeOfWork(
   id: string,
   data: Partial<{

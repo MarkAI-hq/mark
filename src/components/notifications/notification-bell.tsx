@@ -33,6 +33,7 @@ import {
   MailCheck,
   Lock,
   UserCircle,
+  Sparkles,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -77,6 +78,10 @@ const ICON_MAP: Record<string, IconEntry> = {
   STUDENTS_IMPORTED:           { icon: <Users         className="h-4 w-4" />, bg: 'bg-primary/10 text-primary' },
   // Organization
   ORG_INVITATION:              { icon: <Building      className="h-4 w-4" />, bg: 'bg-gold/10 text-gold' },
+  ORG_INVITATION_ACCEPTED:     { icon: <UserCheck     className="h-4 w-4" />, bg: 'bg-green-500/10 text-green-600 dark:text-green-400' },
+  CLASS_JOIN_REQUEST:          { icon: <UserPlus      className="h-4 w-4" />, bg: 'bg-amber-500/10 text-amber-600 dark:text-amber-400' },
+  CLASS_JOIN_REQUEST_APPROVED: { icon: <UserCheck     className="h-4 w-4" />, bg: 'bg-green-500/10 text-green-600 dark:text-green-400' },
+  CLASS_JOIN_REQUEST_DECLINED: { icon: <UserX         className="h-4 w-4" />, bg: 'bg-destructive/10 text-destructive' },
   USER_ROLE_UPDATED:           { icon: <Shield        className="h-4 w-4" />, bg: 'bg-muted text-muted-foreground' },
   USER_REMOVED:                { icon: <UserMinus     className="h-4 w-4" />, bg: 'bg-destructive/10 text-destructive' },
   // Student-specific
@@ -88,6 +93,7 @@ const ICON_MAP: Record<string, IconEntry> = {
   ATTENDANCE_RECORDED:         { icon: <CalendarCheck className="h-4 w-4" />, bg: 'bg-primary/10 text-primary' },
   GAP_ANALYSIS_COMPLETE:       { icon: <TrendingDown  className="h-4 w-4" />, bg: 'bg-amber-500/10 text-amber-600 dark:text-amber-400' },
   // Account / system
+  WELCOME:                     { icon: <Sparkles      className="h-4 w-4" />, bg: 'bg-gold/10 text-gold' },
   EMAIL_VERIFIED:              { icon: <MailCheck     className="h-4 w-4" />, bg: 'bg-green-500/10 text-green-600 dark:text-green-400' },
   PASSWORD_CHANGED:            { icon: <Lock          className="h-4 w-4" />, bg: 'bg-muted text-muted-foreground' },
   PROFILE_UPDATED:             { icon: <UserCircle    className="h-4 w-4" />, bg: 'bg-muted text-muted-foreground' },

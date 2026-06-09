@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./fixtures";
 import { setAuthCookies, makeSseStream, DONE_EVENT, TEST_USER } from "./helpers/auth";
 
 const TRACY_URL = "/dashboard/tracy";

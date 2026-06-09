@@ -16,9 +16,9 @@ export default function NewExamPage() {
             <span className="text-foreground font-medium">New Exam</span>
           </nav>
 
-          <h1 className="text-3xl font-bold tracking-tight mt-4">Mark Exam Studio</h1>
+          <h1 className="text-3xl font-bold tracking-tight mt-4">Mirror Exam Studio</h1>
           <p className="text-muted-foreground mt-2">
-            Upload your content and let Mark·AI detect the curriculum and generate your new assessment.
+            Upload your content and let Mirror Intelligence detect the curriculum and generate your new assessment.
           </p>
         </div>
         <ExamBuilderWizard />

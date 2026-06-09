@@ -8,9 +8,6 @@ import type { ServerActionResponse } from '@/lib/types'
 export type PlanTier   = 'free' | 'pro' | 'enterprise'
 export type PlanStatus = 'trialing' | 'active' | 'past_due' | 'cancelled' | 'inactive'
 
-// Re-export from billing-utils so consumers only need one import
-export type { BillingRegion } from '@/lib/billing-utils'
-
 export interface Subscription {
   subscription_id:        string
   organization_id:        string

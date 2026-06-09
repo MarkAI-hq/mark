@@ -3,7 +3,7 @@
 // project (pre-authenticated). API calls are mocked so tests are fast and
 // deterministic regardless of AI service availability.
 
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./fixtures";
 
 test.use({ storageState: "tests/auth/admin-auth.json" });
 

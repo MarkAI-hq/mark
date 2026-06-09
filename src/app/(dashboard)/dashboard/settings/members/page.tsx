@@ -42,10 +42,10 @@ export default async function MembersPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h3 className="text-lg font-medium">Members</h3>
+      <div className="space-y-1">
+        <h3 className="text-xl font-semibold tracking-tight">Members</h3>
         <p className="text-sm text-muted-foreground">
-          Invite and manage your organization&apos;s members.
+          Invite and manage your organisation&apos;s admins and teachers.
         </p>
       </div>
       <MembersClient

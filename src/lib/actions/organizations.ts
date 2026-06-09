@@ -177,6 +177,40 @@ export async function updateOrgSso(
   }
 }
 
+export async function contactAdmin(
+  organizationId: string,
+  subject: string,
+  message: string,
+): Promise<ServerActionResponse<{ message: string }>> {
+  try {
+    const response = await fetcher<{ message: string }>(
+      `/organizations/${organizationId}/contact-admin`,
+      { method: 'POST', body: JSON.stringify({ subject, message }) },
+    )
+    if (response.error) throw new Error(response.error.message)
+    return { data: response.data, error: null }
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : 'Failed to send message.'
+    return { data: null, error: { message: msg } }
+  }
+}
+
+export async function goPublic(
+  signedBy: string,
+): Promise<ServerActionResponse<{ is_public: boolean }>> {
+  return fetcher<{ is_public: boolean }>('/organizations/my/settings', {
+    method: 'PATCH',
+    body: JSON.stringify({ is_public: true, marketplace_agreement: { signed_by: signedBy } }),
+  })
+}
+
+export async function goPrivate(): Promise<ServerActionResponse<{ is_public: boolean }>> {
+  return fetcher<{ is_public: boolean }>('/organizations/my/settings', {
+    method: 'PATCH',
+    body: JSON.stringify({ is_public: false }),
+  })
+}
+
 export async function updateOrganization(
   organizationId: string,
   data: Partial<Omit<Organization, 'organization_id'>>,

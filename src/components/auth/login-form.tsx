@@ -17,8 +17,8 @@ import {
 } from '@/components/ui/form'
 import { Input }   from '@/components/ui/input'
 import { Button }  from '@/components/ui/button'
-import { login }   from '@/lib/actions/auth'
-import { ServerActionResponse, LoginResponse } from '@/lib/types'
+import { login, resendVerificationEmail } from '@/lib/actions/auth'
+import { ServerActionResponse, LoginResponse }  from '@/lib/types'
 
 // ── Role → default landing page ───────────────────────────────────────────
 function getDefaultRedirect(roles: string[]): string {
@@ -49,11 +49,31 @@ export function LoginForm() {
     defaultValues: { email: '', password: '' },
   })
 
-  const [formError,    setFormError]    = useState<string | null>(null)
-  const [showPassword, setShowPassword] = useState(false)
+  const [formError,      setFormError]      = useState<string | null>(null)
+  const [showPassword,   setShowPassword]   = useState(false)
+  const [resendPending,  setResendPending]  = useState(false)
+  const [resendSent,     setResendSent]     = useState(false)
+
+  async function handleResend() {
+    const email = form.getValues('email')
+    if (!email) {
+      toast({ title: 'Enter your email first', variant: 'destructive' })
+      return
+    }
+    setResendPending(true)
+    const { error } = await resendVerificationEmail(email)
+    setResendPending(false)
+    if (error) {
+      toast({ title: 'Could not resend', description: error.message, variant: 'destructive' })
+    } else {
+      setResendSent(true)
+      toast({ title: 'Verification email sent', description: 'Check your inbox.' })
+    }
+  }
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setFormError(null)
+    setResendSent(false)
 
     const result: ServerActionResponse<LoginResponse> = await login(
       values.email,
@@ -162,8 +182,25 @@ export function LoginForm() {
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
 
         {(formError || ssoError) && (
-          <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-            {formError ?? ssoError}
+          <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 space-y-1">
+            <p>{formError ?? ssoError}</p>
+            {formError && /verif/i.test(formError) && (
+              <p className="text-red-600">
+                {resendSent ? 'Verification email sent — check your inbox.' : (
+                  <>
+                    Didn&apos;t receive it?{' '}
+                    <button
+                      type="button"
+                      onClick={handleResend}
+                      disabled={resendPending}
+                      className="font-medium underline underline-offset-2 hover:text-red-800 disabled:opacity-50"
+                    >
+                      {resendPending ? 'Sending…' : 'Resend verification email'}
+                    </button>
+                  </>
+                )}
+              </p>
+            )}
           </div>
         )}
 

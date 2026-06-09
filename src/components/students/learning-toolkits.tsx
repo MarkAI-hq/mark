@@ -20,11 +20,11 @@ function ToolCard({ tool }: ToolCardProps) {
       <button
         onClick={() => (hasHowTo ? setOpen((o) => !o) : undefined)}
         className={`w-full flex items-start gap-3 px-4 py-3 text-left transition-colors
-          ${hasHowTo ? 'hover:bg-amber-50/50 cursor-pointer' : 'cursor-default'}`}
+          ${hasHowTo ? 'hover:bg-gold/5 cursor-pointer' : 'cursor-default'}`}
         aria-expanded={hasHowTo ? open : undefined}
         disabled={!hasHowTo}
       >
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-100 text-amber-700 mt-0.5">
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gold/10 text-gold mt-0.5">
           <Lightbulb className="h-4 w-4" />
         </div>
 
@@ -44,12 +44,12 @@ function ToolCard({ tool }: ToolCardProps) {
       </button>
 
       {open && tool.how_to && (
-        <div className="px-4 pb-4 border-t bg-amber-50/40">
+        <div className="px-4 pb-4 border-t bg-gold/5">
           <div className="pt-3 space-y-1">
-            <p className="text-xs font-semibold text-amber-800 uppercase tracking-wide">
+            <p className="text-xs font-semibold text-gold uppercase tracking-wide">
               How to use it
             </p>
-            <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">
+            <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">
               {tool.how_to}
             </p>
           </div>
@@ -70,10 +70,10 @@ export function LearningToolkits({ profile, tools }: Props) {
   if (!tools.length) return null
 
   return (
-    <Card className="border-amber-200 bg-amber-50/20">
+    <Card className="border-gold/20 bg-gold/5">
       <CardHeader className="pb-2">
         <CardTitle className="text-base flex items-center gap-2">
-          <BookMarked className="h-4 w-4 text-amber-600" />
+          <BookMarked className="h-4 w-4 text-gold" />
           Your Learning Toolkit
         </CardTitle>
         <CardDescription>

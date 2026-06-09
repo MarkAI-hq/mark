@@ -3,7 +3,7 @@
 // routes correctly. API calls that fail return empty / error states — the tests
 // assert on navigation and UI structure, not data content.
 
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./fixtures";
 import { injectTeacherCookies } from "./helpers/login";
 
 test.beforeEach(async ({ context }) => {
@@ -31,10 +31,11 @@ test.describe("Teacher role-guard", () => {
     expect(page.url()).toContain("/dashboard/teacher");
   });
 
-  test("Teacher cannot access /root → redirected to /login", async ({ page }) => {
+  test("Teacher cannot access /root → redirected away", async ({ page }) => {
     await page.goto("/root");
-    await page.waitForURL(/\/login/, { timeout: 10_000 });
-    expect(page.url()).toContain("/login");
+    // Middleware: /root → /login → /dashboard/teacher (two hops for authenticated teacher)
+    await page.waitForURL(/\/(login|dashboard)/, { timeout: 10_000 });
+    expect(page.url()).not.toContain("/root");
   });
 });
 

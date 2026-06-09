@@ -2,15 +2,14 @@
 
 // src/app/(dashboard)/dashboard/classes/[id]/_components/class-detail-tabs.tsx
 
-import { useState, useTransition, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { useRouter } from 'next/navigation'
 import {
   Brain, AlertTriangle, BarChart2, Users, BookOpen,
-  TrendingUp, TrendingDown, Minus, GraduationCap, Plus, Trash2, Zap, LayoutGrid,
+  TrendingUp, TrendingDown, Minus, GraduationCap, Zap, LayoutGrid,
 } from 'lucide-react'
-import { toast } from 'sonner'
 import {
   RadarChart, Radar, PolarGrid, PolarAngleAxis,
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell,
@@ -19,18 +18,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger }                from '@/compo
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge }          from '@/components/ui/badge'
 import { Button }         from '@/components/ui/button'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
-import { Label }          from '@/components/ui/label'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { ErrorTypeLabel } from '@/components/ui/error-type-label'
 import { ClassStudentsTab }      from './class-students-tab'
 import { ClassTeachersTab }      from './class-teachers-tab'
 import { ReteachClassButton }    from '@/components/reteach/reteach-class-button'
 import { ClassInterventionsTab } from '@/components/classes/class-interventions-tab'
 import { ClassGroupsTab }        from '@/components/classes/class-groups-tab'
-import { getCourses }            from '@/lib/actions/courses'
-import { assignCourseToClass, removeCourseFromClass } from '@/lib/actions/classes'
-import type { Class, AssignedCourse, Course }         from '@/lib/types'
+import type { Class, AssignedCourse }         from '@/lib/types'
 import type { ClassAnalytics, ClassTeacher, ClassGroupsData } from '@/lib/actions/classes'
 import type { OrganizationUser }                      from '@/lib/actions/organizations'
 import type { ReteachSessionRecord }                  from '@/lib/actions/reteach-history'
@@ -45,125 +39,12 @@ interface ClassDetailTabsProps {
   latestAssessmentId: string | null
   interventions:      ReteachSessionRecord[]
   groups:             ClassGroupsData | null
+  joinRequests?:      import('@/lib/actions/classes').AdminClassJoinRequest[]
 }
 
 const SCORE_COLORS = ['#ef4444', '#f97316', '#fbbf24', '#60a5fa', '#34d399']
 
 // ── Assign Course Dialog ───────────────────────────────────────────────────
-
-function AssignCourseDialog({
-  classId,
-  teachers,
-  onAssigned,
-}: {
-  classId:    string
-  teachers:   ClassTeacher[]
-  onAssigned: (course: AssignedCourse) => void
-}) {
-  const [open,      setOpen]      = useState(false)
-  const [courses,   setCourses]   = useState<Course[]>([])
-  const [courseId,  setCourseId]  = useState('')
-  const [teacherId, setTeacherId] = useState('')
-  const [isPending, startTransition] = useTransition()
-
-  const handleOpen = async () => {
-    setOpen(true)
-    const { data } = await getCourses()
-    if (data) setCourses(data)
-  }
-
-  const handleSubmit = () => {
-    if (!courseId)  return toast.warning('Please select a course.')
-    if (!teacherId) return toast.warning('Please select a teacher.')
-    startTransition(async () => {
-      try {
-        await assignCourseToClass(classId, courseId, teacherId)
-        const course  = courses.find((c) => c.id === courseId)!
-        const teacher = teachers.find((t) => t.teacher_id === teacherId)!
-        onAssigned({
-          id:                 `${courseId}-${teacherId}`,
-          course_id:          courseId,
-          course_title:       course.title,
-          course_code:        course.code,
-          course_description: course.description ?? null,
-          teacher_id:         teacherId,
-          teacher_name:       teacher.first_name,
-          teacher_lastname:   teacher.last_name,
-          assigned_at:        new Date().toISOString(),
-        } as AssignedCourse)
-        toast.success(`"${course.title}" assigned successfully.`)
-        setOpen(false)
-        setCourseId('')
-        setTeacherId('')
-      } catch (err: any) {
-        toast.error(err.message ?? 'Failed to assign course.')
-      }
-    })
-  }
-
-  const activeTeachers = teachers.filter((t) => t.status === 'active')
-
-  return (
-    <>
-      <Button size="sm" onClick={handleOpen}>
-        <Plus className="h-4 w-4 mr-1.5" />
-        Assign Course
-      </Button>
-
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Assign Course to Class</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-2">
-            <div className="space-y-1.5">
-              <Label>Course</Label>
-              <Select value={courseId} onValueChange={setCourseId}>
-                <SelectTrigger>
-                  <SelectValue placeholder={courses.length === 0 ? 'Loading...' : 'Select course'} />
-                </SelectTrigger>
-                <SelectContent>
-                  {courses.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.title}
-                      {c.code && <span className="text-muted-foreground ml-1.5">· {c.code}</span>}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
-              <Label>Responsible Teacher</Label>
-              <Select value={teacherId} onValueChange={setTeacherId}>
-                <SelectTrigger>
-                  <SelectValue placeholder={activeTeachers.length === 0 ? 'No active teachers' : 'Select teacher'} />
-                </SelectTrigger>
-                <SelectContent>
-                  {activeTeachers.map((t) => (
-                    <SelectItem key={t.teacher_id} value={t.teacher_id}>
-                      {t.first_name} {t.last_name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {activeTeachers.length === 0 && (
-                <p className="text-xs text-muted-foreground">
-                  Assign and activate a teacher first from the Teachers tab.
-                </p>
-              )}
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-            <Button onClick={handleSubmit} disabled={isPending || !courseId || !teacherId}>
-              {isPending ? 'Assigning...' : 'Assign'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </>
-  )
-}
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -193,10 +74,9 @@ function EmptyState({ icon: Icon, message }: { icon: any; message: string }) {
 
 export function ClassDetailTabs({
   classId, classDetails, courses: initialCourses, analytics,
-  teachers, orgTeachers, latestAssessmentId, interventions, groups,
+  teachers, orgTeachers, latestAssessmentId, interventions, groups, joinRequests,
 }: ClassDetailTabsProps) {
-  const [courses,   setCourses]      = useState<AssignedCourse[]>(initialCourses)
-  const [isPending, startTransition] = useTransition()
+  const [courses, setCourses] = useState<AssignedCourse[]>(initialCourses)
 
   const searchParams = useSearchParams()
   const router       = useRouter()
@@ -516,53 +396,24 @@ export function ClassDetailTabs({
 
       {/* ── Courses ───────────────────────────────────────────────────────── */}
       <TabsContent value="courses" className="mt-6">
-        <div className="flex items-center justify-between mb-4">
-          <p className="text-sm text-muted-foreground">
-            {courses.length} course{courses.length !== 1 ? 's' : ''} assigned
-          </p>
-          <AssignCourseDialog
-            classId={classId}
-            teachers={teachers}
-            onAssigned={(course) => setCourses((prev) => [...prev, course])}
-          />
+        <div className="mb-4 rounded-lg border border-primary/20 bg-primary/5 px-4 py-3 text-xs text-muted-foreground">
+          Subject assignments are managed from the <strong className="text-foreground">Teachers tab</strong> — open a teacher&apos;s card and click <strong className="text-foreground">+ Assign subject</strong>.
         </div>
         {courses.length === 0 ? (
-          <EmptyState icon={BookOpen} message="No courses assigned yet. Use the button above to assign a course." />
+          <EmptyState icon={BookOpen} message="No subjects assigned yet. Go to the Teachers tab to assign subjects to each teacher." />
         ) : (
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {courses.map((course) => (
               <Card key={course.id}>
                 <CardContent className="pt-5">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <p className="text-sm font-semibold truncate">{course.course_title}</p>
-                      <p className="text-xs text-muted-foreground mt-0.5">{course.course_code}</p>
-                      {course.course_description && (
-                        <p className="text-xs text-muted-foreground mt-2 line-clamp-2">{course.course_description}</p>
-                      )}
-                      <p className="text-xs text-muted-foreground mt-3">
-                        {course.teacher_name} {course.teacher_lastname}
-                      </p>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7 shrink-0 text-muted-foreground hover:text-destructive"
-                      onClick={() => {
-                        startTransition(async () => {
-                          try {
-                            await removeCourseFromClass(classId, course.course_id)
-                            setCourses((prev) => prev.filter((c) => c.id !== course.id))
-                            toast.success(`"${course.course_title}" removed.`)
-                          } catch (err: any) {
-                            toast.error(err.message ?? 'Failed to remove course.')
-                          }
-                        })
-                      }}
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
-                  </div>
+                  <p className="text-sm font-semibold truncate">{course.course_title}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{course.course_code}</p>
+                  {course.course_description && (
+                    <p className="text-xs text-muted-foreground mt-2 line-clamp-2">{course.course_description}</p>
+                  )}
+                  <p className="text-xs text-muted-foreground mt-3">
+                    {course.teacher_name} {course.teacher_lastname}
+                  </p>
                 </CardContent>
               </Card>
             ))}
@@ -577,6 +428,10 @@ export function ClassDetailTabs({
           teachers={teachers}
           orgTeachers={orgTeachers}
           organizationId={classDetails.organization_id ?? ''}
+          joinRequests={joinRequests}
+          initialCourses={courses}
+          onCourseAssigned={(c) => setCourses((prev) => [...prev, c])}
+          onCourseRemoved={(courseId) => setCourses((prev) => prev.filter((c) => c.course_id !== courseId))}
         />
       </TabsContent>
 

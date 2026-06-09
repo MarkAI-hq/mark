@@ -63,8 +63,10 @@ export const STUDENT_USER = {
   name:           "Test Student",
   email:          "student@mirror.test",
   role:           "Student",
+  roles:          ["Student"],
   isVerified:     true,
   organizationId: "test-org-1",
+  school_code:    "TEST-SCHOOL",
 };
 
 export async function injectStudentCookies(context: BrowserContext): Promise<void> {

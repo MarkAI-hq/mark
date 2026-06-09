@@ -11,16 +11,22 @@ import {
   Sparkles,
   Library,
   BarChart2,
+  Award,
+  ClipboardList,
+  Building2,
+  ShoppingBag,
+  ShieldCheck,
   LucideIcon,
 } from 'lucide-react'
 
 export interface NavItem {
-  title:     string
-  href:      string
-  disabled?: boolean
-  roles:     UserRole[]
-  icon:      LucideIcon
-  roleHref?: Partial<Record<UserRole, string>>
+  title:                  string
+  href:                   string
+  disabled?:              boolean
+  roles:                  UserRole[]
+  icon:                   LucideIcon
+  roleHref?:              Partial<Record<UserRole, string>>
+  requiresPublicListing?: boolean
 }
 
 export const dashboardConfig = {
@@ -80,6 +86,39 @@ export const dashboardConfig = {
       href:  '/dashboard/exam-builder',
       roles: ['Admin', 'Teacher'],
       icon:  FileSignature,
+    },
+    {
+      title: 'Certificates',
+      href:  '/dashboard/certificates',
+      roles: ['Admin'],
+      icon:  Award,
+    },
+    {
+      title:                 'Admissions',
+      href:                  '/dashboard/admissions',
+      roles:                 ['Admin'],
+      icon:                  ClipboardList,
+      requiresPublicListing: true,
+    },
+    {
+      title:                 'School Hub',
+      href:                  '/dashboard/partner',
+      roles:                 ['Admin'],
+      icon:                  Building2,
+      requiresPublicListing: true,
+    },
+    {
+      title: 'Extras',
+      href:  '/dashboard/extras',
+      roles: ['Admin'],
+      icon:  ShoppingBag,
+    },
+    {
+      title:                 'Verification',
+      href:                  '/dashboard/verification',
+      roles:                 ['Admin'],
+      icon:                  ShieldCheck,
+      requiresPublicListing: true,
     },
     {
       title: 'Get Help',

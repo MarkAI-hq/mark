@@ -270,6 +270,11 @@ export async function getClassAssessments(classId: string): Promise<ServerAction
   return fetcher(`/assessments?classId=${classId}`, { cache: 'no-store' })
 }
 
+// ── Admin: get all subjects in the organisation ───────────────────────────
+export async function getOrgSubjects(): Promise<ServerActionResponse<import('@/lib/types').Subject[]>> {
+  return fetcher('/academics/subjects', { cache: 'no-store' })
+}
+
 // ── Admin: assign a course (+ responsible teacher) to a class ─────────────
 export async function assignCourseToClass(
   classId:   string,
@@ -279,6 +284,22 @@ export async function assignCourseToClass(
   const response = await fetcher<{ message: string }>(
     `/academics/classes/${classId}/courses`,
     { method: 'POST', body: JSON.stringify({ course_id: courseId, teacher_id: teacherId }) },
+  )
+  const result = handleMutationResponse(response)
+  revalidatePath(`/dashboard/classes/${classId}`)
+  return result
+}
+
+// ── Admin: assign a subject (+ responsible teacher) to a class ────────────
+// The backend will find or auto-create the matching course.
+export async function assignSubjectToClass(
+  classId:   string,
+  subjectId: string,
+  teacherId: string,
+): Promise<{ message: string }> {
+  const response = await fetcher<{ message: string }>(
+    `/academics/classes/${classId}/courses`,
+    { method: 'POST', body: JSON.stringify({ subject_id: subjectId, teacher_id: teacherId }) },
   )
   const result = handleMutationResponse(response)
   revalidatePath(`/dashboard/classes/${classId}`)
@@ -324,8 +345,94 @@ export interface ClassGroupsData {
   generatedAt: string
 }
  
+// ── Teacher: self-service class join requests ─────────────────────────────
+
+export interface ClassJoinRequest {
+  request_id:   string
+  class_id:     string
+  class_name:   string
+  teacher_id:   string
+  status:       'pending' | 'approved' | 'declined'
+  message?:     string
+  requested_at: string
+  resolved_at?: string | null
+}
+
+export async function getMyJoinRequests(): Promise<ServerActionResponse<ClassJoinRequest[]>> {
+  return fetcher<ClassJoinRequest[]>('/classes/join-requests', { cache: 'no-store' })
+}
+
+export async function requestToJoinClass(
+  classId: string,
+  message?: string,
+): Promise<ServerActionResponse<ClassJoinRequest>> {
+  try {
+    const response = await fetcher<ClassJoinRequest>(`/classes/${classId}/join-requests`, {
+      method: 'POST',
+      body:   JSON.stringify({ message }),
+    })
+    if (response.error) throw new Error(response.error.message)
+    revalidatePath('/dashboard/teacher/classes')
+    return { data: response.data, error: null }
+  } catch (err) {
+    return { data: null, error: { message: err instanceof Error ? err.message : 'Failed to send request.' } }
+  }
+}
+
+export async function cancelJoinRequest(
+  classId: string,
+): Promise<ServerActionResponse<{ message: string }>> {
+  try {
+    const response = await fetcher<{ message: string }>(`/classes/${classId}/join-requests`, {
+      method: 'DELETE',
+    })
+    if (response.error) throw new Error(response.error.message)
+    revalidatePath('/dashboard/teacher/classes')
+    return { data: response.data, error: null }
+  } catch (err) {
+    return { data: null, error: { message: err instanceof Error ? err.message : 'Failed to cancel request.' } }
+  }
+}
+
+// ── Admin: manage join requests for a class ───────────────────────────────
+
+export interface AdminClassJoinRequest {
+  request_id:   string
+  teacher_id:   string
+  first_name:   string
+  last_name:    string
+  email:        string
+  status:       'pending' | 'approved' | 'declined'
+  message?:     string
+  requested_at: string
+}
+
+export async function getClassJoinRequests(
+  classId: string,
+): Promise<ServerActionResponse<AdminClassJoinRequest[]>> {
+  return fetcher<AdminClassJoinRequest[]>(`/classes/${classId}/join-requests`, { cache: 'no-store' })
+}
+
+export async function respondToJoinRequest(
+  classId:   string,
+  requestId: string,
+  action:    'approve' | 'decline',
+): Promise<ServerActionResponse<{ message: string }>> {
+  try {
+    const response = await fetcher<{ message: string }>(
+      `/classes/${classId}/join-requests/${requestId}`,
+      { method: 'PATCH', body: JSON.stringify({ action }) },
+    )
+    if (response.error) throw new Error(response.error.message)
+    revalidatePath(`/dashboard/classes/${classId}`)
+    return { data: response.data, error: null }
+  } catch (err) {
+    return { data: null, error: { message: err instanceof Error ? err.message : 'Failed to respond to request.' } }
+  }
+}
+
 // ── Get class groups action ────────────────────────────────────────────────
- 
+
 export async function getClassGroups(
   classId: string,
 ): Promise<ServerActionResponse<ClassGroupsData>> {

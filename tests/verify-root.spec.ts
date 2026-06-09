@@ -1,4 +1,4 @@
-import { test, expect, Page } from '@playwright/test'
+import { test, expect, Page } from "./fixtures"
 
 const ROOT_EMAIL    = process.env.ROOT_TEST_EMAIL    ?? ''
 const ROOT_PASSWORD = process.env.ROOT_TEST_PASSWORD ?? ''

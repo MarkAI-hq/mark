@@ -22,10 +22,14 @@ export async function middleware(request: NextRequest) {
     '/onboarding',
     '/privacy',
     '/terms',
+    '/certificates',
+    '/enroll',
+    '/schools',
+    '/record',
   ]
 
   const isPublicPath =
-    publicPaths.some(p => pathname === p || pathname.startsWith(p + '?')) ||
+    publicPaths.some(p => pathname === p || pathname.startsWith(p + '/') || pathname.startsWith(p + '?')) ||
     pathname.startsWith('/assets')
 
   const getUser = (): { role: string; id: string; onboarding_complete?: boolean } | null => {

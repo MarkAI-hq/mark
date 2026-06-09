@@ -240,7 +240,7 @@ export function TeacherDashboardClient({
       </div>
 
       {/* ── Per-Class Intelligence ───────────────────────────────────────── */}
-      {classAnalytics.length > 0 ? (
+      {classAnalytics.length > 0 && (
         <>
           <Separator />
           <div className="space-y-4">
@@ -260,19 +260,6 @@ export function TeacherDashboardClient({
                 />
               ))}
             </div>
-          </div>
-        </>
-      ) : (
-        <>
-          <Separator />
-          <div className="flex flex-col items-center justify-center py-12 text-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gold/10">
-              <GraduationCap className="h-6 w-6 text-gold" />
-            </div>
-            <p className="text-sm font-medium">No classes assigned yet</p>
-            <p className="text-xs text-muted-foreground max-w-xs">
-              Class intelligence will appear here once your admin assigns you to classes.
-            </p>
           </div>
         </>
       )}

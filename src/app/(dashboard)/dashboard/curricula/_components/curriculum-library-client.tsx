@@ -33,11 +33,12 @@ function getLevelOrder(raw: string) {
 }
 
 interface Props {
-  curricula: CurriculumSchemaMetadata[]
-  error: string | null
+  curricula:      CurriculumSchemaMetadata[]
+  error:          string | null
+  noSubjectsYet?: boolean
 }
 
-export function CurriculumLibraryClient({ curricula, error }: Props) {
+export function CurriculumLibraryClient({ curricula, error, noSubjectsYet }: Props) {
   if (error) {
     return (
       <div className="flex items-center gap-2 text-muted-foreground py-12">
@@ -52,10 +53,21 @@ export function CurriculumLibraryClient({ curricula, error }: Props) {
       <Card>
         <CardContent className="flex flex-col items-center justify-center py-16 gap-3 text-center">
           <BookOpen className="h-10 w-10 opacity-25" />
-          <p className="text-sm font-medium">No curriculum schemas loaded</p>
-          <p className="text-xs text-muted-foreground">
-            Check that the curricula directory is correctly configured (CURRICULA_ROOT env var).
-          </p>
+          {noSubjectsYet ? (
+            <>
+              <p className="text-sm font-medium">No subjects assigned yet</p>
+              <p className="text-xs text-muted-foreground max-w-xs">
+                Your curriculum will appear here once your admin assigns you to a class. Check back after your administrator sets up your classes.
+              </p>
+            </>
+          ) : (
+            <>
+              <p className="text-sm font-medium">No curriculum schemas loaded</p>
+              <p className="text-xs text-muted-foreground">
+                Check that the curricula directory is correctly configured (CURRICULA_ROOT env var).
+              </p>
+            </>
+          )}
         </CardContent>
       </Card>
     )

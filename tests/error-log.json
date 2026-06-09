@@ -1,0 +1,107 @@
+[
+  {
+    "test": "widget dark mode: background matches dark card, text readable",
+    "suite": "tracy-widget-visual.spec.ts",
+    "status": "passed",
+    "screenshot": "D:\\markhq\\mark\\tests\\screenshots\\error-2026-06-08T11-23-15-276Z.png",
+    "captured": {
+      "console": [],
+      "network": [],
+      "pageErrors": [
+        {
+          "message": "Cannot read properties of null (reading 'classList')",
+          "stack": "TypeError: Cannot read properties of null (reading 'classList')\n    at <anonymous>:3:30\n    at <anonymous>:5:5\n    at <anonymous>:6:7",
+          "timestamp": "2026-06-08T11:22:59.920Z"
+        },
+        {
+          "message": "Cannot read properties of null (reading 'classList')",
+          "stack": "TypeError: Cannot read properties of null (reading 'classList')\n    at <anonymous>:3:30\n    at <anonymous>:5:5\n    at <anonymous>:6:7",
+          "timestamp": "2026-06-08T11:23:09.487Z"
+        }
+      ]
+    },
+    "timestamp": "2026-06-08T11:23:15.398Z"
+  },
+  {
+    "test": "widget dark mode: background matches dark card, text readable",
+    "suite": "tracy-widget-visual.spec.ts",
+    "status": "passed",
+    "screenshot": "D:\\markhq\\mark\\tests\\screenshots\\error-2026-06-08T11-28-12-182Z.png",
+    "captured": {
+      "console": [],
+      "network": [],
+      "pageErrors": [
+        {
+          "message": "Cannot read properties of null (reading 'classList')",
+          "stack": "TypeError: Cannot read properties of null (reading 'classList')\n    at <anonymous>:3:30\n    at <anonymous>:5:5\n    at <anonymous>:6:7",
+          "timestamp": "2026-06-08T11:27:58.606Z"
+        },
+        {
+          "message": "Cannot read properties of null (reading 'classList')",
+          "stack": "TypeError: Cannot read properties of null (reading 'classList')\n    at <anonymous>:3:30\n    at <anonymous>:5:5\n    at <anonymous>:6:7",
+          "timestamp": "2026-06-08T11:28:06.070Z"
+        }
+      ]
+    },
+    "timestamp": "2026-06-08T11:28:12.300Z"
+  },
+  {
+    "test": "widget dark mode: background matches dark card, text readable",
+    "suite": "tracy-widget-visual.spec.ts",
+    "status": "passed",
+    "screenshot": "D:\\markhq\\mark\\tests\\screenshots\\error-2026-06-08T11-31-46-317Z.png",
+    "captured": {
+      "console": [],
+      "network": [],
+      "pageErrors": [
+        {
+          "message": "Cannot read properties of null (reading 'classList')",
+          "stack": "TypeError: Cannot read properties of null (reading 'classList')\n    at <anonymous>:3:30\n    at <anonymous>:5:5\n    at <anonymous>:6:7",
+          "timestamp": "2026-06-08T11:31:31.062Z"
+        },
+        {
+          "message": "Cannot read properties of null (reading 'classList')",
+          "stack": "TypeError: Cannot read properties of null (reading 'classList')\n    at <anonymous>:3:30\n    at <anonymous>:5:5\n    at <anonymous>:6:7",
+          "timestamp": "2026-06-08T11:31:40.278Z"
+        }
+      ]
+    },
+    "timestamp": "2026-06-08T11:31:46.493Z"
+  },
+  {
+    "test": "Back navigation preserves selected value",
+    "suite": "tracy-form-wizard.spec.ts",
+    "status": "timedOut",
+    "screenshot": "D:\\markhq\\mark\\tests\\screenshots\\error-2026-06-08T12-24-19-582Z.png",
+    "captured": {
+      "console": [
+        {
+          "level": "error",
+          "text": "Failed to load resource: net::ERR_NAME_NOT_RESOLVED",
+          "timestamp": "2026-06-08T12:22:57.810Z"
+        }
+      ],
+      "network": [],
+      "pageErrors": []
+    },
+    "timestamp": "2026-06-08T12:24:19.831Z"
+  },
+  {
+    "test": "full wizard submission sends correct __FORM_SUBMIT__ payload",
+    "suite": "tracy-form-wizard.spec.ts",
+    "status": "timedOut",
+    "screenshot": "D:\\markhq\\mark\\tests\\screenshots\\error-2026-06-08T12-24-29-546Z.png",
+    "captured": {
+      "console": [
+        {
+          "level": "error",
+          "text": "Failed to load resource: net::ERR_NAME_NOT_RESOLVED",
+          "timestamp": "2026-06-08T12:23:16.455Z"
+        }
+      ],
+      "network": [],
+      "pageErrors": []
+    },
+    "timestamp": "2026-06-08T12:24:29.630Z"
+  }
+]

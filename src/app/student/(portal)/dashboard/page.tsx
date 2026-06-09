@@ -7,7 +7,10 @@ import {
   getStudentExamHistory,
   getStudentLearningTools,
   getStudentStudyPlans,
+  getStudentSocialProof,
+  getStudentSubjectProgress,
 } from '@/lib/actions/student-dashboard'
+import { fetcher } from '@/lib/fetch'
 import { StudentDashboardClient } from '@/components/students/student-dashboard-client'
 
 export default async function StudentDashboardPage() {
@@ -32,13 +35,21 @@ export default async function StudentDashboardPage() {
     examHistory,
     tools,
     studyPlans,
+    streakRes,
+    socialProof,
+    subjectProgress,
   ] = await Promise.all([
     getStudentDashboard(studentId),
     getStudentSubmissions(studentId),
     getStudentExamHistory(studentId),
     getStudentLearningTools(studentId),
     getStudentStudyPlans(studentId),
+    fetcher<{ study_streak: number }>(`/students/${studentId}/streak`).catch(() => ({ data: null, error: null })),
+    getStudentSocialProof(studentId),
+    getStudentSubjectProgress(studentId),
   ])
+
+  const streak = (streakRes as any)?.data?.study_streak ?? user?.study_streak ?? 0
 
   return (
     <StudentDashboardClient
@@ -49,6 +60,9 @@ export default async function StudentDashboardPage() {
       examHistory={examHistory}
       tools={tools}
       studyPlans={studyPlans}
+      streak={streak}
+      socialProof={socialProof}
+      subjectProgress={subjectProgress}
     />
   )
 }
