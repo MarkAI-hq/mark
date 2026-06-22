@@ -2,20 +2,20 @@
 import { UserRole } from '@/lib/types'
 import {
   LayoutDashboard,
-  BookMarked,
-  GraduationCap,
+  BookOpen,
   Users,
   FileSignature,
   HelpCircle,
   Settings,
   Sparkles,
   Library,
-  BarChart2,
+  MonitorCheck,
   Award,
   ClipboardList,
   Building2,
   ShoppingBag,
   ShieldCheck,
+  UserCheck,
   LucideIcon,
 } from 'lucide-react'
 
@@ -48,28 +48,22 @@ export const dashboardConfig = {
       },
     },
     {
-      title: 'Subjects',
-      href:  '/dashboard/subjects',
-      roles: ['Admin'],
-      icon:  BookMarked,
-    },
-    {
-      title: 'Courses',
-      href:  '/dashboard/courses',
-      roles: ['Admin'],
-      icon:  GraduationCap,
-    },
-    {
       title: 'Curriculum',
       href:  '/dashboard/curricula',
       roles: ['Admin', 'Teacher'],
       icon:  Library,
     },
     {
-      title: 'Overview',
+      title: 'Knowledge Base',
+      href:  '/dashboard/knowledge-base',
+      roles: ['Admin', 'Teacher'],
+      icon:  BookOpen,
+    },
+    {
+      title: 'Monitor',
       href:  '/dashboard/overview',
       roles: ['Admin', 'Teacher'],
-      icon:  BarChart2,
+      icon:  MonitorCheck,
     },
     {
       title: 'Classes',
@@ -98,6 +92,13 @@ export const dashboardConfig = {
       href:                  '/dashboard/admissions',
       roles:                 ['Admin'],
       icon:                  ClipboardList,
+      requiresPublicListing: true,
+    },
+    {
+      title:                 'Approvals',
+      href:                  '/dashboard/students/pending',
+      roles:                 ['Admin'],
+      icon:                  UserCheck,
       requiresPublicListing: true,
     },
     {

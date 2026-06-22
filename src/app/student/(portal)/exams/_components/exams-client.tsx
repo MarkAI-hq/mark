@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import { toast } from 'sonner'
-import { FileCheck, Loader2, CheckCircle2, Clock, AlertCircle } from 'lucide-react'
+import { FileCheck, Loader2, CheckCircle2, Clock, AlertCircle, Trophy } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -17,7 +17,7 @@ import {
 } from '@/components/ui/select'
 import { registerForExam, type ExamRegistration } from '@/lib/actions/exam-registrations'
 
-const EXAM_BODIES = ['Cambridge IGCSE', 'Cambridge A-Level', 'WAEC', 'NECO', 'IB', 'Edexcel', 'AQA', 'Other']
+const EXAM_BODIES = ['UNEB', 'Cambridge IGCSE', 'Cambridge A-Level', 'WAEC', 'NECO', 'IB', 'Edexcel', 'AQA', 'Other']
 const EXAM_SESSIONS = ['May/June 2025', 'October/November 2025', 'January 2026', 'May/June 2026', 'October/November 2026']
 
 const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
@@ -62,6 +62,8 @@ export function ExamsClient({ registrations }: Props) {
     })
   }
 
+  const passed = registrations.filter((r) => r.result_status === 'passed')
+
   return (
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4">
@@ -75,6 +77,24 @@ export function ExamsClient({ registrations }: Props) {
           {showForm ? 'Cancel' : 'New Registration'}
         </Button>
       </div>
+
+      {/* Goal achieved — the "you did it" moment when real results come in */}
+      {passed.length > 0 && (
+        <div className="rounded-2xl border border-emerald-300 bg-emerald-50 dark:bg-emerald-900/20 p-5 text-center">
+          <Trophy className="h-8 w-8 text-emerald-600 mx-auto mb-2" />
+          <h2 className="text-lg font-bold text-emerald-900 dark:text-emerald-100">
+            You did it! 🎉
+          </h2>
+          {passed.map((r) => (
+            <p key={r.id} className="text-sm text-emerald-700 dark:text-emerald-300 mt-1">
+              {r.exam_body} {r.exam_type}: <span className="font-semibold">{r.result_grade}</span> — passed
+            </p>
+          ))}
+          <p className="text-xs text-emerald-700/80 dark:text-emerald-300/80 mt-2">
+            This is the goal you set out to reach. Incredibly well done.
+          </p>
+        </div>
+      )}
 
       {showForm && (
         <Card>

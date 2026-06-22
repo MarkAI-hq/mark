@@ -1,4 +1,4 @@
-import { LayoutDashboard, Building2, ImageIcon, ShieldCheck, ScrollText, Megaphone, BookOpen, ShieldPlus, Inbox, BadgeCheck, LucideIcon } from 'lucide-react'
+import { LayoutDashboard, Building2, ImageIcon, ShieldCheck, ScrollText, Megaphone, BookOpen, ShieldPlus, Inbox, BadgeCheck, BarChart2, LucideIcon } from 'lucide-react'
 
 export interface RootNavItem {
   title:     string
@@ -19,5 +19,6 @@ export const rootConfig = {
     { title: 'Audit Log',      href: '/root/audit',              icon: ScrollText,  rootOnly: true },
     { title: 'Support Inbox',  href: '/root/support',            icon: Inbox,       rootOnly: true },
     { title: 'Verifications', href: '/root/verifications',      icon: BadgeCheck                  },
+    { title: 'Benchmarks',    href: '/root/benchmarks',          icon: BarChart2                    },
   ] as RootNavItem[],
 }

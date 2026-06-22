@@ -2,7 +2,7 @@
 
 // src/components/onboarding/onboarding-wizard.tsx
 
-import { useState, useTransition, useCallback } from 'react'
+import { useState, useTransition, useCallback, useEffect } from 'react'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
@@ -12,6 +12,8 @@ import {
 } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
+import { getAvailableSubjects, type AvailableSubject } from '@/lib/actions/curricula'
 import { cn } from '@/lib/utils'
 import { createClass } from '@/lib/actions/classes'
 import { createSubjects } from '@/lib/actions/subjects'
@@ -50,6 +52,44 @@ const DEFAULT_CLASSES: Record<string, string[]> = {
 type SchoolTypeKey = 'primary' | 'o-level' | 'a-level' | 'combined' | 'other'
 type EduSystemKey  = 'uneb' | 'cambridge' | 'ib' | 'other'
 
+// Subject metadata auto-enriches default subjects with codes + descriptions.
+// Matched case-insensitively against DEFAULT_SUBJECTS names at creation time.
+const SUBJECT_METADATA: Record<string, { code: string; description: string }> = {
+  'Mathematics':                   { code: 'MTH',  description: 'Numbers, algebra, geometry, statistics and problem solving.' },
+  'Subsidiary Mathematics':        { code: 'SMTH', description: 'Core mathematical concepts for non-specialist students.' },
+  'Further Mathematics':           { code: 'FMTH', description: 'Advanced mathematics including calculus and complex numbers.' },
+  'English':                       { code: 'ENG',  description: 'Reading, writing, grammar, communication and literature.' },
+  'English Language':              { code: 'ENG',  description: 'Reading, writing, grammar and communication skills.' },
+  'English Literature':            { code: 'ELIT', description: 'Study of prose, poetry and drama texts.' },
+  'English Language & Literature': { code: 'ELL',  description: 'Combined study of language and literary texts.' },
+  'Biology':                       { code: 'BIO',  description: 'Living organisms, ecosystems, genetics and human biology.' },
+  'Chemistry':                     { code: 'CHEM', description: 'Matter, reactions, atomic structure and organic chemistry.' },
+  'Physics':                       { code: 'PHY',  description: 'Forces, energy, waves, electricity and the universe.' },
+  'Science':                       { code: 'SCI',  description: 'Integrated study of biology, chemistry and physics.' },
+  'History':                       { code: 'HIST', description: 'Past events, civilisations, politics and social change.' },
+  'Geography':                     { code: 'GEOG', description: 'Physical landscapes, human settlements and the environment.' },
+  'Literature':                    { code: 'LIT',  description: 'Study of prose, poetry and drama texts.' },
+  'Commerce':                      { code: 'COM',  description: 'Trade, business operations and economic activity.' },
+  'Economics':                     { code: 'ECON', description: 'Production, consumption, markets and economic policy.' },
+  'Agriculture':                   { code: 'AGRI', description: 'Crop production, livestock, soil science and farm management.' },
+  'Religious Education':           { code: 'RE',   description: 'World religions, ethics, morality and spiritual development.' },
+  'Divinity':                      { code: 'DIV',  description: 'Biblical studies, theology and Christian ethics.' },
+  'Computer Studies':              { code: 'CS',   description: 'Computing fundamentals, programming, data and networks.' },
+  'Computer Science':              { code: 'CS',   description: 'Algorithms, programming, data structures and systems.' },
+  'ICT':                           { code: 'ICT',  description: 'Information and communication technology skills and applications.' },
+  'Kiswahili':                     { code: 'KIS',  description: 'Swahili language, grammar, reading and writing.' },
+  'French':                        { code: 'FRE',  description: 'French language, grammar, reading, writing and culture.' },
+  'Physical Education':            { code: 'PE',   description: 'Sport, fitness, health and physical development.' },
+  'Social Studies':                { code: 'SS',   description: 'Society, culture, civics, geography and history.' },
+  'Local Language':                { code: 'LL',   description: 'Mother tongue and regional language literacy.' },
+  'General Paper':                 { code: 'GP',   description: 'Critical thinking, current affairs and essay writing.' },
+  'Humanities':                    { code: 'HUM',  description: 'Integrated study of history, geography and social sciences.' },
+  'Arts':                          { code: 'ART',  description: 'Visual arts, creativity and aesthetic expression.' },
+  'Visual Arts':                   { code: 'VART', description: 'Drawing, painting, design and visual expression.' },
+  'Individuals & Societies':       { code: 'IS',   description: 'Social sciences, history and geography combined.' },
+  'Theory of Knowledge':           { code: 'TOK',  description: 'Epistemology, critical thinking and knowledge frameworks.' },
+}
+
 const DEFAULT_SUBJECTS: Record<SchoolTypeKey, Record<EduSystemKey, string[]>> = {
   primary: {
     uneb:      ['English', 'Mathematics', 'Science', 'Social Studies', 'Religious Education', 'Kiswahili', 'Local Language', 'Physical Education'],
@@ -81,6 +121,16 @@ const DEFAULT_SUBJECTS: Record<SchoolTypeKey, Record<EduSystemKey, string[]>> = 
     ib:        ['English', 'Mathematics', 'Science', 'Humanities', 'ICT'],
     other:     ['English', 'Mathematics', 'Science', 'Humanities', 'ICT'],
   },
+}
+
+function deriveCountry(sys: string): string | null {
+  return sys === 'uneb' ? 'uganda' : null
+}
+
+function deriveClassKeyPrefix(type: string): string | undefined {
+  if (type === 'primary') return 'P'
+  if (type === 'o-level' || type === 'a-level') return 'S'
+  return undefined
 }
 
 const WIZARD_STEPS = [
@@ -117,6 +167,10 @@ export function OnboardingWizard({ adminName, schoolName }: OnboardingWizardProp
   const [schoolType,      setSchoolType]      = useState('')
   const [educationSystem, setEducationSystem] = useState('')
 
+  const [apiSubjects,        setApiSubjects]        = useState<AvailableSubject[] | null>(null)
+  const [apiSubjectsLoading, setApiSubjectsLoading] = useState(false)
+  const [checkedSubjects,    setCheckedSubjects]    = useState<Record<string, boolean>>({})
+
   // What was auto-created after Step 1
   const [createdClasses,  setCreatedClasses]  = useState<CreatedClass[]>([])
   const [createdSubjects, setCreatedSubjects] = useState<string[]>([])
@@ -124,6 +178,31 @@ export function OnboardingWizard({ adminName, schoolName }: OnboardingWizardProp
   // Per-class import state: classId → open?
   const [importOpen, setImportOpen] = useState<Record<string, boolean>>({})
   const [imported,   setImported]   = useState<Record<string, boolean>>({})
+
+  useEffect(() => {
+    if (!schoolType || !educationSystem) {
+      setApiSubjects(null)
+      setCheckedSubjects({})
+      return
+    }
+    const country = deriveCountry(educationSystem)
+    if (!country) {
+      setApiSubjects([])
+      setCheckedSubjects({})
+      return
+    }
+    setApiSubjectsLoading(true)
+    getAvailableSubjects({ country, classKeyPrefix: deriveClassKeyPrefix(schoolType) }).then(({ data }) => {
+      setApiSubjectsLoading(false)
+      if (!data?.length) {
+        setApiSubjects([])
+        setCheckedSubjects({})
+        return
+      }
+      setApiSubjects(data)
+      setCheckedSubjects(Object.fromEntries(data.map(s => [s.subject_key, true])))
+    })
+  }, [schoolType, educationSystem])
 
   const navigate = useCallback((target: number, dir: 'fwd' | 'bck') => {
     setDirection(dir)
@@ -149,18 +228,24 @@ export function OnboardingWizard({ adminName, schoolName }: OnboardingWizardProp
       })
       if (orgError) { toast.error(orgError.message); return }
 
-      // 2. Create subjects
-      const subjectNames =
-        DEFAULT_SUBJECTS[schoolType as SchoolTypeKey]?.[educationSystem as EduSystemKey] ?? []
+      // 2. Create subjects — use curriculum DB list if available, else hardcoded defaults
+      const useApi = apiSubjects && apiSubjects.length > 0
+      const subjectsPayload = useApi
+        ? apiSubjects!
+            .filter(s => checkedSubjects[s.subject_key])
+            .map(s => ({
+              name: s.display_name,
+              ...(SUBJECT_METADATA[s.display_name] ?? {}),
+            }))
+        : (DEFAULT_SUBJECTS[schoolType as SchoolTypeKey]?.[educationSystem as EduSystemKey] ?? [])
+            .map(name => ({ name, ...SUBJECT_METADATA[name] }))
 
-      if (subjectNames.length > 0) {
-        const { error: subjectsError } = await createSubjects(
-          subjectNames.map(name => ({ name }))
-        )
+      if (subjectsPayload.length > 0) {
+        const { error: subjectsError } = await createSubjects(subjectsPayload)
         if (subjectsError) {
           toast.warning(`Subjects could not be saved — you can add them later. (${subjectsError.message})`)
         } else {
-          setCreatedSubjects(subjectNames)
+          setCreatedSubjects(subjectsPayload.map(s => s.name))
         }
       }
 
@@ -309,6 +394,17 @@ export function OnboardingWizard({ adminName, schoolName }: OnboardingWizardProp
                     setSchoolType={setSchoolType}
                     educationSystem={educationSystem}
                     setEducationSystem={setEducationSystem}
+                    apiSubjects={apiSubjects}
+                    apiSubjectsLoading={apiSubjectsLoading}
+                    checkedSubjects={checkedSubjects}
+                    onToggleSubject={key =>
+                      setCheckedSubjects(prev => ({ ...prev, [key]: !prev[key] }))
+                    }
+                    onToggleAll={all =>
+                      setCheckedSubjects(
+                        Object.fromEntries((apiSubjects ?? []).map(s => [s.subject_key, all]))
+                      )
+                    }
                     onContinue={handleSaveSchool}
                     isPending={isPending}
                   />
@@ -347,22 +443,29 @@ function StepSchool({
   adminName, schoolName,
   schoolType, setSchoolType,
   educationSystem, setEducationSystem,
+  apiSubjects, apiSubjectsLoading, checkedSubjects,
+  onToggleSubject, onToggleAll,
   onContinue, isPending,
 }: {
-  adminName:          string
-  schoolName:         string
-  schoolType:         string
-  setSchoolType:      (v: string) => void
-  educationSystem:    string
-  setEducationSystem: (v: string) => void
-  onContinue:         () => void
-  isPending:          boolean
+  adminName:             string
+  schoolName:            string
+  schoolType:            string
+  setSchoolType:         (v: string) => void
+  educationSystem:       string
+  setEducationSystem:    (v: string) => void
+  apiSubjects:           AvailableSubject[] | null
+  apiSubjectsLoading:    boolean
+  checkedSubjects:       Record<string, boolean>
+  onToggleSubject:       (key: string) => void
+  onToggleAll:           (all: boolean) => void
+  onContinue:            () => void
+  isPending:             boolean
 }) {
-  // Preview what will be created
   const previewClasses  = schoolType ? (DEFAULT_CLASSES[schoolType] ?? []) : []
   const previewSubjects = (schoolType && educationSystem)
     ? (DEFAULT_SUBJECTS[schoolType as SchoolTypeKey]?.[educationSystem as EduSystemKey] ?? [])
     : []
+  const checkedCount = apiSubjects ? apiSubjects.filter(s => checkedSubjects[s.subject_key]).length : 0
 
   return (
     <div className="space-y-7">
@@ -429,8 +532,52 @@ function StepSchool({
         </div>
       </div>
 
-      {/* Live preview of what will be created */}
-      {(previewClasses.length > 0 || previewSubjects.length > 0) && (
+      {/* Subject selection — curriculum-driven checklist or fallback preview */}
+      {apiSubjectsLoading && (
+        <div className="rounded-xl border border-slate-100 bg-slate-50 p-4">
+          <p className="text-xs text-slate-400">Loading available subjects…</p>
+        </div>
+      )}
+
+      {!apiSubjectsLoading && apiSubjects && apiSubjects.length > 0 && (
+        <div className="rounded-xl border border-slate-100 bg-slate-50 p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+              {checkedCount} of {apiSubjects.length} subjects selected
+            </p>
+            <button
+              type="button"
+              className="text-xs text-amber-700 underline"
+              onClick={() => onToggleAll(checkedCount !== apiSubjects.length)}
+            >
+              {checkedCount === apiSubjects.length ? 'Deselect all' : 'Select all'}
+            </button>
+          </div>
+          <div className="max-h-52 overflow-y-auto space-y-1 pr-1">
+            {apiSubjects.map(s => (
+              <label
+                key={s.subject_key}
+                className="flex items-center gap-2.5 px-2 py-1.5 rounded-lg hover:bg-white cursor-pointer"
+              >
+                <Checkbox
+                  checked={!!checkedSubjects[s.subject_key]}
+                  onCheckedChange={() => onToggleSubject(s.subject_key)}
+                />
+                <span className="text-sm text-slate-700">{s.display_name}</span>
+                <span className="text-xs text-slate-400 ml-auto">{s.class_levels.join(', ')}</span>
+              </label>
+            ))}
+          </div>
+          {previewClasses.length > 0 && (
+            <p className="text-xs text-slate-400 pt-1">
+              {previewClasses.length} classes will also be created ({previewClasses.join(', ')}).
+            </p>
+          )}
+        </div>
+      )}
+
+      {!apiSubjectsLoading && !(apiSubjects && apiSubjects.length > 0) &&
+        (previewClasses.length > 0 || previewSubjects.length > 0) && (
         <div className="rounded-xl border border-slate-100 bg-slate-50 p-4 space-y-3">
           <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
             We&apos;ll set up for you
@@ -469,7 +616,7 @@ function StepSchool({
 
       <Button
         onClick={onContinue}
-        disabled={isPending || !schoolType || !educationSystem}
+        disabled={isPending || apiSubjectsLoading || !schoolType || !educationSystem}
         size="lg"
         className="w-full bg-slate-900 hover:bg-slate-800 text-white"
       >

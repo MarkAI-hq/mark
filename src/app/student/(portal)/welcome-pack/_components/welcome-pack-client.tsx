@@ -10,10 +10,12 @@ import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { orderWelcomePack, WelcomePackOrder, ShippingAddress } from '@/lib/actions/welcome-pack'
+import type { WelcomePackConfig } from '@/lib/actions/student-dashboard'
 
 interface Props {
-  user: any
-  orders: WelcomePackOrder[]
+  user:        any
+  orders:      WelcomePackOrder[]
+  packConfig?: WelcomePackConfig
 }
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: any }> = {
@@ -24,7 +26,7 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; icon: any }>
   cancelled:  { label: 'Cancelled',  color: 'bg-gray-100 text-gray-600',     icon: Clock },
 }
 
-export function WelcomePackClient({ user, orders }: Props) {
+export function WelcomePackClient({ user, orders, packConfig }: Props) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [showForm, setShowForm] = useState(false)
@@ -57,24 +59,41 @@ export function WelcomePackClient({ user, orders }: Props) {
     }
   }
 
+  const packName     = packConfig?.pack_name    ?? 'Student Welcome Pack'
+  const packDesc     = packConfig?.description   ?? 'Your physical starter kit — everything you need to begin your learning journey.'
+  const packPrice    = packConfig?.pack_price_usd ?? 25
+  const packContents = packConfig?.contents?.length
+    ? packConfig.contents
+    : ['Branded notebook', 'Revision flashcard set', 'Study schedule poster', 'Personalised welcome letter']
+
   return (
     <div className="max-w-2xl mx-auto p-6 space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-3">
-        <div className="h-12 w-12 rounded-2xl bg-gold flex items-center justify-center">
-          <Gift className="h-6 w-6 text-gold-foreground" />
-        </div>
+      <div className="flex items-start gap-4">
+        {packConfig?.cover_image_url ? (
+          <img
+            src={packConfig.cover_image_url}
+            alt={packName}
+            className="h-20 w-20 rounded-2xl object-cover shrink-0"
+          />
+        ) : (
+          <div className="h-16 w-16 rounded-2xl bg-gold flex items-center justify-center shrink-0">
+            <Gift className="h-8 w-8 text-gold-foreground" />
+          </div>
+        )}
         <div>
-          <h1 className="text-2xl font-bold">Welcome Pack</h1>
-          <p className="text-sm text-muted-foreground">Your physical Mark starter kit — $25 delivered</p>
+          <h1 className="text-2xl font-bold">{packName}</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">{packDesc}</p>
+          <p className="text-sm font-semibold text-gold mt-1">${packPrice} delivered</p>
         </div>
       </div>
 
       {/* Pack contents info */}
       <Card>
         <CardContent className="pt-6">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3">What&apos;s Included</p>
           <div className="grid grid-cols-2 gap-3 text-sm">
-            {['Mark branded notebook', 'Revision flashcard set', 'Sticker pack', 'Study schedule poster', 'Personalised welcome letter', 'Progress tracker'].map((item) => (
+            {packContents.map((item) => (
               <div key={item} className="flex items-center gap-2">
                 <CheckCircle className="h-4 w-4 text-green-500 shrink-0" />
                 <span>{item}</span>
@@ -128,7 +147,7 @@ export function WelcomePackClient({ user, orders }: Props) {
               size="lg"
               onClick={() => setShowForm(true)}
             >
-              Order My Welcome Pack — $25
+              Order {packName} — ${packPrice}
             </Button>
           ) : (
             <Card>

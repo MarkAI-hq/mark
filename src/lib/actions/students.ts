@@ -38,6 +38,49 @@ export async function getStudents(): Promise<ServerActionResponse<Student[]>> {
   return fetcher<Student[]>('/students', { cache: 'no-store' })
 }
 
+// ── Marketplace self-enrollment approval queue (WS4) ────────────────────────
+
+export interface PendingStudent {
+  student_id: string
+  student_school_id: string | null
+  first_name: string | null
+  last_name: string | null
+  email: string | null
+  education_level: string | null
+  elective_subjects: string[] | null
+  requested_class_id: string | null
+  requested_class_name: string | null
+  requested_at: string
+}
+
+export async function getPendingStudents(): Promise<
+  ServerActionResponse<PendingStudent[]>
+> {
+  return fetcher<PendingStudent[]>('/students/pending', { cache: 'no-store' })
+}
+
+export async function approvePendingStudent(
+  id: string,
+): Promise<ServerActionResponse<{ approved: true }>> {
+  const res = await fetcher<{ approved: true }>(`/students/${id}/approve`, {
+    method: 'POST',
+  })
+  if (!res.error) revalidatePath('/dashboard/students/pending')
+  return res
+}
+
+export async function declinePendingStudent(
+  id: string,
+  reason?: string,
+): Promise<ServerActionResponse<{ declined: true }>> {
+  const res = await fetcher<{ declined: true }>(`/students/${id}/decline`, {
+    method: 'POST',
+    body: JSON.stringify({ reason }),
+  })
+  if (!res.error) revalidatePath('/dashboard/students/pending')
+  return res
+}
+
 export async function getStudent(id: string): Promise<ServerActionResponse<Student>> {
   return fetcher<Student>(`/students/${id}`, { cache: 'no-store' })
 }

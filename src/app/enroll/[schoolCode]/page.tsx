@@ -3,9 +3,10 @@
 import { useState, useEffect } from 'react'
 import { useParams, useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Loader2, GraduationCap, CheckCircle2, Eye, EyeOff, Copy, Check } from 'lucide-react'
+import { Loader2, GraduationCap, CheckCircle2, Copy, Check, MessageCircle } from 'lucide-react'
 import { toast } from 'sonner'
-import { selfEnroll, getPublicSchoolProfile } from '@/lib/actions/enrollment'
+import { selfEnroll, getPublicSchoolProfile, checkEnrolStatus } from '@/lib/actions/enrollment'
+import { verifyEnrolOtp, completeWhatsappEnrol } from '@/lib/actions/student-auth'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -25,10 +26,25 @@ export default function EnrollPage() {
   const [done, setDone] = useState<{ name: string; pin: string; schoolName: string } | null>(null)
   const [copied, setCopied] = useState(false)
 
+  // Verification (between enrol and the PIN reveal)
+  const [pending, setPending] = useState<{
+    student_id: string
+    channel: 'email' | 'whatsapp'
+    name: string
+    schoolName: string
+    contact?: string
+    verify_id?: string
+    wa_link?: string
+  } | null>(null)
+  const [code, setCode] = useState('')
+  const [verifying, setVerifying] = useState(false)
+  const [waFinishing, setWaFinishing] = useState(false)
+
   const [form, setForm] = useState({
     first_name: '',
     last_name: '',
     email: '',
+    phone_number: '',
     guardian_name: '',
     guardian_phone: '',
   })
@@ -46,12 +62,17 @@ export default function EnrollPage() {
       toast.error('First and last name are required.')
       return
     }
+    if (!form.email.trim()) {
+      toast.error('Enter your email so we can verify it’s you.')
+      return
+    }
     setSubmitting(true)
     const { data, error } = await selfEnroll({
       school_code: schoolCode,
       first_name: form.first_name.trim(),
       last_name: form.last_name.trim(),
       email: form.email.trim() || undefined,
+      phone_number: form.phone_number.trim() || undefined,
       guardian_name: form.guardian_name.trim() || undefined,
       guardian_phone: form.guardian_phone.trim() || undefined,
       ref,
@@ -61,7 +82,57 @@ export default function EnrollPage() {
       toast.error(error.message)
       return
     }
-    setDone({ name: data!.name, pin: data!.pin, schoolName: data!.school_name })
+    setPending({
+      student_id: data!.student_id,
+      channel: data!.channel,
+      name: data!.name,
+      schoolName: data!.school_name,
+      contact: data!.contact,
+      verify_id: data!.verify_id,
+      wa_link: data!.wa_link,
+    })
+  }
+
+  // WhatsApp: poll for the inbound message, then complete the sign-up.
+  useEffect(() => {
+    if (pending?.channel !== 'whatsapp' || !pending.verify_id || done) return
+    let cancelled = false
+    const id = setInterval(async () => {
+      const { data } = await checkEnrolStatus(pending.verify_id!)
+      if (cancelled) return
+      if (data?.status === 'verified') {
+        clearInterval(id)
+        setWaFinishing(true)
+        const { data: session, error } = await completeWhatsappEnrol(pending.verify_id!)
+        if (error || !session) {
+          setWaFinishing(false)
+          toast.error(error ?? 'Could not finish sign-up. Please try again.')
+          return
+        }
+        setDone({ name: pending.name, pin: session.pin, schoolName: pending.schoolName })
+      }
+    }, 3000)
+    return () => { cancelled = true; clearInterval(id) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pending?.channel, pending?.verify_id, done])
+
+  async function handleVerify(e: React.FormEvent) {
+    e.preventDefault()
+    if (!pending || code.trim().length < 4) {
+      toast.error('Enter the code we sent you.')
+      return
+    }
+    setVerifying(true)
+    const { data, error } = await verifyEnrolOtp({
+      student_id: pending.student_id,
+      code: code.trim(),
+    })
+    setVerifying(false)
+    if (error || !data) {
+      toast.error(error ?? 'Verification failed. Try again.')
+      return
+    }
+    setDone({ name: pending.name, pin: data.pin, schoolName: pending.schoolName })
   }
 
   function copyPin() {
@@ -129,11 +200,88 @@ export default function EnrollPage() {
 
           <Button
             className="mt-6 w-full"
-            onClick={() => router.push('/student/login')}
+            onClick={() => router.push('/student/dashboard')}
           >
-            Go to Student Login
+            Go to my dashboard
           </Button>
         </div>
+      </div>
+    )
+  }
+
+  if (pending?.channel === 'whatsapp') {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-background to-surface-raised/30 px-4">
+        <div className="w-full max-w-sm rounded-2xl border border-border/50 bg-card p-8 shadow-sm text-center">
+          <h2 className="text-xl font-semibold text-foreground">Verify on WhatsApp</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Tap below to open WhatsApp and send the pre-filled message. That confirms
+            your number — then your login details arrive right in the chat.
+          </p>
+          {waFinishing ? (
+            <div className="mt-6 flex items-center justify-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" /> Got it — finishing your sign-up…
+            </div>
+          ) : (
+            <>
+              <a href={pending.wa_link} target="_blank" rel="noopener noreferrer">
+                <Button className="mt-6 w-full bg-[#25D366] text-white hover:bg-[#1da851]">
+                  <MessageCircle className="mr-2 h-4 w-4" /> Open WhatsApp to verify
+                </Button>
+              </a>
+              <div className="mt-3 flex items-center justify-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" /> Waiting for your message…
+              </div>
+            </>
+          )}
+          <button
+            type="button"
+            onClick={() => setPending(null)}
+            className="mt-4 w-full text-xs text-muted-foreground underline"
+          >
+            Use a different number? Go back
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  if (pending) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-background to-surface-raised/30 px-4">
+        <form
+          onSubmit={handleVerify}
+          className="w-full max-w-sm rounded-2xl border border-border/50 bg-card p-8 shadow-sm text-center"
+        >
+          <h2 className="text-xl font-semibold text-foreground">Confirm it&apos;s you</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            We sent a 6-digit code to <span className="font-medium">{pending.contact}</span>.
+          </p>
+          <Input
+            inputMode="numeric"
+            autoFocus
+            maxLength={6}
+            placeholder="123456"
+            value={code}
+            onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
+            className="mt-6 text-center text-2xl tracking-[0.5em] font-mono"
+          />
+          <Button
+            type="submit"
+            className="mt-6 w-full bg-[#C9A84C] text-white hover:bg-[#A07830]"
+            disabled={verifying || code.trim().length < 4}
+          >
+            {verifying && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Verify &amp; continue
+          </Button>
+          <button
+            type="button"
+            onClick={() => setPending(null)}
+            className="mt-4 w-full text-xs text-muted-foreground underline"
+          >
+            Wrong contact? Go back
+          </button>
+        </form>
       </div>
     )
   }
@@ -207,18 +355,34 @@ export default function EnrollPage() {
               </div>
             </div>
 
-            <div className="space-y-1.5">
-              <Label htmlFor="email">
-                Email <span className="text-muted-foreground">(optional)</span>
-              </Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="jane@example.com"
-                value={form.email}
-                onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
-              />
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="jane@example.com"
+                  value={form.email}
+                  onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="phone_number">
+                  WhatsApp <span className="text-muted-foreground">(optional)</span>
+                </Label>
+                <Input
+                  id="phone_number"
+                  type="tel"
+                  placeholder="+256…"
+                  value={form.phone_number}
+                  onChange={(e) => setForm((f) => ({ ...f, phone_number: e.target.value }))}
+                />
+              </div>
             </div>
+            <p className="-mt-2 text-xs text-muted-foreground">
+              We&apos;ll email you a verification code. Your WhatsApp number is optional —
+              we&apos;ll use it to send you updates.
+            </p>
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">

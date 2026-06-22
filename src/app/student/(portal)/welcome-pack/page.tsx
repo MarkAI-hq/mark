@@ -1,6 +1,7 @@
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { getMyWelcomePackOrders } from '@/lib/actions/welcome-pack'
+import { getMyOrgWelcomePackConfig } from '@/lib/actions/student-dashboard'
 import { WelcomePackClient } from './_components/welcome-pack-client'
 
 export default async function WelcomePackPage() {
@@ -15,7 +16,12 @@ export default async function WelcomePackPage() {
     redirect('/student/login')
   }
 
-  const { data: orders } = await getMyWelcomePackOrders()
+  const orgId = user?.organization_id ?? user?.org ?? user?.organization?.organization_id ?? ''
 
-  return <WelcomePackClient user={user} orders={orders ?? []} />
+  const [{ data: orders }, packConfig] = await Promise.all([
+    getMyWelcomePackOrders(),
+    orgId ? getMyOrgWelcomePackConfig(orgId) : Promise.resolve(null),
+  ])
+
+  return <WelcomePackClient user={user} orders={orders ?? []} packConfig={packConfig ?? undefined} />
 }

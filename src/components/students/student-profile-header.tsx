@@ -16,6 +16,7 @@ import {
   DialogTitle, DialogDescription, DialogFooter,
 } from '@/components/ui/dialog'
 import { resetStudentPin, updateStudent } from '@/lib/actions/students'
+import { ReportCardPrintButton } from '@/components/report-card/report-card-print-button'
 import type { Student } from '@/lib/types'
 
 interface BreadcrumbItem {
@@ -34,6 +35,9 @@ interface StudentProfileHeaderProps {
   onProfileUpdate?:    () => void
   // Teacher view — hides Edit, Reset PIN, Print Report, Assign Assessment, Assess Profile
   readOnly?:           boolean
+  // School-led report card: school name shown in the header, class for the bio row
+  schoolName?:         string
+  studentClassName?:   string | null
 }
 
 // ── Reset PIN dialog ───────────────────────────────────────────────────────
@@ -143,6 +147,8 @@ export function StudentProfileHeader({
   student,
   onProfileUpdate,
   readOnly = false,
+  schoolName = 'Mirror Intelligence',
+  studentClassName,
 }: StudentProfileHeaderProps) {
   const router = useRouter()
 
@@ -224,6 +230,14 @@ export function StudentProfileHeader({
               )}
             </>
           )}
+
+          {/* School-mode report card — class teacher & admin authority */}
+          <ReportCardPrintButton
+            studentId={studentId}
+            studentName={studentName}
+            className={studentClassName}
+            schoolName={schoolName}
+          />
 
           {/* Teacher duties: always visible */}
           <Button onClick={() => setIsAssignDialogOpen(true)} className="flex-shrink-0">

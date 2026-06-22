@@ -1,9 +1,8 @@
-// src/app/student/layout.tsx
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
-import { StudentNav } from '@/components/students/student-nav'
+import { StudentShell } from '@/components/layout/student-shell'
 
-export default async function StudentLayout({
+export default async function StudentPortalLayout({
   children,
 }: {
   children: React.ReactNode
@@ -23,11 +22,8 @@ export default async function StudentLayout({
   if (!user?.roles?.includes('Student')) redirect('/login')
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background to-surface-raised/40">
-      <StudentNav user={user} />
-      <main className="container mx-auto max-w-5xl px-4 py-6">
-        {children}
-      </main>
-    </div>
+    <StudentShell user={user} organizationName={user?.organization_name ?? null}>
+      {children}
+    </StudentShell>
   )
 }

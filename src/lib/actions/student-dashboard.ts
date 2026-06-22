@@ -2,6 +2,7 @@
 'use server'
 
 import { cookies } from 'next/headers'
+import type { Citation } from '@/lib/types'
 
 const API = process.env.API_BASE_URL ?? process.env.NEXT_PUBLIC_API_URL ?? ''
 
@@ -156,6 +157,74 @@ export async function getStudentSocialProof(studentId: string): Promise<SocialPr
   }
 }
 
+// ── Holistic leaderboard ────────────────────────────────────────────────────
+export type LeaderboardMetric = 'overall' | 'performance' | 'activity' | 'streak'
+
+export interface LeaderboardBreakdown {
+  performance:  number
+  activity:     number
+  consistency:  number
+  growth:       number
+}
+
+export interface LeaderboardEntry {
+  rank:              number
+  student_id:        string
+  name:              string
+  student_school_id: string | null
+  is_me:             boolean
+  mirror_score:      number
+  avg_score:         number
+  plans_completed:   number
+  streak:            number
+  trajectory:        string | null
+  badge_count:       number
+  breakdown:         LeaderboardBreakdown
+}
+
+export interface LeaderboardMe {
+  rank:            number
+  percentile:      number | null
+  mirror_score:    number
+  avg_score:       number
+  plans_completed: number
+  streak:          number
+  trajectory:      string | null
+  badge_count:     number
+  breakdown:       LeaderboardBreakdown
+}
+
+export interface LeaderboardResult {
+  scope:       'class' | 'school'
+  metric:      LeaderboardMetric
+  cohort_size: number
+  me:          LeaderboardMe | null
+  top:         LeaderboardEntry[]
+  around_me:   LeaderboardEntry[]
+}
+
+const EMPTY_LEADERBOARD = (scope: 'class' | 'school', metric: LeaderboardMetric): LeaderboardResult => ({
+  scope, metric, cohort_size: 0, me: null, top: [], around_me: [],
+})
+
+export async function getLeaderboard(
+  scope: 'class' | 'school' = 'class',
+  metric: LeaderboardMetric = 'overall',
+): Promise<LeaderboardResult> {
+  try {
+    const headers = await authHeaders()
+    const res = await fetch(
+      `${API}/api/v1/analytics/leaderboard?scope=${scope}&metric=${metric}`,
+      { headers, cache: 'no-store' },
+    )
+    if (!res.ok) return EMPTY_LEADERBOARD(scope, metric)
+    return res.json()
+  } catch (err) {
+    console.error('[getLeaderboard]', err)
+    return EMPTY_LEADERBOARD(scope, metric)
+  }
+}
+
 // ── Learning toolkits ──────────────────────────────────────────────────────
 export async function getStudentLearningTools(studentId: string): Promise<LearningTool[]> {
   try {
@@ -189,6 +258,221 @@ export async function getStudentStudyPlans(studentId: string): Promise<StudyPlan
   }
 }
 
+// ── Prediction ────────────────────────────────────────────────────────────────
+export async function getStudentPredictions(studentId: string): Promise<StudentPrediction[]> {
+  try {
+    const headers = await authHeaders()
+    const res = await fetch(`${API}/api/v1/prediction/students/${studentId}/all`, {
+      headers,
+      cache: 'no-store',
+    })
+    if (!res.ok) return []
+    const data = await res.json()
+    return Array.isArray(data) ? data : (Array.isArray(data.data) ? data.data : [])
+  } catch (err) {
+    console.error('[getStudentPredictions]', err)
+    return []
+  }
+}
+
+// ── Next-Best-Action (total mental clarity) ─────────────────────────────────────
+export interface NextActionGoalState {
+  subject: string
+  predicted_grade: string | null
+  predicted_score: number | null
+  goal_grade: string | null
+  milestone_label: string | null
+  weeks_to_exam: number | null
+  gap_to_next_grade: number | null
+  next_grade: string | null
+  is_passing: boolean | null
+  goal_reached: boolean
+}
+
+export interface NextAction {
+  action: {
+    type: 'study'
+    subject: string
+    topic: string
+    sow_entry_id: string
+    lesson_type: string
+    estimated_minutes: number
+  } | null
+  why: string
+  outcome_if_done: string | null
+  goal_state: NextActionGoalState | null
+  cta?: { label: string; href: string }
+}
+
+export async function getNextAction(): Promise<NextAction | null> {
+  try {
+    const headers = await authHeaders()
+    const res = await fetch(`${API}/api/v1/students/me/next-action`, {
+      headers,
+      cache: 'no-store',
+    })
+    if (!res.ok) return null
+    const data = await res.json()
+    return (data?.data ?? data) as NextAction
+  } catch (err) {
+    console.error('[getNextAction]', err)
+    return null
+  }
+}
+
+// ── Class SoW ─────────────────────────────────────────────────────────────────
+export async function getMyClassSoW(): Promise<{
+  sow: any | null
+  currentWeekEntries: any[]
+  classId: string | null
+}> {
+  try {
+    const headers = await authHeaders()
+    const res = await fetch(`${API}/api/v1/scheme-of-work/my-class`, {
+      headers,
+      cache: 'no-store',
+    })
+    if (!res.ok) return { sow: null, currentWeekEntries: [], classId: null }
+    return res.json()
+  } catch (err) {
+    console.error('[getMyClassSoW]', err)
+    return { sow: null, currentWeekEntries: [], classId: null }
+  }
+}
+
+// ── Timetable ─────────────────────────────────────────────────────────────────
+export async function getMyClassTimetable(params?: { term?: string; academic_year?: string }): Promise<any[]> {
+  try {
+    const headers = await authHeaders()
+    const qs = new URLSearchParams()
+    if (params?.term) qs.set('term', params.term)
+    if (params?.academic_year) qs.set('academic_year', params.academic_year)
+    const url = `${API}/api/v1/timetable/my-class${qs.toString() ? '?' + qs.toString() : ''}`
+    const res = await fetch(url, { headers, cache: 'no-store' })
+    if (!res.ok) return []
+    return res.json()
+  } catch (err) {
+    console.error('[getMyClassTimetable]', err)
+    return []
+  }
+}
+
+// ── Attendance ────────────────────────────────────────────────────────────────
+export async function getMyAttendance(studentId: string): Promise<any[]> {
+  try {
+    const headers = await authHeaders()
+    const res = await fetch(`${API}/api/v1/attendance/students/${studentId}`, {
+      headers,
+      cache: 'no-store',
+    })
+    if (!res.ok) return []
+    const data = await res.json()
+    return Array.isArray(data) ? data : (data.records ?? [])
+  } catch (err) {
+    console.error('[getMyAttendance]', err)
+    return []
+  }
+}
+
+// ── Classmates ────────────────────────────────────────────────────────────────
+export async function getMyClassmates(): Promise<{
+  classmates: { user_id: string; name: string; student_school_id: string | null; is_me: boolean }[]
+  class_id: string | null
+  org_name: string | null
+  school_code: string | null
+}> {
+  try {
+    const headers = await authHeaders()
+    const res = await fetch(`${API}/api/v1/students/classmates`, {
+      headers,
+      cache: 'no-store',
+    })
+    if (!res.ok) return { classmates: [], class_id: null, org_name: null, school_code: null }
+    return res.json()
+  } catch (err) {
+    console.error('[getMyClassmates]', err)
+    return { classmates: [], class_id: null, org_name: null, school_code: null }
+  }
+}
+
+// ── Self-initiate study plan from SoW entry ───────────────────────────────────
+export async function selfInitiateStudyPlan(sowEntryId: string): Promise<{
+  data: { plan_id: string; plan: any } | null
+  error: { message: string } | null
+}> {
+  try {
+    const headers = await authHeaders()
+    const res = await fetch(`${API}/api/v1/study-plans/self-initiate`, {
+      method:  'POST',
+      headers,
+      body:    JSON.stringify({ sow_entry_id: sowEntryId }),
+      cache:   'no-store',
+    })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ message: 'Failed to initiate study plan' }))
+      return { data: null, error: { message: err.message ?? 'Failed to initiate study plan' } }
+    }
+    const plan = await res.json()
+    return { data: { plan_id: plan.id ?? plan.plan_id, plan }, error: null }
+  } catch (err: any) {
+    return { data: null, error: { message: err.message ?? 'Failed to initiate study plan' } }
+  }
+}
+
+// ── Free-initiate study plan (no SoW entry required) ─────────────────────────
+export async function initiateFreeStudyPlan(
+  subject: string,
+  topic: string,
+  lessonType?: string,
+): Promise<{
+  data: { plan_id: string; plan: any } | null
+  error: { message: string } | null
+}> {
+  try {
+    const headers = await authHeaders()
+    const res = await fetch(`${API}/api/v1/study-plans/initiate-free`, {
+      method:  'POST',
+      headers,
+      body:    JSON.stringify({ subject, topic, lesson_type: lessonType ?? 'consolidation' }),
+      cache:   'no-store',
+    })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ message: 'Failed to initiate study plan' }))
+      return { data: null, error: { message: err.message ?? 'Failed to initiate study plan' } }
+    }
+    const data = await res.json()
+    return { data: { plan_id: data.plan_id ?? data.plan?.id, plan: data.plan }, error: null }
+  } catch (err: any) {
+    return { data: null, error: { message: err.message ?? 'Failed to initiate study plan' } }
+  }
+}
+
+// ── Org welcome pack config ───────────────────────────────────────────────────
+export interface WelcomePackConfig {
+  is_enabled?:        boolean
+  pack_name?:         string
+  description?:       string
+  cover_image_url?:   string
+  contents?:          string[]
+  pack_price_usd?:    number
+}
+
+export async function getMyOrgWelcomePackConfig(orgId: string): Promise<WelcomePackConfig | null> {
+  try {
+    const headers = await authHeaders()
+    const res = await fetch(`${API}/api/v1/organizations/${orgId}`, {
+      headers,
+      cache: 'no-store',
+    })
+    if (!res.ok) return null
+    const org = await res.json()
+    return org.welcome_pack_config ?? null
+  } catch (err) {
+    console.error('[getMyOrgWelcomePackConfig]', err)
+    return null
+  }
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
 // ─────────────────────────────────────────────────────────────────────────────
@@ -203,6 +487,8 @@ export interface StudyPlanContent {
   practice_questions: { question: string; answer: string }[]
   summary:            string
   estimated_minutes:  number
+  sources_consulted?: Citation[]
+  grounded?:          boolean
 }
 
 export interface StudyPlan {
@@ -210,7 +496,7 @@ export interface StudyPlan {
   student_id:       string
   organization_id:  string
   scheme_entry_id:  string | null
-  lesson_type:      'pre_class' | 'catch_up' | 'gap_closure' | 'exam_prep' | 'consolidation'
+  lesson_type:      'pre_class' | 'catch_up' | 'gap_closure' | 'exam_prep' | 'consolidation' | 'reteach'
   subject:          string
   topic:            string
   content:          StudyPlanContent
@@ -219,6 +505,7 @@ export interface StudyPlan {
   status:           'pending' | 'sent' | 'completed' | 'skipped'
   completed_at:     string | null
   score_after:      number | null
+  next_review_date: string | null
   createdAt:        string
 }
 
@@ -352,4 +639,194 @@ export interface SubjectProgress {
   avg_percentage:   number
   latest_score:     number
   mastery_label:    'strong' | 'developing' | 'at_risk' | 'critical'
+}
+
+export interface StudentPrediction {
+  student_id:         string
+  curriculum_id:      string
+  subject:            string
+  exam_body?:         string
+  predicted_score:    number
+  predicted_grade:    string
+  predicted_label:    string
+  is_passing:         boolean
+  confidence:         number
+  trajectory:         'improving' | 'steady' | 'declining'
+  trajectory_delta:   number
+  weeks_to_exam?:     number
+  gap_to_next_grade:  number
+  next_grade:         string
+  next_grade_label:   string
+  topic_performance?: { topic: string; status: string; student_mastery: number; curriculum_weight: number }[]
+  pathway?:           { action: string; urgency: string }[]
+  motivational_message?: string
+  based_on_submissions: number
+  last_calculated:    string
+  exam_level?:        string
+  initial_predicted_score?: number
+  // The assessment milestone this prediction targets (end-of-term / national exam).
+  milestone_type?:    string
+  milestone_label?:   string
+}
+
+// ── Tracy: generate study plan from student note sources ─────────────────────
+export async function generateStudyPlanFromSources(
+  subject: string,
+  topic: string,
+  type: 'flashcards' | 'quiz' | 'slide_deck' | 'study_guide',
+  sourceNoteIds: string[],
+): Promise<{
+  data: { plan_id: string; plan: any } | null
+  error: { message: string } | null
+}> {
+  try {
+    const headers = await authHeaders()
+    const res = await fetch(`${API}/api/v1/study-plans/generate-from-sources`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ subject, topic, type, source_note_ids: sourceNoteIds }),
+      cache: 'no-store',
+    })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ message: 'Generation failed' }))
+      return { data: null, error: { message: err.message ?? 'Generation failed' } }
+    }
+    const data = await res.json()
+    return { data: { plan_id: data.plan_id ?? data.plan?.id, plan: data.plan }, error: null }
+  } catch (err: any) {
+    return { data: null, error: { message: err.message ?? 'Generation failed' } }
+  }
+}
+
+// ── Tracy: generate audio overview from student note sources ─────────────────
+export async function generateAudioOverview(
+  subject: string,
+  topic: string,
+  sourceNoteIds: string[],
+): Promise<{
+  data: { audio_url: string | null } | null
+  error: { message: string } | null
+}> {
+  try {
+    const headers = await authHeaders()
+    const res = await fetch(`${API}/api/v1/study-plans/generate-audio-overview`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ subject, topic, source_note_ids: sourceNoteIds }),
+      cache: 'no-store',
+    })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ message: 'Audio generation failed' }))
+      return { data: null, error: { message: err.message ?? 'Audio generation failed' } }
+    }
+    const data = await res.json()
+    return { data: { audio_url: data.audio_url ?? null }, error: null }
+  } catch (err: any) {
+    return { data: null, error: { message: err.message ?? 'Audio generation failed' } }
+  }
+}
+
+// ── Rename a study plan artifact ──────────────────────────────────────────────
+export async function renameArtifact(
+  planId: string,
+  title: string,
+): Promise<void> {
+  try {
+    const headers = await authHeaders()
+    await fetch(`${API}/api/v1/study-plans/${planId}/meta`, {
+      method: 'PATCH',
+      headers,
+      body: JSON.stringify({ title }),
+      cache: 'no-store',
+    })
+  } catch {}
+}
+
+// ── Fire a bell notification when an artifact finishes on a hidden tab ────────
+export async function createArtifactNotification(
+  artifactTitle: string,
+): Promise<void> {
+  try {
+    const headers = await authHeaders()
+    await fetch(`${API}/api/v1/notifications`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        type: 'ARTIFACT_READY',
+        title: 'Content ready',
+        message: `${artifactTitle} has been generated.`,
+        metadata: { href: '/student/knowledge-base' },
+      }),
+      cache: 'no-store',
+    })
+  } catch {}
+}
+
+// ── Curriculum Pacing Board ───────────────────────────────────────────────────
+
+export interface PacingEntry {
+  id:                string
+  week_number:       number
+  topic:             string
+  subtopics:         string[]
+  duration_lessons:  number
+  is_delivered:      boolean
+  is_due:            boolean
+  is_behind:         boolean
+  student_mastery:   number | null
+  plan_count:        number
+  curriculum_weight: number | null
+  national_average:  number | null
+  status:            'strong' | 'developing' | 'at_risk' | null
+}
+
+export interface PacingSummary {
+  total_topics:          number
+  topics_due:            number
+  mastered:              number
+  developing:            number
+  at_risk:               number
+  not_studied:           number
+  not_due_yet:           number
+  coverage_pct_actual:   number
+  coverage_pct_expected: number
+  pacing_gap:            number
+  plans_per_week_needed: number
+  projected_coverage:    number
+  exam_weight_mastered:  number
+}
+
+export interface PacingScheme {
+  scheme_id:       string
+  subject:         string
+  grade_level:     string
+  term:            string
+  term_start_date: string
+  total_weeks:     number
+  current_week:    number | null
+  weeks_remaining: number | null
+  is_active:       boolean
+  entries:         PacingEntry[]
+  summary:         PacingSummary | null
+  bloom_distribution: Record<string, number> | null
+}
+
+export interface PacingResponse {
+  has_sow:         boolean
+  schemes:         PacingScheme[]
+  fallback_topics?: Array<{ topic: string; subject: string; plan_count: number; avg_score: number | null }>
+}
+
+export async function getMyPacingData(): Promise<PacingResponse> {
+  try {
+    const headers = await authHeaders()
+    const res = await fetch(`${API}/api/v1/students/me/curriculum-pacing`, {
+      headers,
+      cache: 'no-store',
+    })
+    if (!res.ok) return { has_sow: false, schemes: [] }
+    return res.json()
+  } catch {
+    return { has_sow: false, schemes: [] }
+  }
 }

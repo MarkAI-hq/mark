@@ -2,385 +2,317 @@
 
 // src/app/student/(portal)/study-plans/_components/study-plans-client.tsx
 
-import { useState, useTransition } from 'react'
+import { useState, useTransition, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import {
   BookOpen, CheckCircle2, Clock, ChevronRight, Sparkles,
-  AlertCircle, ArrowLeft, Star, HelpCircle, ListChecks,
+  AlertCircle, Clapperboard, Play, RotateCcw, Target,
+  TrendingUp, TrendingDown, Minus,
 } from 'lucide-react'
 import { toast } from 'sonner'
-import { format, parseISO } from 'date-fns'
+import { format, parseISO, isToday, isPast } from 'date-fns'
 
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { Badge }   from '@/components/ui/badge'
-import { Button }  from '@/components/ui/button'
-import { Progress } from '@/components/ui/progress'
+import { Card, CardContent } from '@/components/ui/card'
+import { Badge }  from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Input }  from '@/components/ui/input'
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle,
-} from '@/components/ui/dialog'
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select'
 
-import { markStudyPlanComplete } from '@/lib/actions/study-plans'
-import type { StudyPlan, StudyPlanContent } from '@/lib/actions/student-dashboard'
-import { useCelebration } from '@/hooks/use-celebration'
+import {
+  checkInStudySession, selfInitiateFromEntry,
+  type SuggestedTopicResponse, type GradebookResponse,
+  type SubjectGradebook, type GradebookTopic, type NcdcLevel,
+} from '@/lib/actions/study-plans'
+import { initiateFreeStudyPlan, type StudyPlan } from '@/lib/actions/student-dashboard'
 
-// ── Config ──────────────────────────────────────────────────────────────────
+// ── Config ───────────────────────────────────────────────────────────────────
 
 const LESSON_TYPE_CONFIG: Record<string, { label: string; color: string; icon: string }> = {
-  catch_up:     { label: 'Catch-Up',      color: 'bg-blue-100 text-blue-800 dark:bg-blue-950/40 dark:text-blue-300',    icon: '📚' },
-  gap_closure:  { label: 'Gap Closure',   color: 'bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300', icon: '🔍' },
+  catch_up:     { label: 'Catch-Up',      color: 'bg-blue-100 text-blue-800 dark:bg-blue-950/40 dark:text-blue-300',       icon: '📚' },
+  gap_closure:  { label: 'Gap Closure',   color: 'bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300',   icon: '🔍' },
   reteach:      { label: 'Reteach',       color: 'bg-purple-100 text-purple-800 dark:bg-purple-950/40 dark:text-purple-300', icon: '🔄' },
-  pre_class:    { label: 'Pre-Class',     color: 'bg-cyan-100 text-cyan-800 dark:bg-cyan-950/40 dark:text-cyan-300',    icon: '⏰' },
-  consolidation:{ label: 'Consolidation', color: 'bg-green-100 text-green-800 dark:bg-green-950/40 dark:text-green-300', icon: '✅' },
-  exam_prep:    { label: 'Exam Prep',     color: 'bg-red-100 text-red-800 dark:bg-red-950/40 dark:text-red-300',       icon: '🎯' },
+  pre_class:    { label: 'Pre-Class',     color: 'bg-cyan-100 text-cyan-800 dark:bg-cyan-950/40 dark:text-cyan-300',       icon: '⏰' },
+  pre_teach:    { label: 'Pre-Teach',     color: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-950/40 dark:text-indigo-300', icon: '⚡' },
+  consolidation:{ label: 'Consolidation', color: 'bg-green-100 text-green-800 dark:bg-green-950/40 dark:text-green-300',   icon: '✅' },
+  exam_prep:    { label: 'Exam Prep',     color: 'bg-red-100 text-red-800 dark:bg-red-950/40 dark:text-red-300',           icon: '🎯' },
 }
 
-// ── PlanCard ────────────────────────────────────────────────────────────────
+function lessonCfg(type: string) {
+  return LESSON_TYPE_CONFIG[type] ?? { label: type, color: 'bg-muted text-muted-foreground', icon: '📖' }
+}
 
-function PlanCard({ plan, onClick }: { plan: StudyPlan; onClick: () => void }) {
-  const cfg = LESSON_TYPE_CONFIG[plan.lesson_type] ?? { label: plan.lesson_type, color: 'bg-muted text-muted-foreground', icon: '📖' }
-  const isCompleted = plan.status === 'completed'
+const ACHIEVEMENT_STYLE: Record<NcdcLevel, { dot: string; ring: string; label: string }> = {
+  all:  { dot: 'bg-emerald-500', ring: 'border-emerald-300/60 bg-emerald-50/60 dark:bg-emerald-950/20', label: 'Mastered' },
+  some: { dot: 'bg-amber-500',   ring: 'border-amber-300/60 bg-amber-50/60 dark:bg-amber-950/20',       label: 'In progress' },
+  none: { dot: 'bg-muted-foreground/40', ring: 'border-border bg-muted/30', label: 'Not started' },
+}
 
-  return (
-    <button
-      className="w-full text-left rounded-xl border border-border/60 bg-card hover:bg-surface-raised transition-colors p-4 space-y-2.5 group"
-      onClick={onClick}
-    >
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex-1 min-w-0">
-          <p className={`text-sm font-semibold leading-tight ${isCompleted ? 'text-muted-foreground line-through' : ''}`}>
-            {plan.topic}
-          </p>
-          <p className="text-xs text-muted-foreground mt-0.5">{plan.subject}</p>
-        </div>
-        <ChevronRight className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0 group-hover:text-foreground transition-colors" />
-      </div>
+// ── Small helpers ─────────────────────────────────────────────────────────────
 
-      <div className="flex items-center gap-2 flex-wrap">
-        <Badge className={`text-xs px-1.5 py-0 ${cfg.color}`}>
-          {cfg.icon} {cfg.label}
-        </Badge>
-        {isCompleted ? (
-          <Badge className="text-xs px-1.5 py-0 bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300">
-            <CheckCircle2 className="h-3 w-3 mr-1" />
-            Completed
-          </Badge>
-        ) : (
+function TrendArrow({ delta }: { delta: number | null }) {
+  if (delta === null || delta === 0) return <Minus className="h-3.5 w-3.5 text-amber-500" />
+  return delta > 0
+    ? <TrendingUp className="h-3.5 w-3.5 text-emerald-600" />
+    : <TrendingDown className="h-3.5 w-3.5 text-rose-500" />
+}
+
+// ── TodayHero ─────────────────────────────────────────────────────────────────
+
+function TodayHero({
+  plan, suggestion, onStudio, onSelfInitiate, busy,
+}: {
+  plan: StudyPlan | null
+  suggestion: SuggestedTopicResponse | null
+  onStudio: (planId: string) => void
+  onSelfInitiate: (sowEntryId: string) => void
+  busy: boolean
+}) {
+  // Prefer a real assigned plan for today/overdue; else fall back to the SoW suggestion.
+  if (plan) {
+    const cfg = lessonCfg(plan.lesson_type)
+    return (
+      <div className="rounded-2xl border-2 border-gold/40 bg-gold/5 p-5 space-y-3">
+        <div className="flex items-center justify-between gap-2">
+          <Badge className="text-[10px] bg-gold text-gold-foreground px-2 py-0.5">Up next today</Badge>
           <span className="flex items-center gap-1 text-xs text-muted-foreground">
             <Clock className="h-3 w-3" />
             {plan.content?.estimated_minutes ?? 20} min
           </span>
-        )}
-        {plan.scheduled_for && (
-          <span className="text-xs text-muted-foreground ml-auto">
-            {format(parseISO(plan.scheduled_for), 'd MMM')}
-          </span>
-        )}
-      </div>
-
-      {plan.score_after !== null && plan.score_after !== undefined && (
-        <div className="space-y-1">
-          <div className="flex justify-between text-xs">
-            <span className="text-muted-foreground">Self-reported score</span>
-            <span className={`font-semibold tabular-nums ${
-              plan.score_after >= 80 ? 'text-emerald-600' :
-              plan.score_after >= 60 ? 'text-amber-600'   :
-              'text-rose-600'
-            }`}>{plan.score_after}%</span>
-          </div>
-          <Progress value={plan.score_after} className="h-1.5" />
         </div>
-      )}
-      {plan.completed_at && (
-        <p className="text-[10px] text-muted-foreground">
-          Completed {format(parseISO(plan.completed_at), 'd MMM yyyy · HH:mm')}
-        </p>
-      )}
-    </button>
-  )
-}
-
-// ── LessonViewer ─────────────────────────────────────────────────────────────
-
-interface LessonViewerProps {
-  plan: StudyPlan
-  onClose: () => void
-  onComplete: (plan: StudyPlan, score?: number) => Promise<void>
-  completing: boolean
-}
-
-function LessonViewer({ plan, onClose, onComplete, completing }: LessonViewerProps) {
-  const [step, setStep] = useState<'intro' | 'learn' | 'practice' | 'done'>('intro')
-  const [revealedAnswers, setRevealedAnswers] = useState<Set<number>>(new Set())
-  const [quizScore, setQuizScore] = useState<string>('')
-  const content: StudyPlanContent = plan.content ?? {} as StudyPlanContent
-  const cfg = LESSON_TYPE_CONFIG[plan.lesson_type] ?? { label: plan.lesson_type, color: '', icon: '📖' }
-
-  const toggleAnswer = (i: number) =>
-    setRevealedAnswers((prev) => {
-      const next = new Set(prev)
-      if (next.has(i)) next.delete(i); else next.add(i)
-      return next
-    })
-
-  const handleMarkComplete = () => {
-    const score = quizScore ? parseInt(quizScore, 10) : undefined
-    onComplete(plan, score)
+        <div className="space-y-1">
+          <p className="text-lg font-semibold leading-snug">{plan.topic}</p>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground">{plan.subject}</span>
+            <Badge className={`text-[10px] px-1.5 py-0 ${cfg.color}`}>{cfg.icon} {cfg.label}</Badge>
+          </div>
+        </div>
+        <Button
+          className="w-full gap-1.5 bg-gold hover:bg-gold/90 text-gold-foreground"
+          onClick={() => onStudio(plan.id)}
+        >
+          <Clapperboard className="h-4 w-4" />
+          Start Studio
+        </Button>
+      </div>
+    )
   }
 
-  const bullets = (content.summary ?? '')
-    .split(/[\n•\-]/)
-    .map((s) => s.trim())
-    .filter(Boolean)
+  if (suggestion) {
+    return (
+      <div className="rounded-2xl border-2 border-gold/40 bg-gold/5 p-5 space-y-3">
+        <div className="flex items-center gap-2">
+          <Sparkles className="h-4 w-4 text-gold" />
+          <Badge className="text-[10px] bg-gold text-gold-foreground px-2 py-0.5">Suggested for you</Badge>
+        </div>
+        <div className="space-y-1">
+          <p className="text-lg font-semibold leading-snug">{suggestion.entry.topic}</p>
+          <span className="text-xs text-muted-foreground">{suggestion.entry.subject}</span>
+          {suggestion.reason && (
+            <p className="text-sm text-muted-foreground pt-1">{suggestion.reason}</p>
+          )}
+        </div>
+        <Button
+          className="w-full gap-1.5 bg-gold hover:bg-gold/90 text-gold-foreground"
+          onClick={() => onSelfInitiate(suggestion.entry.id)}
+          disabled={busy}
+        >
+          <Play className="h-4 w-4" />
+          {busy ? 'Preparing…' : 'Start this lesson'}
+        </Button>
+      </div>
+    )
+  }
+
+  return null
+}
+
+// ── ReviewStrip (FSRS) ────────────────────────────────────────────────────────
+
+function ReviewStrip({ plans, onStudio }: { plans: StudyPlan[]; onStudio: (planId: string) => void }) {
+  const due = plans
+    .filter((p) => p.status === 'completed' && p.next_review_date)
+    .filter((p) => {
+      const d = parseISO(p.next_review_date as string)
+      return isToday(d) || isPast(d)
+    })
+    .sort((a, b) => (a.next_review_date ?? '').localeCompare(b.next_review_date ?? ''))
+
+  if (due.length === 0) return null
 
   return (
-    <div className="flex flex-col h-full max-h-[85vh]">
-      {/* Sticky header */}
-      <div className="flex items-center gap-3 pb-4 border-b shrink-0">
-        <Button variant="ghost" size="sm" onClick={onClose} className="gap-1.5 -ml-1">
-          <ArrowLeft className="h-4 w-4" />
-          Back
-        </Button>
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold truncate">{plan.topic}</p>
-          <p className="text-xs text-muted-foreground">{plan.subject}</p>
-        </div>
-        <Badge className={`text-xs shrink-0 ${cfg.color}`}>{cfg.icon} {cfg.label}</Badge>
+    <div className="space-y-2">
+      <div className="flex items-center gap-2">
+        <RotateCcw className="h-4 w-4 text-purple-500" />
+        <h2 className="text-sm font-semibold">Due for review</h2>
+        <Badge className="text-[10px] px-1.5 py-0 bg-purple-100 text-purple-800 dark:bg-purple-950/40 dark:text-purple-300">
+          {due.length}
+        </Badge>
       </div>
-
-      {/* Step tabs */}
-      <div className="flex gap-1 py-3 shrink-0">
-        {(['intro', 'learn', 'practice', 'done'] as const).map((s, i) => (
+      <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
+        {due.map((p) => (
           <button
-            key={s}
-            className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-              step === s
-                ? 'bg-gold text-gold-foreground'
-                : i <= ['intro', 'learn', 'practice', 'done'].indexOf(step)
-                  ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300'
-                  : 'bg-muted text-muted-foreground'
-            }`}
-            onClick={() => setStep(s)}
+            key={p.id}
+            onClick={() => onStudio(p.id)}
+            className="shrink-0 max-w-[200px] text-left rounded-xl border border-purple-200/60 dark:border-purple-900/50 bg-purple-50/50 dark:bg-purple-950/20 px-3 py-2 hover:bg-purple-100/60 dark:hover:bg-purple-950/40 transition-colors"
           >
-            {s === 'intro' ? 'Introduction' : s === 'learn' ? 'Learn' : s === 'practice' ? 'Practice' : 'Finish'}
+            <p className="text-xs font-semibold leading-snug line-clamp-1">{p.topic}</p>
+            <p className="text-[10px] text-muted-foreground">{p.subject}</p>
           </button>
         ))}
       </div>
-
-      {/* Step content — scrollable */}
-      <div className="flex-1 overflow-y-auto space-y-4">
-
-        {step === 'intro' && (
-          <div className="space-y-4">
-            {content.introduction && (
-              <Card className="border-gold/20 bg-gold/5">
-                <CardContent className="pt-4">
-                  <div className="flex gap-3">
-                    <Sparkles className="h-5 w-5 text-gold shrink-0 mt-0.5" />
-                    <p className="text-sm leading-relaxed">{content.introduction}</p>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-            <div className="grid grid-cols-2 gap-3">
-              <Card>
-                <CardContent className="pt-4">
-                  <p className="text-xs text-muted-foreground">Estimated time</p>
-                  <p className="text-lg font-bold mt-1">{content.estimated_minutes ?? 20} min</p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="pt-4">
-                  <p className="text-xs text-muted-foreground">Practice questions</p>
-                  <p className="text-lg font-bold mt-1">{content.practice_questions?.length ?? 0}</p>
-                </CardContent>
-              </Card>
-            </div>
-            <Button className="w-full gap-2" onClick={() => setStep('learn')}>
-              Start Learning
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-          </div>
-        )}
-
-        {step === 'learn' && (
-          <div className="space-y-4">
-            {content.explanation && (
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm flex items-center gap-2">
-                    <BookOpen className="h-4 w-4 text-primary" />
-                    Explanation
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm leading-relaxed whitespace-pre-wrap text-muted-foreground">
-                    {content.explanation}
-                  </p>
-                </CardContent>
-              </Card>
-            )}
-            {content.worked_example && (
-              <Card className="border-gold/20 bg-gold/5">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm flex items-center gap-2">
-                    <Star className="h-4 w-4 text-gold" />
-                    Worked Example
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm leading-relaxed whitespace-pre-wrap font-mono text-xs bg-background/60 rounded-lg p-3 border">
-                    {content.worked_example}
-                  </p>
-                </CardContent>
-              </Card>
-            )}
-            <Button className="w-full gap-2" onClick={() => setStep('practice')}>
-              Try Practice Questions
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-          </div>
-        )}
-
-        {step === 'practice' && (
-          <div className="space-y-4">
-            {(content.practice_questions ?? []).length === 0 ? (
-              <div className="py-8 text-center text-muted-foreground text-sm">No practice questions for this lesson.</div>
-            ) : (
-              (content.practice_questions ?? []).map((q, i) => (
-                <Card key={i}>
-                  <CardContent className="pt-4 space-y-3">
-                    <div className="flex gap-2">
-                      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-gold/15 text-xs font-bold text-gold">
-                        {i + 1}
-                      </span>
-                      <p className="text-sm font-medium">{q.question}</p>
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="gap-1.5 text-xs"
-                      onClick={() => toggleAnswer(i)}
-                    >
-                      <HelpCircle className="h-3.5 w-3.5" />
-                      {revealedAnswers.has(i) ? 'Hide answer' : 'Show answer'}
-                    </Button>
-                    {revealedAnswers.has(i) && (
-                      <div className="rounded-lg bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200/60 dark:border-emerald-900/60 p-3">
-                        <p className="text-xs font-semibold text-emerald-800 dark:text-emerald-300 mb-1">Answer</p>
-                        <p className="text-sm text-emerald-900 dark:text-emerald-200 whitespace-pre-wrap">{q.answer}</p>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              ))
-            )}
-            <Button className="w-full gap-2" onClick={() => setStep('done')}>
-              Review Summary
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-          </div>
-        )}
-
-        {step === 'done' && (
-          <div className="space-y-4">
-            {bullets.length > 0 && (
-              <Card className="border-emerald-200/60 bg-emerald-50/40 dark:border-emerald-900/60 dark:bg-emerald-950/20">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm flex items-center gap-2">
-                    <ListChecks className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-                    Key Takeaways
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <ul className="space-y-2">
-                    {bullets.map((b, i) => (
-                      <li key={i} className="flex gap-2 text-sm">
-                        <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" />
-                        <span>{b}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </CardContent>
-              </Card>
-            )}
-
-            {plan.status !== 'completed' && (
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm">Record your score (optional)</CardTitle>
-                  <CardDescription className="text-xs">How do you think you did on the practice questions?</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div className="flex gap-2 flex-wrap">
-                    {[20, 40, 60, 80, 100].map((v) => (
-                      <button
-                        key={v}
-                        className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
-                          quizScore === String(v)
-                            ? 'bg-gold text-gold-foreground border-gold'
-                            : 'border-border hover:bg-muted'
-                        }`}
-                        onClick={() => setQuizScore(String(v))}
-                      >
-                        {v}%
-                      </button>
-                    ))}
-                  </div>
-                  <Button
-                    className="w-full gap-2"
-                    onClick={handleMarkComplete}
-                    disabled={completing}
-                  >
-                    <CheckCircle2 className="h-4 w-4" />
-                    {completing ? 'Saving...' : 'Mark as Complete'}
-                  </Button>
-                </CardContent>
-              </Card>
-            )}
-
-            {plan.status === 'completed' && (
-              <div className="flex flex-col items-center gap-4 py-6 text-center">
-                <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-100 dark:bg-emerald-950/40">
-                  <CheckCircle2 className="h-8 w-8 text-emerald-500" />
-                </div>
-                <p className="text-sm font-semibold">You&apos;ve completed this lesson!</p>
-
-                {/* M6: Outcome precision */}
-                <div className="grid grid-cols-2 gap-3 w-full max-w-xs">
-                  <Card className="border-emerald-200/60 bg-emerald-50/40">
-                    <CardContent className="pt-3 pb-3">
-                      <p className="text-xs text-muted-foreground">Practice questions</p>
-                      <p className="text-lg font-bold mt-0.5">{content.practice_questions?.length ?? 0}</p>
-                    </CardContent>
-                  </Card>
-                  <Card className="border-emerald-200/60 bg-emerald-50/40">
-                    <CardContent className="pt-3 pb-3">
-                      <p className="text-xs text-muted-foreground">Self-reported score</p>
-                      <p className={`text-lg font-bold mt-0.5 tabular-nums ${
-                        plan.score_after !== null
-                          ? plan.score_after >= 80 ? 'text-emerald-600'
-                            : plan.score_after >= 60 ? 'text-amber-600'
-                            : 'text-rose-600'
-                          : ''
-                      }`}>
-                        {plan.score_after !== null ? `${plan.score_after}%` : '—'}
-                      </p>
-                    </CardContent>
-                  </Card>
-                </div>
-
-                {plan.completed_at && (
-                  <p className="text-xs text-muted-foreground">
-                    Completed {format(parseISO(plan.completed_at), 'd MMM yyyy · HH:mm')}
-                  </p>
-                )}
-                <Button variant="outline" onClick={onClose}>Back to study plans</Button>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
     </div>
+  )
+}
+
+// ── SoW ribbon ────────────────────────────────────────────────────────────────
+
+function SowRibbon({
+  topics, onStartTopic, pendingTopicId,
+}: {
+  topics: GradebookTopic[]
+  onStartTopic: (topic: GradebookTopic) => void
+  pendingTopicId: string | null
+}) {
+  if (topics.length === 0) return null
+  const ordered = [...topics].sort((a, b) => a.week_number - b.week_number)
+
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {ordered.map((t) => {
+        const style = ACHIEVEMENT_STYLE[t.achievement] ?? ACHIEVEMENT_STYLE.none
+        const busy = pendingTopicId === t.entry_id
+        return (
+          <button
+            key={t.entry_id}
+            onClick={() => onStartTopic(t)}
+            disabled={busy}
+            title={`Week ${t.week_number} · ${style.label}`}
+            className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs transition-all hover:scale-[1.02] disabled:opacity-60 ${style.ring}`}
+          >
+            <span className={`h-1.5 w-1.5 rounded-full ${style.dot}`} />
+            <span className="font-medium line-clamp-1 max-w-[160px]">{t.topic}</span>
+            {busy
+              ? <Clock className="h-3 w-3 animate-pulse text-muted-foreground" />
+              : <ChevronRight className="h-3 w-3 text-muted-foreground" />}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+// ── SubjectSection ────────────────────────────────────────────────────────────
+
+function SubjectSection({
+  subject, passMark, pendingPlans, onStudio, onStartTopic, pendingTopicId,
+}: {
+  subject: SubjectGradebook
+  passMark: string
+  pendingPlans: StudyPlan[]
+  onStudio: (planId: string) => void
+  onStartTopic: (topic: GradebookTopic) => void
+  pendingTopicId: string | null
+}) {
+  const tri = subject.triangulation
+  const weakMode =
+    tri.observation === 'none' || tri.product === 'none' || tri.conversation === 'none' ||
+    !tri.observation || !tri.product || !tri.conversation
+  const belowPass = !subject.is_passing
+  const showGap = belowPass || weakMode
+
+  // Weakest not-yet-mastered topic to anchor the gap CTA.
+  const weakestTopic = [...subject.topics]
+    .filter((t) => t.achievement !== 'all')
+    .sort((a, b) => a.week_number - b.week_number)[0] ?? null
+
+  return (
+    <section className="space-y-3">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h3 className="text-sm font-semibold truncate">{subject.subject}</h3>
+          <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+            {subject.grade_band && (
+              <Badge className={`text-[10px] px-1.5 py-0 ${
+                subject.is_passing
+                  ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300'
+                  : 'bg-rose-100 text-rose-800 dark:bg-rose-950/40 dark:text-rose-300'
+              }`}>
+                {subject.grade_band.label}{subject.grade_points != null ? ` · ${subject.grade_points}pts` : ''}
+              </Badge>
+            )}
+            {subject.mastery_pct != null && (
+              <span className="flex items-center gap-1 text-xs text-muted-foreground tabular-nums">
+                {subject.mastery_pct}% mastery
+                <TrendArrow delta={subject.trend_delta} />
+              </span>
+            )}
+            {subject.class_percentile != null && (
+              <span className="text-[10px] text-muted-foreground">Top {100 - subject.class_percentile}% of class</span>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Assigned pending plans for this subject */}
+      {pendingPlans.length > 0 && (
+        <div className="space-y-2">
+          {pendingPlans.map((p) => {
+            const cfg = lessonCfg(p.lesson_type)
+            return (
+              <button
+                key={p.id}
+                onClick={() => onStudio(p.id)}
+                className="w-full text-left rounded-xl border border-border/60 bg-card hover:border-gold/40 hover:bg-gold/[0.03] transition-colors p-3 flex items-center gap-3"
+              >
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gold/10 text-base">
+                  {cfg.icon}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium leading-snug line-clamp-1">{p.topic}</p>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <Badge className={`text-[10px] px-1.5 py-0 ${cfg.color}`}>{cfg.label}</Badge>
+                    <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                      <Clock className="h-3 w-3" />{p.content?.estimated_minutes ?? 20} min
+                    </span>
+                  </div>
+                </div>
+                <Clapperboard className="h-4 w-4 text-muted-foreground shrink-0" />
+              </button>
+            )
+          })}
+        </div>
+      )}
+
+      {/* Scheme-of-work ribbon */}
+      <SowRibbon topics={subject.topics} onStartTopic={onStartTopic} pendingTopicId={pendingTopicId} />
+
+      {/* Gap callout */}
+      {showGap && weakestTopic && (
+        <div className="flex items-center justify-between gap-3 rounded-lg border border-amber-300/50 bg-amber-50/50 dark:bg-amber-950/20 px-3 py-2.5">
+          <div className="flex items-start gap-2 min-w-0">
+            <Target className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+            <p className="text-xs text-amber-900 dark:text-amber-200">
+              {belowPass
+                ? `Below the ${passMark} pass mark — start with `
+                : `Strengthen `}
+              <span className="font-semibold">{weakestTopic.topic}</span> to close the gap.
+            </p>
+          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-7 text-xs shrink-0 border-amber-400/60"
+            onClick={() => onStartTopic(weakestTopic)}
+            disabled={pendingTopicId === weakestTopic.entry_id}
+          >
+            {pendingTopicId === weakestTopic.entry_id ? '…' : 'Start'}
+          </Button>
+        </div>
+      )}
+    </section>
   )
 }
 
@@ -389,50 +321,139 @@ function LessonViewer({ plan, onClose, onComplete, completing }: LessonViewerPro
 interface Props {
   user: any
   initialPlans: StudyPlan[]
+  gradebook: GradebookResponse | null
+  suggestion: SuggestedTopicResponse | null
   error: string | null
-  activeFilter?: string
 }
 
-export function StudyPlansClient({ user, initialPlans, error, activeFilter }: Props) {
+export function StudyPlansClient({ user, initialPlans, gradebook, suggestion, error }: Props) {
   const router = useRouter()
-  const [plans, setPlans] = useState<StudyPlan[]>(initialPlans)
-  const [selectedPlan, setSelectedPlan] = useState<StudyPlan | null>(null)
-  const [completing, startTransition] = useTransition()
-  const { celebrate } = useCelebration()
+  const plans = initialPlans
 
+  const [checkedIn, setCheckedIn] = useState(false)
+  const [checkingIn, startCheckIn] = useTransition()
+  const [pendingTopicId, setPendingTopicId] = useState<string | null>(null)
+  const [heroBusy, startHero] = useTransition()
+  const [initiatingFree, startInitiateFree] = useTransition()
+  const [freeSub, setFreeSub]     = useState(suggestion?.entry.subject ?? '')
+  const [freeTopic, setFreeTopic] = useState(suggestion?.entry.topic ?? '')
+
+  const isMarketplace = user?.enrollment_source === 'marketplace' || !user?.class_id
   const firstName = user?.name?.split(' ')[0] ?? user?.first_name ?? 'Student'
+  const passMark = gradebook?.scale?.passMark ?? 'D'
 
+  useEffect(() => {
+    const todayKey = `checkin_${new Date().toISOString().slice(0, 10)}`
+    if (typeof window !== 'undefined' && localStorage.getItem(todayKey)) setCheckedIn(true)
+  }, [])
+
+  // ── Derived data ──────────────────────────────────────────────────────────
   const pending   = plans.filter((p) => p.status === 'pending' || p.status === 'sent')
   const completed = plans.filter((p) => p.status === 'completed')
 
-  const filtered =
-    !activeFilter || activeFilter === 'all'
-      ? plans
-      : plans.filter((p) =>
-          activeFilter === 'pending'
-            ? p.status === 'pending' || p.status === 'sent'
-            : p.status === activeFilter,
-        )
+  const todayPlan = useMemo(() => {
+    const overdue = pending.find((p) => {
+      if (!p.scheduled_for) return false
+      const d = parseISO(p.scheduled_for)
+      return isToday(d) || isPast(d)
+    })
+    if (overdue) return overdue
+    return [...pending].sort((a, b) => (a.scheduled_for ?? '').localeCompare(b.scheduled_for ?? ''))[0] ?? null
+  }, [pending])
 
-  function applyFilter(f: string) {
-    const params = new URLSearchParams()
-    if (f !== 'all') params.set('status', f)
-    router.push(`/student/study-plans${params.toString() ? `?${params}` : ''}`)
-  }
-
-  async function handleComplete(plan: StudyPlan, score?: number) {
-    startTransition(async () => {
-      const res = await markStudyPlanComplete(plan.id, score)
-      if (res.error) {
-        toast.error(res.error.message)
-        return
+  // Map a SoW entry → its existing plan (prefer an active plan over a completed one).
+  const planBySowEntry = useMemo(() => {
+    const m = new Map<string, StudyPlan>()
+    for (const p of plans) {
+      if (!p.scheme_entry_id) continue
+      const existing = m.get(p.scheme_entry_id)
+      if (!existing || (existing.status === 'completed' && p.status !== 'completed')) {
+        m.set(p.scheme_entry_id, p)
       }
-      setPlans((prev) => prev.map((p) => p.id === plan.id ? { ...p, status: 'completed', score_after: score ?? null, completed_at: new Date().toISOString() } : p))
-      toast.success('Study plan marked as complete!')
-      celebrate('plan')
+    }
+    return m
+  }, [plans])
+
+  const pendingBySubject = useMemo(() => {
+    const m = new Map<string, StudyPlan[]>()
+    for (const p of pending) {
+      if (p.id === todayPlan?.id) continue // already surfaced in the hero
+      const arr = m.get(p.subject) ?? []
+      arr.push(p)
+      m.set(p.subject, arr)
+    }
+    return m
+  }, [pending, todayPlan])
+
+  const subjects = useMemo(() => {
+    return [...(gradebook?.subjects ?? [])].sort((a, b) => {
+      if (a.is_passing !== b.is_passing) return a.is_passing ? 1 : -1
+      return (a.mastery_pct ?? 0) - (b.mastery_pct ?? 0)
+    })
+  }, [gradebook])
+
+  const subjectOptions = useMemo(
+    () => Array.from(new Set((gradebook?.subjects ?? []).map((s) => s.subject))),
+    [gradebook],
+  )
+
+  // ── Actions ─────────────────────────────────────────────────────────────────
+  const goStudio = (planId: string) => router.push(`/student/study-plans/${planId}/studio`)
+
+  function handleSelfInitiate(sowEntryId: string) {
+    startHero(async () => {
+      const { data, error: err } = await selfInitiateFromEntry(sowEntryId)
+      if (err) { toast.error(err.message); return }
+      if (data?.plan?.id) goStudio(data.plan.id)
     })
   }
 
+  function handleStartTopic(topic: GradebookTopic) {
+    const existing = planBySowEntry.get(topic.sow_entry_id)
+    if (existing) { goStudio(existing.id); return }
+    setPendingTopicId(topic.entry_id)
+    startHero(async () => {
+      const { data, error: err } = await selfInitiateFromEntry(topic.sow_entry_id)
+      setPendingTopicId(null)
+      if (err) { toast.error(err.message); return }
+      if (data?.plan?.id) goStudio(data.plan.id)
+    })
+  }
+
+  function handleCheckIn() {
+    startCheckIn(async () => {
+      const { data } = await checkInStudySession()
+      setCheckedIn(true)
+      localStorage.setItem(`checkin_${new Date().toISOString().slice(0, 10)}`, '1')
+      if (data && !data.already_checked_in) toast.success(`Day ${data.streak_days} streak — keep it up!`)
+    })
+  }
+
+  function handleInitiateFree() {
+    if (!freeSub.trim() || !freeTopic.trim()) {
+      toast.error('Enter a subject and topic to start studying.')
+      return
+    }
+    startInitiateFree(async () => {
+      const matchesSuggestion =
+        suggestion?.action === 'self_initiate' &&
+        freeSub.trim().toLowerCase() === suggestion.entry.subject.toLowerCase() &&
+        freeTopic.trim().toLowerCase() === suggestion.entry.topic.toLowerCase()
+
+      if (matchesSuggestion && suggestion) {
+        const { data, error: err } = await selfInitiateFromEntry(suggestion.entry.id)
+        if (err) { toast.error(err.message); return }
+        if (data?.plan?.id) { toast.success('Study plan created!'); goStudio(data.plan.id) }
+        return
+      }
+
+      const { data, error: err } = await initiateFreeStudyPlan(freeSub.trim(), freeTopic.trim())
+      if (err) { toast.error(err.message); return }
+      if (data?.plan_id) { toast.success('Study plan created!'); goStudio(data.plan_id) }
+    })
+  }
+
+  // ── Render ────────────────────────────────────────────────────────────────
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center py-20 gap-3 text-center animate-fade-up">
@@ -443,23 +464,25 @@ export function StudyPlansClient({ user, initialPlans, error, activeFilter }: Pr
     )
   }
 
+  const hasContent = subjects.length > 0 || plans.length > 0 || !!suggestion
+
   return (
     <div className="space-y-5 animate-fade-up">
 
       {/* Header */}
       <div className="space-y-0.5">
-        <h1 className="text-xl font-semibold tracking-tight">My Study Plans</h1>
+        <h1 className="text-xl font-semibold tracking-tight">My Learning</h1>
         <p className="text-sm text-muted-foreground">
-          Personalised lessons created just for you, {firstName}
+          Your next lessons, grouped by subject, {firstName}
         </p>
       </div>
 
       {/* Stats row */}
       <div className="grid grid-cols-3 gap-3">
         {[
-          { label: 'Pending',   value: pending.length,   color: 'text-amber-600' },
-          { label: 'Completed', value: completed.length, color: 'text-emerald-600' },
-          { label: 'Total',     value: plans.length,     color: 'text-foreground' },
+          { label: 'To do',      value: pending.length,   color: 'text-amber-600' },
+          { label: 'Completed',  value: completed.length, color: 'text-emerald-600' },
+          { label: 'Subjects',   value: subjects.length,  color: 'text-foreground' },
         ].map((s) => (
           <Card key={s.label}>
             <CardContent className="pt-4 pb-3 text-center">
@@ -470,70 +493,154 @@ export function StudyPlansClient({ user, initialPlans, error, activeFilter }: Pr
         ))}
       </div>
 
-      {/* Filter tabs */}
-      <div className="flex gap-1.5">
-        {(['all', 'pending', 'completed'] as const).map((f) => (
-          <button
-            key={f}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-              (activeFilter ?? 'all') === f
-                ? 'bg-gold text-gold-foreground'
-                : 'bg-muted text-muted-foreground hover:bg-muted/80'
-            }`}
-            onClick={() => applyFilter(f)}
+      {/* Daily check-in — marketplace / self-study students only */}
+      {isMarketplace && !checkedIn && (
+        <div className="flex items-center justify-between gap-3 rounded-lg border border-gold/30 bg-gold/5 px-4 py-3">
+          <div className="flex items-center gap-2">
+            <BookOpen className="h-4 w-4 text-gold shrink-0" />
+            <span className="text-sm font-medium">Are you learning today?</span>
+          </div>
+          <Button
+            size="sm"
+            className="h-7 gap-1.5 bg-gold hover:bg-gold/90 text-gold-foreground shrink-0"
+            onClick={handleCheckIn}
+            disabled={checkingIn}
           >
-            {f === 'all' ? 'All' : f === 'pending' ? 'Pending' : 'Completed'}
-          </button>
-        ))}
-      </div>
-
-      {/* Plan list */}
-      {filtered.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-16 gap-4 text-center">
-          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gold/10">
-            <BookOpen className="h-8 w-8 text-gold/60" />
-          </div>
-          <div className="space-y-1">
-            <p className="text-sm font-medium">
-              {activeFilter === 'pending' ? 'All caught up!' : activeFilter === 'completed' ? 'No completed plans yet' : 'No study plans yet'}
-            </p>
-            <p className="text-xs text-muted-foreground max-w-xs">
-              {activeFilter === 'pending'
-                ? 'You have no pending study plans. Great work!'
-                : activeFilter === 'completed'
-                ? 'Complete a study plan to see it here.'
-                : 'Your teacher will send personalised study plans based on your assessments.'}
-            </p>
-          </div>
+            <CheckCircle2 className="h-3.5 w-3.5" />
+            {checkingIn ? '…' : "Yes, I'm studying"}
+          </Button>
         </div>
-      ) : (
-        <div className="space-y-2.5">
-          {filtered.map((plan) => (
-            <PlanCard
-              key={plan.id}
-              plan={plan}
-              onClick={() => setSelectedPlan(plan)}
+      )}
+
+      {/* Today's most important action */}
+      <TodayHero
+        plan={todayPlan}
+        suggestion={todayPlan ? null : suggestion}
+        onStudio={goStudio}
+        onSelfInitiate={handleSelfInitiate}
+        busy={heroBusy}
+      />
+
+      {/* Spaced-repetition reviews due */}
+      <ReviewStrip plans={plans} onStudio={goStudio} />
+
+      {/* Subject-grouped learning queue */}
+      {subjects.length > 0 && (
+        <div className="space-y-6">
+          {subjects.map((s) => (
+            <SubjectSection
+              key={s.scheme_id || s.subject}
+              subject={s}
+              passMark={passMark}
+              pendingPlans={pendingBySubject.get(s.subject) ?? []}
+              onStudio={goStudio}
+              onStartTopic={handleStartTopic}
+              pendingTopicId={pendingTopicId}
             />
           ))}
         </div>
       )}
 
-      {/* Lesson viewer dialog */}
-      <Dialog open={!!selectedPlan} onOpenChange={(o) => !o && setSelectedPlan(null)}>
-        <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col gap-0 p-6">
-          <DialogHeader className="sr-only">
-            <DialogTitle>{selectedPlan?.topic}</DialogTitle>
-          </DialogHeader>
-          {selectedPlan && (
-            <LessonViewer
-              plan={plans.find((p) => p.id === selectedPlan.id) ?? selectedPlan}
-              onClose={() => setSelectedPlan(null)}
-              onComplete={handleComplete}
-              completing={completing}
+      {/* Explore — start any topic */}
+      <Card className="border-gold/20 bg-gold/[0.03]">
+        <CardContent className="pt-4 pb-3">
+          <p className="text-sm font-medium flex items-center gap-1.5 mb-2">
+            <Play className="h-3.5 w-3.5 text-gold" />
+            Study anything else
+          </p>
+          <div className="flex gap-2 flex-wrap">
+            {subjectOptions.length > 0 ? (
+              <Select value={freeSub} onValueChange={setFreeSub}>
+                <SelectTrigger className="flex-1 min-w-[140px] h-8 text-sm">
+                  <SelectValue placeholder="Subject" />
+                </SelectTrigger>
+                <SelectContent>
+                  {subjectOptions.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            ) : (
+              <Input
+                placeholder="Subject (e.g. Mathematics)"
+                value={freeSub}
+                onChange={(e) => setFreeSub(e.target.value)}
+                className="flex-1 min-w-[140px] h-8 text-sm"
+              />
+            )}
+            <Input
+              placeholder="Topic (e.g. Quadratic equations)"
+              value={freeTopic}
+              onChange={(e) => setFreeTopic(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleInitiateFree()}
+              className="flex-1 min-w-[200px] h-8 text-sm"
             />
-          )}
-        </DialogContent>
-      </Dialog>
+            <Button
+              size="sm"
+              className="h-8 gap-1.5 bg-gold hover:bg-gold/90 text-gold-foreground shrink-0"
+              onClick={handleInitiateFree}
+              disabled={initiatingFree}
+            >
+              <Sparkles className="h-3.5 w-3.5" />
+              {initiatingFree ? 'Creating…' : 'Start'}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Completed history */}
+      {completed.length > 0 && (
+        <>
+          <div className="flex items-center gap-3">
+            <div className="flex-1 h-px bg-border" />
+            <span className="text-xs text-muted-foreground font-medium">Completed</span>
+            <div className="flex-1 h-px bg-border" />
+          </div>
+          <div className="space-y-2.5">
+            {completed.map((plan) => {
+              const cfg = lessonCfg(plan.lesson_type)
+              return (
+                <div
+                  key={plan.id}
+                  className="rounded-xl border border-border/60 bg-card opacity-60 hover:opacity-80 transition-opacity p-4 space-y-1"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="text-sm font-medium line-through text-muted-foreground">{plan.topic}</p>
+                    <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" />
+                  </div>
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <Badge className={`text-[10px] px-1.5 py-0 ${cfg.color}`}>{cfg.icon} {cfg.label}</Badge>
+                      {plan.score_after != null && (
+                        <span className={`text-xs font-semibold tabular-nums ${
+                          plan.score_after >= 80 ? 'text-emerald-600' : plan.score_after >= 60 ? 'text-amber-600' : 'text-rose-600'
+                        }`}>{plan.score_after}%</span>
+                      )}
+                    </div>
+                    <Link
+                      href={`/student/study-plans/${plan.id}/studio`}
+                      className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-gold transition-colors"
+                    >
+                      <Clapperboard className="h-3 w-3" /> Review
+                    </Link>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </>
+      )}
+
+      {/* Empty state */}
+      {!hasContent && (
+        <div className="flex flex-col items-center gap-2 py-10 text-center">
+          <BookOpen className="h-8 w-8 text-muted-foreground/30 mb-1" />
+          <p className="text-sm font-medium text-muted-foreground">Nothing assigned yet</p>
+          <p className="text-xs text-muted-foreground max-w-xs">
+            {gradebook?.no_enrollment
+              ? 'Enrol in a class or use the form above to start studying any topic.'
+              : 'Use the form above to start studying any subject independently.'}
+          </p>
+        </div>
+      )}
 
     </div>
   )
