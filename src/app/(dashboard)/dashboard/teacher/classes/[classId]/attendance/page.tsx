@@ -1,5 +1,7 @@
+import { getSession }          from '@/lib/session'
+import { getClassDetails }      from '@/lib/actions/classes'
 import { getAttendanceSessions } from '@/lib/actions/attendance'
-import { AttendanceClient } from './_components/attendance-client'
+import { AttendanceClient }     from './_components/attendance-client'
 
 interface Props {
   params: Promise<{ classId: string }>
@@ -7,13 +9,23 @@ interface Props {
 
 export default async function AttendancePage({ params }: Props) {
   const { classId } = await params
-  const { data: sessions, error } = await getAttendanceSessions(classId)
+  const [session, classRes, sessionsRes] = await Promise.all([
+    getSession(),
+    getClassDetails(classId),
+    getAttendanceSessions(classId),
+  ])
+
+  const isAdmin   = session?.role === 'Admin'
+  const className = classRes.data?.name ?? null
 
   return (
     <AttendanceClient
       classId={classId}
-      initialSessions={sessions ?? []}
-      error={error?.message ?? null}
+      className={className}
+      classesUrl={isAdmin ? '/dashboard/classes' : '/dashboard/teacher/classes'}
+      classUrl={isAdmin ? `/dashboard/classes/${classId}` : `/dashboard/teacher/classes/${classId}`}
+      initialSessions={sessionsRes.data ?? []}
+      error={sessionsRes.error?.message ?? null}
     />
   )
 }

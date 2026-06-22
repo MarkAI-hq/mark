@@ -12,6 +12,9 @@ import {
 }                              from '@/lib/actions/classes'
 import { getOrganizationUsers }   from '@/lib/actions/organizations'
 import { getClassReteachHistory } from '@/lib/actions/reteach-history'
+import { getAllSchemesForClass } from '@/lib/actions/scheme-of-work'
+import { getClassAttendanceSummary, getAttendanceSessions } from '@/lib/actions/attendance'
+import { getClassStudyPlanSummary } from '@/lib/actions/study-plans'
 import {
   Breadcrumb, BreadcrumbItem, BreadcrumbLink,
   BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator,
@@ -28,6 +31,7 @@ export default async function ClassDetailPage({ params }: ClassDetailPageProps) 
   const [
     classRes, coursesRes, analytics, classesWithTeachersRes,
     assessmentsRes, interventionsRes, groupsRes, joinRequestsRes,
+    sowRes, attendanceSummaryRes, attendanceSessionsRes, studyPlanRes,
   ] = await Promise.all([
     getClassDetails(id),
     getAssignedCourses(id),
@@ -37,6 +41,10 @@ export default async function ClassDetailPage({ params }: ClassDetailPageProps) 
     getClassReteachHistory(id),
     getClassGroups(id),
     getClassJoinRequests(id),
+    getAllSchemesForClass(id),
+    getClassAttendanceSummary(id),
+    getAttendanceSessions(id),
+    getClassStudyPlanSummary(id),
   ])
 
   if (classRes.error || !classRes.data) return notFound()
@@ -44,9 +52,9 @@ export default async function ClassDetailPage({ params }: ClassDetailPageProps) 
   const classDetails       = classRes.data
   const courses            = coursesRes.data          ?? []
   const assessments        = assessmentsRes.data       ?? []
-  const interventions      = interventionsRes.data      ?? []
-  const groups             = groupsRes.data             ?? null
-  const joinRequests       = joinRequestsRes.data       ?? []
+  const interventions      = interventionsRes.data     ?? []
+  const groups             = groupsRes.data            ?? null
+  const joinRequests       = joinRequestsRes.data      ?? []
   const latestAssessmentId = assessments[0]?.assessment_id ?? null
 
   const classWithTeachers = classesWithTeachersRes.data?.find((c) => c.class_id === id)
@@ -97,6 +105,10 @@ export default async function ClassDetailPage({ params }: ClassDetailPageProps) 
         interventions={interventions}
         groups={groups}
         joinRequests={joinRequests}
+        initialSchemes={sowRes.data ?? []}
+        initialAttendanceSummary={attendanceSummaryRes.data ?? null}
+        initialAttendanceSessions={attendanceSessionsRes.data ?? []}
+        initialStudyPlanStudents={studyPlanRes.data?.students ?? []}
       />
     </div>
   )

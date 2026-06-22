@@ -176,13 +176,17 @@ export function ClassStudentsTab({
         const result = await createStudent(formData, photo) as any
         await enrollStudent(classId, result.user_id)
 
+        if (result?.warning) {
+          toast.warning(result.warning)
+        }
+
         if (result?.pin) {
           setCreatedStudent({
             name:              result.name ?? `${result.first_name} ${result.last_name}`.trim(),
             student_school_id: result.student_school_id ?? null,
             pin:               result.pin,
           })
-        } else {
+        } else if (!result?.warning) {
           toast.success('Student created and enrolled successfully.')
         }
 

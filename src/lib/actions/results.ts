@@ -2,7 +2,7 @@
 'use server'
 
 import { fetcher } from '@/lib/fetch'
-import type { ServerActionResponse } from '@/lib/types'
+import type { ServerActionResponse, Citation } from '@/lib/types'
 
 // --- TYPE DEFINITIONS FOR DETAILED SUBMISSION RESULTS ---
 
@@ -18,6 +18,7 @@ export interface SubmissionResponse {
   content_feedback:      string | null;
   cognitive_feedback:    string | null;
   teacher_feedback:      string | null;
+  sources_consulted:     Citation[] | null;
 }
 
 export interface FollowUpAssignment {

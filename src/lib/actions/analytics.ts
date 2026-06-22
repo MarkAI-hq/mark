@@ -64,3 +64,29 @@ export async function getStudentAnalytics(
   if (error || !data) return null
   return data
 }
+
+// ── Quality Benchmarks (Root/Support only) ────────────────────────────────────
+
+export interface BenchmarkMetric {
+  value:       number | null
+  sample_size?: number
+  target:      number
+}
+
+export interface RagCoverageMetric extends BenchmarkMetric {
+  total_entries:    number
+  embedded_entries: number
+}
+
+export interface PlatformBenchmarks {
+  study_plan_completion_rate: BenchmarkMetric
+  curriculum_alignment_score: BenchmarkMetric
+  rag_coverage:               RagCoverageMetric
+  prediction_accuracy:        BenchmarkMetric
+  grading_consistency:        BenchmarkMetric
+  gap_closure_rate:           BenchmarkMetric
+}
+
+export async function getPlatformBenchmarks(): Promise<ServerActionResponse<PlatformBenchmarks>> {
+  return fetcher<PlatformBenchmarks>('/analytics/benchmarks', { cache: 'no-store' })
+}

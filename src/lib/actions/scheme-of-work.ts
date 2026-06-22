@@ -21,6 +21,12 @@ export interface SchemeOfWorkEntry {
   planned_week_start: string | null
 }
 
+export interface AssignedClass {
+  class_id: string
+  name: string
+  grade_level: string | null
+}
+
 export interface SchemeOfWork {
   id: string
   organization_id: string
@@ -38,6 +44,7 @@ export interface SchemeOfWork {
   createdAt: string
   updatedAt: string
   entries?: SchemeOfWorkEntry[]
+  assignedClasses?: AssignedClass[]
 }
 
 // ── Queries ────────────────────────────────────────────────────────────────
@@ -57,6 +64,15 @@ export async function listSchemeOfWork(filters?: {
 
 export async function getSchemeOfWork(id: string) {
   return fetcher<SchemeOfWork>(`/scheme-of-work/${id}`)
+}
+
+export interface SowSummary extends SchemeOfWork {
+  entries_total: number
+  entries_delivered: number
+}
+
+export async function getAllSchemesForClass(classId: string) {
+  return fetcher<SowSummary[]>(`/scheme-of-work/class/${classId}/all`)
 }
 
 export async function getActiveSchemeForClass(classId: string) {
@@ -175,6 +191,7 @@ export async function assignSchemeToClass(sowId: string, classId: string) {
   })
   if (!res.error) {
     revalidatePath(`/dashboard/teacher/classes/${classId}/scheme-of-work`)
+    revalidatePath(`/dashboard/classes/${classId}`)
   }
   return res
 }

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useTransition, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { format, parseISO } from 'date-fns'
 import { CalendarPlus, Calendar, Users, CheckCircle2, XCircle, Clock, FileText } from 'lucide-react'
@@ -10,15 +10,26 @@ import { Button }   from '@/components/ui/button'
 import { Badge }    from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import {
+  Breadcrumb, BreadcrumbItem, BreadcrumbLink,
+  BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator,
+} from '@/components/ui/breadcrumb'
+import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger,
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select'
 
 import { createAttendanceSession, type AttendanceSession } from '@/lib/actions/attendance'
+import { getSubjects } from '@/lib/actions/subjects'
 
 interface Props {
   classId: string
+  className: string | null
+  classesUrl: string
+  classUrl: string
   initialSessions: AttendanceSession[]
   error: string | null
 }
@@ -42,17 +53,24 @@ function StatusBadge({ present, absent, late, excused, total }: {
   )
 }
 
-export function AttendanceClient({ classId, initialSessions, error }: Props) {
+export function AttendanceClient({ classId, className, classesUrl, classUrl, initialSessions, error }: Props) {
   const router = useRouter()
   const [sessions, setSessions] = useState(initialSessions)
   const [open, setOpen] = useState(false)
   const [isPending, startTransition] = useTransition()
 
   const today = format(new Date(), 'yyyy-MM-dd')
-  const [date, setDate]       = useState(today)
-  const [period, setPeriod]   = useState('')
-  const [subject, setSubject] = useState('')
-  const [notes, setNotes]     = useState('')
+  const [date, setDate]             = useState(today)
+  const [period, setPeriod]         = useState('')
+  const [subject, setSubject]       = useState('')
+  const [notes, setNotes]           = useState('')
+  const [subjectOptions, setSubjectOptions] = useState<string[]>([])
+
+  useEffect(() => {
+    getSubjects().then(({ data }) => {
+      if (data?.length) setSubjectOptions((data as any[]).map((s: any) => s.name as string))
+    })
+  }, [])
 
   function handleCreate() {
     startTransition(async () => {
@@ -85,6 +103,22 @@ export function AttendanceClient({ classId, initialSessions, error }: Props) {
 
   return (
     <div className="space-y-6 p-6">
+      <Breadcrumb>
+        <BreadcrumbList>
+          <BreadcrumbItem>
+            <BreadcrumbLink href={classesUrl}>Classes</BreadcrumbLink>
+          </BreadcrumbItem>
+          <BreadcrumbSeparator />
+          <BreadcrumbItem>
+            <BreadcrumbLink href={classUrl}>{className ?? 'Class'}</BreadcrumbLink>
+          </BreadcrumbItem>
+          <BreadcrumbSeparator />
+          <BreadcrumbItem>
+            <BreadcrumbPage>Attendance</BreadcrumbPage>
+          </BreadcrumbItem>
+        </BreadcrumbList>
+      </Breadcrumb>
+
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-lg font-semibold">Attendance</h2>
@@ -114,7 +148,16 @@ export function AttendanceClient({ classId, initialSessions, error }: Props) {
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="att-subject">Subject (optional)</Label>
-                  <Input id="att-subject" placeholder="Mathematics" value={subject} onChange={(e) => setSubject(e.target.value)} />
+                  {subjectOptions.length > 0 ? (
+                    <Select value={subject} onValueChange={setSubject}>
+                      <SelectTrigger id="att-subject"><SelectValue placeholder="Select subject" /></SelectTrigger>
+                      <SelectContent>
+                        {subjectOptions.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <Input id="att-subject" placeholder="Mathematics" value={subject} onChange={(e) => setSubject(e.target.value)} />
+                  )}
                 </div>
               </div>
               <div className="space-y-1.5">

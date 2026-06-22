@@ -3,7 +3,7 @@
 // src/lib/actions/reteach.ts
 
 import { fetcher } from '@/lib/fetch'
-import type { ServerActionResponse } from '@/lib/types'
+import type { ServerActionResponse, Citation } from '@/lib/types'
 
 // ── Sub-types ──────────────────────────────────────────────────────────────
 
@@ -131,6 +131,9 @@ export interface ReteachSession {
     description: string
     score:       number
   }>
+
+  // Syllabus provenance (RAG) — stored in session_data at generation time
+  sources_consulted?: Citation[]
 }
 
 // ── Server actions ─────────────────────────────────────────────────────────

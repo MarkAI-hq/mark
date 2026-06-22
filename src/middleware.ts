@@ -19,6 +19,7 @@ export async function middleware(request: NextRequest) {
     '/verify-email',
     '/accept-invitation',
     '/student/login',
+    '/student/join',
     '/onboarding',
     '/privacy',
     '/terms',
@@ -97,7 +98,7 @@ export async function middleware(request: NextRequest) {
   }
 
   if (user?.role === 'Student') {
-    if (pathname.startsWith('/dashboard')) {
+    if (pathname.startsWith('/dashboard') || pathname === '/student') {
       return NextResponse.redirect(new URL('/student/dashboard', request.url))
     }
     return NextResponse.next()
@@ -138,7 +139,7 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  if (user?.role === 'Admin' && pathname.startsWith('/dashboard/teacher')) {
+  if (user?.role === 'Admin' && pathname === '/dashboard/teacher') {
     return NextResponse.redirect(new URL('/dashboard', request.url))
   }
 

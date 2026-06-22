@@ -8,6 +8,10 @@ import { Badge }  from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import {
+  Breadcrumb, BreadcrumbItem, BreadcrumbLink,
+  BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator,
+} from '@/components/ui/breadcrumb'
+import {
   Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
 } from '@/components/ui/tooltip'
 import type { ExposureMatrix } from '@/lib/actions/gap-attribution'
@@ -47,11 +51,14 @@ function ExposureCell({ status, studentName, topic }: {
 
 interface Props {
   classId: string
+  className: string | null
+  classesUrl: string
+  classUrl: string
   matrix: ExposureMatrix | null
   error: string | null
 }
 
-export function GapReportClient({ classId, matrix, error }: Props) {
+export function GapReportClient({ classId, className, classesUrl, classUrl, matrix, error }: Props) {
   const [hoveredRow, setHoveredRow] = useState<string | null>(null)
   const [isPending, startT] = useTransition()
 
@@ -63,9 +70,28 @@ export function GapReportClient({ classId, matrix, error }: Props) {
     })
   }
 
+  const breadcrumb = (
+    <Breadcrumb>
+      <BreadcrumbList>
+        <BreadcrumbItem>
+          <BreadcrumbLink href={classesUrl}>Classes</BreadcrumbLink>
+        </BreadcrumbItem>
+        <BreadcrumbSeparator />
+        <BreadcrumbItem>
+          <BreadcrumbLink href={classUrl}>{className ?? 'Class'}</BreadcrumbLink>
+        </BreadcrumbItem>
+        <BreadcrumbSeparator />
+        <BreadcrumbItem>
+          <BreadcrumbPage>Gap Report</BreadcrumbPage>
+        </BreadcrumbItem>
+      </BreadcrumbList>
+    </Breadcrumb>
+  )
+
   if (error || !matrix) {
     return (
       <div className="p-6 space-y-4">
+        {breadcrumb}
         <div className="flex items-center gap-2 text-muted-foreground">
           <AlertCircle className="h-5 w-5" />
           <p className="text-sm">{error ?? 'No exposure matrix available.'}</p>
@@ -89,7 +115,8 @@ export function GapReportClient({ classId, matrix, error }: Props) {
 
   if (matrix.rows.length === 0 || matrix.students.length === 0) {
     return (
-      <div className="p-6">
+      <div className="p-6 space-y-4">
+        {breadcrumb}
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-16 gap-4 text-center animate-fade-up">
             <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gold/10">
@@ -122,6 +149,8 @@ export function GapReportClient({ classId, matrix, error }: Props) {
 
   return (
     <div className="space-y-5 p-6">
+      {breadcrumb}
+
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
           <h2 className="text-lg font-semibold">Exposure Matrix</h2>

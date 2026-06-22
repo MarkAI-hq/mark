@@ -1,4 +1,4 @@
-// tests/admin.spec.ts
+﻿// tests/admin.spec.ts
 // Full admin feature coverage. Runs on the "admin" project which is
 // pre-authenticated as tusiimekenneth.ug@gmail.com via global-setup.
 
@@ -6,7 +6,7 @@ import { test, expect } from "./fixtures";
 
 test.use({ storageState: "tests/auth/admin-auth.json" });
 
-// ── Dashboard ──────────────────────────────────────────────────────────────
+// â”€â”€ Dashboard â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 test.describe("Admin dashboard", () => {
   test("loads and shows stat cards", async ({ page }) => {
@@ -57,7 +57,7 @@ test.describe("Admin dashboard", () => {
   });
 });
 
-// ── Analytics overview ─────────────────────────────────────────────────────
+// â”€â”€ Analytics overview â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 test.describe("Analytics overview", () => {
   test("/dashboard/overview loads", async ({ page }) => {
@@ -69,7 +69,7 @@ test.describe("Analytics overview", () => {
   });
 });
 
-// ── Classes ────────────────────────────────────────────────────────────────
+// â”€â”€ Classes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 test.describe("Classes management", () => {
   test("/dashboard/classes loads", async ({ page }) => {
@@ -114,7 +114,7 @@ test.describe("Classes management", () => {
   });
 });
 
-// ── Students ───────────────────────────────────────────────────────────────
+// â”€â”€ Students â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 test.describe("Students management", () => {
   test("/dashboard/students loads", async ({ page }) => {
@@ -150,7 +150,7 @@ test.describe("Students management", () => {
   });
 });
 
-// ── Exams ──────────────────────────────────────────────────────────────────
+// â”€â”€ Exams â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 test.describe("Exams", () => {
   test("/dashboard/exams loads", async ({ page }) => {
@@ -170,7 +170,7 @@ test.describe("Exams", () => {
   });
 });
 
-// ── Assessments ────────────────────────────────────────────────────────────
+// â”€â”€ Assessments â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 test.describe("Exam Builder", () => {
   test("/dashboard/exam-builder loads", async ({ page }) => {
@@ -191,7 +191,7 @@ test.describe("Exam Builder", () => {
   });
 });
 
-// ── Curricula ──────────────────────────────────────────────────────────────
+// â”€â”€ Curricula â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 test.describe("Curricula", () => {
   test("/dashboard/curricula loads", async ({ page }) => {
@@ -232,7 +232,7 @@ test.describe("Curricula", () => {
   });
 });
 
-// ── Settings ───────────────────────────────────────────────────────────────
+// â”€â”€ Settings â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 test.describe("Settings", () => {
   test("/dashboard/settings loads and redirects to sub-page", async ({ page }) => {
@@ -292,7 +292,7 @@ test.describe("Settings", () => {
   });
 });
 
-// ── Tracy AI ───────────────────────────────────────────────────────────────
+// â”€â”€ Tracy AI â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 test.describe("Tracy AI assistant (navigation)", () => {
   test("/dashboard/tracy loads the chat interface", async ({ page }) => {
@@ -315,7 +315,7 @@ test.describe("Tracy AI assistant (navigation)", () => {
   });
 });
 
-// ── Help page ──────────────────────────────────────────────────────────────
+// â”€â”€ Help page â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 test.describe("Help page", () => {
   test("/dashboard/help loads", async ({ page }) => {
@@ -327,7 +327,7 @@ test.describe("Help page", () => {
   });
 });
 
-// ── Cognitive profile ──────────────────────────────────────────────────────
+// â”€â”€ Cognitive profile â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 test.describe("Cognitive profile", () => {
   test("/dashboard/profile/cognitive-profile loads", async ({ page }) => {
@@ -339,14 +339,133 @@ test.describe("Cognitive profile", () => {
   });
 });
 
-// ── Curriculum images (Admin should NOT access this) ──────────────────────
+// â”€â”€ Curriculum images (Admin should NOT access this) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 test.describe("Curriculum images access control", () => {
   test("/dashboard/curriculum-images is blocked for Admin (redirect)", async ({ page }) => {
-    // Admins don't have the image library route — should redirect or 404
+    // Admins don't have the image library route â€” should redirect or 404
     await page.goto("/dashboard/curriculum-images");
     await page.waitForLoadState("networkidle");
     // Should not silently load the page with no error
     await page.screenshot({ path: "tests/screenshots/admin-22-curriculum-images-access.png" });
+  });
+});
+
+// â”€â”€ Knowledge Base settings â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+test.describe("Knowledge Base settings", () => {
+  test("/dashboard/knowledge-base loads", async ({ page }) => {
+    await page.route("**/api/v1/student-notes/pending**", (route) =>
+      route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ data: [] }) }),
+    );
+    await page.route("**/api/v1/knowledge-base**", (route) =>
+      route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ data: [] }) }),
+    );
+    await page.goto("/dashboard/knowledge-base");
+    await page.waitForLoadState("networkidle");
+    const body = await page.textContent("body");
+    expect(body).toMatch(/knowledge base|student note|document/i);
+    await page.screenshot({ path: "tests/screenshots/admin-23-kb-settings.png", fullPage: true });
+  });
+
+  test("Knowledge Base nav item appears in settings sidebar", async ({ page }) => {
+    await page.route("**/api/v1/student-notes/pending**", (route) =>
+      route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ data: [] }) }),
+    );
+    await page.route("**/api/v1/knowledge-base**", (route) =>
+      route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ data: [] }) }),
+    );
+    await page.goto("/dashboard/knowledge-base");
+    await page.waitForLoadState("networkidle");
+    const nav = page.locator("nav, aside").first();
+    await expect(nav).toContainText(/knowledge base/i);
+  });
+
+  test("Student Notes tab shows all-caught-up when pending list is empty", async ({ page }) => {
+    await page.route("**/api/v1/student-notes/pending**", (route) =>
+      route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ data: [] }) }),
+    );
+    await page.route("**/api/v1/knowledge-base**", (route) =>
+      route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ data: [] }) }),
+    );
+    await page.goto("/dashboard/knowledge-base");
+    await page.waitForLoadState("networkidle");
+    const body = await page.textContent("body");
+    expect(body).toMatch(/all caught up|no.*note|await/i);
+  });
+
+  test("Student Notes tab shows pending note with approve/reject buttons", async ({ page }) => {
+    const mockNote = {
+      id: "note-1",
+      student_id: "stu-1",
+      organization_id: "org-1",
+      subject: "Mathematics",
+      topic: "Quadratic Equations",
+      content: "A quadratic equation has the form axÂ² + bx + c = 0 where a â‰  0.",
+      status: "pending",
+      reward_points: 5,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    await page.route("**/api/v1/student-notes/pending**", (route) =>
+      route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ data: [mockNote] }) }),
+    );
+    await page.route("**/api/v1/knowledge-base**", (route) =>
+      route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ data: [] }) }),
+    );
+    await page.goto("/dashboard/knowledge-base");
+    await page.waitForLoadState("networkidle");
+    const body = await page.textContent("body");
+    expect(body).toMatch(/quadratic equation/i);
+    await expect(page.getByRole("button", { name: /approve/i }).first()).toBeVisible();
+    await expect(page.getByRole("button", { name: /reject/i }).first()).toBeVisible();
+    await page.screenshot({ path: "tests/screenshots/admin-24-kb-pending-note.png", fullPage: true });
+  });
+
+  test("School Documents tab shows upload form", async ({ page }) => {
+    await page.route("**/api/v1/student-notes/pending**", (route) =>
+      route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ data: [] }) }),
+    );
+    await page.route("**/api/v1/knowledge-base**", (route) =>
+      route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ data: [] }) }),
+    );
+    await page.goto("/dashboard/knowledge-base");
+    await page.waitForLoadState("networkidle");
+    await page.getByRole("tab", { name: /school document/i }).click();
+    await page.waitForLoadState("networkidle");
+    await expect(page.getByRole("button", { name: /upload/i }).first()).toBeVisible();
+    await page.screenshot({ path: "tests/screenshots/admin-25-kb-documents-tab.png", fullPage: true });
+  });
+
+  test("School Documents tab lists indexed document with status badge", async ({ page }) => {
+    const mockDoc = {
+      id: "doc-1",
+      organization_id: "org-1",
+      r2_key: "kb/doc-1.pdf",
+      title: "UNEB 2023 Physics P1",
+      document_type: "past_paper",
+      subject: "Physics",
+      level: "S4",
+      year: "2023",
+      extraction_status: "done",
+      extraction_error: null,
+      created_by: null,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    await page.route("**/api/v1/student-notes/pending**", (route) =>
+      route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ data: [] }) }),
+    );
+    await page.route("**/api/v1/knowledge-base**", (route) =>
+      route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ data: [mockDoc] }) }),
+    );
+    await page.goto("/dashboard/knowledge-base");
+    await page.waitForLoadState("networkidle");
+    await page.getByRole("tab", { name: /school document/i }).click();
+    await page.waitForLoadState("networkidle");
+    const body = await page.textContent("body");
+    expect(body).toMatch(/UNEB 2023 Physics P1/);
+    expect(body).toMatch(/indexed/i);
+    await page.screenshot({ path: "tests/screenshots/admin-26-kb-document-list.png", fullPage: true });
   });
 });

@@ -3,6 +3,7 @@
 import { notFound } from 'next/navigation'
 import { getStudent } from '@/lib/actions/students'
 import { getClassDetails } from '@/lib/actions/classes'
+import { getOrganizationDetails } from '@/lib/actions/organizations'
 import { getStudentSubmissions, getStudentCognitiveProfiles } from '@/lib/actions/student-details'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { StudentOverviewTab }             from '@/components/students/student-overview-tab'
@@ -35,6 +36,11 @@ export default async function TeacherStudentDetailPage({ params }: Props) {
   const studentName       = `${student.first_name} ${student.last_name}`.trim()
   const hasCognitiveProfile = cognitiveProfiles.length > 0
 
+  const orgRes            = student.organization_id
+    ? await getOrganizationDetails(student.organization_id)
+    : null
+  const schoolName        = orgRes?.data?.name ?? 'Mirror Intelligence'
+
   const breadcrumbItems = [
     { label: 'Classes',         href: '/dashboard/teacher/classes' },
     { label: currentClass.name, href: `/dashboard/teacher/classes/${classId}` },
@@ -52,6 +58,8 @@ export default async function TeacherStudentDetailPage({ params }: Props) {
         hasCognitiveProfile={hasCognitiveProfile}
         student={student}
         readOnly={true}
+        schoolName={schoolName}
+        studentClassName={currentClass.name}
       />
 
       <Tabs defaultValue="overview" className="w-full">

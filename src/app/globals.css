@@ -1,4 +1,6 @@
 
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,600;1,9..144,300;1,9..144,400&family=Hanken+Grotesk:wght@400;500;600&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -100,6 +102,11 @@
   }
 }
 
+/* Tracy artifact progress bar animation */
+@keyframes grow {
+  to { width: 85%; }
+}
+
 @layer utilities {
   .glass {
     background: hsl(var(--background) / 0.80);
@@ -147,4 +154,40 @@
   /* QR code: show in print, hide on screen */
   .print-only { display: block !important; }
   .screen-only { display: none !important; }
+}
+
+/* ── Report card (Uganda NCDC termly report) ───────────────────────────── */
+/* Teacher/admin print: card is portalled to <body>; hide everything else. */
+.report-card-host { display: none; }
+
+@media print {
+  @page { size: A4; margin: 12mm; }
+
+  body.printing-report-card > *:not(.report-card-host) { display: none !important; }
+  body.printing-report-card .report-card-host { display: block !important; }
+
+  .report-card-print {
+    color: #000;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Bio grid */
+  .report-card-print .bio td { border: 1px solid #999; padding: 5px 8px; }
+  .report-card-print .bio-lbl { background: #f4f5f7; font-weight: 600; color: #333; width: 80px; }
+
+  /* Performance table */
+  .report-card-print .perf { border-collapse: collapse; }
+  .report-card-print .perf th,
+  .report-card-print .perf td { border: 1px solid #555; padding: 4px 5px; text-align: center; }
+  .report-card-print .perf thead th { background: #0f1f3d; color: #fff; font-size: 10px; font-weight: 600; }
+  .report-card-print .perf tbody tr:nth-child(even) td { background: #fafbfc; }
+  .report-card-print .perf .avgrow td { background: #eef0f4; }
+
+  /* Footer fields */
+  .report-card-print .foot td { border: 1px solid #999; padding: 6px 8px; }
+  .report-card-print .foot-lbl { background: #f4f5f7; font-weight: 600; }
+
+  /* Blank ruled lines (comments) */
+  .report-card-print .rule-field { border-bottom: 1px solid #bbb; min-height: 18px; margin-top: 5px; }
 }

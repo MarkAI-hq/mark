@@ -85,17 +85,27 @@ export async function fetcher<T>(
     }
 
     if (!response.ok) {
-      const message = Array.isArray(parsed.message)
+      const raw = Array.isArray(parsed.message)
         ? parsed.message[0]
         : parsed.message || parsed.error || 'An unknown API error occurred'
+
+      // Never expose infrastructure details (OpenRouter, DB errors, etc.) for 5xx
+      const message = response.status >= 500
+        ? 'Something went wrong on our end. Please try again.'
+        : raw
 
       return { data: null, error: { message, status: response.status } }
     }
 
-    // Backend may return { data } OR raw object
+    // Backend may return { data }, a raw object, OR an empty body (e.g. a
+    // handler that returns null → NestJS sends no body). Treat an empty body
+    // as null rather than falling through to the `{}` default, which would
+    // surface as a truthy object to callers.
     const data = parsed.data !== undefined
       ? parsed.data
-      : (parsed as unknown as T)
+      : text
+        ? (parsed as unknown as T)
+        : (null as unknown as T)
 
     return { data, error: null }
   } catch (err) {

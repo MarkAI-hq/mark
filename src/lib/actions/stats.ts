@@ -9,15 +9,17 @@ export interface DailyCount {
 }
 
 export interface StatsResponse {
-  totalSubjects:     number
-  totalCourses:      number
-  totalClasses:      number
-  totalStudents:     number
-  totalExams:        number
-  markedPapers:      number
-  recentActivity:    Array<{ id: string; description: string; timestamp: string }>
-  upcomingDeadlines: Array<{ id: string; title: string; dueDate: string }>
-  dailyMarked:       DailyCount[]
+  totalSubjects:      number
+  totalCourses:       number
+  totalClasses:       number
+  totalStudents:      number
+  totalExams:         number
+  markedPapers:       number
+  atRiskCount:        number
+  pendingPlanReviews: number
+  recentActivity:     Array<{ id: string; description: string; timestamp: string }>
+  upcomingDeadlines:  Array<{ id: string; title: string; dueDate: string }>
+  dailyMarked:        DailyCount[]
 }
 
 export async function getStats(): Promise<StatsResponse> {
@@ -25,14 +27,16 @@ export async function getStats(): Promise<StatsResponse> {
   if (data) return data
 
   return {
-    totalSubjects:     0,
-    totalCourses:      0,
-    totalClasses:      0,
-    totalStudents:     0,
-    totalExams:        0,
-    markedPapers:      0,
-    recentActivity:    [],
-    upcomingDeadlines: [],
-    dailyMarked:       [],
+    totalSubjects:      0,
+    totalCourses:       0,
+    totalClasses:       0,
+    totalStudents:      0,
+    totalExams:         0,
+    markedPapers:       0,
+    atRiskCount:        0,
+    pendingPlanReviews: 0,
+    recentActivity:     [],
+    upcomingDeadlines:  [],
+    dailyMarked:        [],
   }
 }

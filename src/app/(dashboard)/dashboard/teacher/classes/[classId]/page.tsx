@@ -7,6 +7,7 @@ import {
   getAssignedCourses,
   getClassAnalytics,
 } from '@/lib/actions/classes'
+import { getAllSchemesForClass } from '@/lib/actions/scheme-of-work'
 import {
   Breadcrumb, BreadcrumbItem, BreadcrumbLink,
   BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator,
@@ -42,9 +43,10 @@ export default async function TeacherClassDetailPage({ params }: Props) {
     can_view_analytics:     myClass.can_view_analytics     ?? true,
   }
 
-  const [coursesRes, analytics] = await Promise.all([
+  const [coursesRes, analytics, sowRes] = await Promise.all([
     getAssignedCourses(classId),
     getClassAnalytics(classId),
+    getAllSchemesForClass(classId),
   ])
 
   const classDetails = {
@@ -91,6 +93,7 @@ export default async function TeacherClassDetailPage({ params }: Props) {
         courses={coursesRes.data ?? []}
         analytics={analytics}
         privileges={privileges}
+        initialSchemes={sowRes.data ?? []}
       />
     </div>
   )

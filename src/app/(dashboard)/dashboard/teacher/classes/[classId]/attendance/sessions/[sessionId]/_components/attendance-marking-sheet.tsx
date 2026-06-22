@@ -3,12 +3,16 @@
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { format, parseISO } from 'date-fns'
-import { ChevronLeft, CheckCircle2, XCircle, Clock, ShieldCheck, Save } from 'lucide-react'
+import { CheckCircle2, XCircle, Clock, ShieldCheck, Save } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { Button }  from '@/components/ui/button'
 import { Badge }   from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import {
+  Breadcrumb, BreadcrumbItem, BreadcrumbLink,
+  BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator,
+} from '@/components/ui/breadcrumb'
 
 import { submitAttendance, type SessionDetail, type StudentAttendanceEntry } from '@/lib/actions/attendance'
 
@@ -23,10 +27,13 @@ const STATUS_CONFIG: Record<AttendanceStatus, { label: string; icon: typeof Chec
 
 interface Props {
   classId: string
+  className: string | null
+  classesUrl: string
+  classUrl: string
   detail: SessionDetail
 }
 
-export function AttendanceMarkingSheet({ classId, detail }: Props) {
+export function AttendanceMarkingSheet({ classId, className, classesUrl, classUrl, detail }: Props) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
 
@@ -76,18 +83,25 @@ export function AttendanceMarkingSheet({ classId, detail }: Props) {
 
   return (
     <div className="space-y-4 p-6">
-      {/* Header */}
-      <div className="flex items-center gap-3">
-        <Button
-          variant="ghost"
-          size="sm"
-          className="gap-1.5"
-          onClick={() => router.push(`/dashboard/teacher/classes/${classId}/attendance`)}
-        >
-          <ChevronLeft className="h-4 w-4" />
-          Back
-        </Button>
-      </div>
+      <Breadcrumb>
+        <BreadcrumbList>
+          <BreadcrumbItem>
+            <BreadcrumbLink href={classesUrl}>Classes</BreadcrumbLink>
+          </BreadcrumbItem>
+          <BreadcrumbSeparator />
+          <BreadcrumbItem>
+            <BreadcrumbLink href={classUrl}>{className ?? 'Class'}</BreadcrumbLink>
+          </BreadcrumbItem>
+          <BreadcrumbSeparator />
+          <BreadcrumbItem>
+            <BreadcrumbLink href={`/dashboard/teacher/classes/${classId}/attendance`}>Attendance</BreadcrumbLink>
+          </BreadcrumbItem>
+          <BreadcrumbSeparator />
+          <BreadcrumbItem>
+            <BreadcrumbPage>{dateLabel}</BreadcrumbPage>
+          </BreadcrumbItem>
+        </BreadcrumbList>
+      </Breadcrumb>
 
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>

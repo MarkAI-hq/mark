@@ -1,4 +1,18 @@
 import { defineConfig, devices } from "@playwright/test";
+import fs from "fs";
+import path from "path";
+
+// Load .env.local so ADMIN_TEST_EMAIL / ROOT_TEST_EMAIL etc. are available
+// to global-setup.ts, which runs in the same Node.js process as this config.
+try {
+  const envFile = path.join(__dirname, ".env.local");
+  if (fs.existsSync(envFile)) {
+    for (const line of fs.readFileSync(envFile, "utf8").split(/\r?\n/)) {
+      const m = line.match(/^([A-Z_][A-Z0-9_]*)=(.*)$/);
+      if (m && !process.env[m[1]]) process.env[m[1]] = m[2].trim();
+    }
+  }
+} catch { /* non-fatal */ }
 
 export default defineConfig({
   testDir: "./tests",
@@ -24,6 +38,7 @@ export default defineConfig({
       testMatch: [
         "**/auth.spec.ts",
         "**/student.spec.ts",
+        "**/student-citations.spec.ts",
         "**/student-marketplace.spec.ts",
         "**/teacher.spec.ts",
         "**/public-marketplace.spec.ts",
@@ -43,6 +58,8 @@ export default defineConfig({
         "**/admin.spec.ts",
         "**/admin-marketplace.spec.ts",
         "**/exam-builder.spec.ts",
+        "**/sprint1-2-features.spec.ts",
+        "**/citations.spec.ts",
       ],
     },
     // Root — pre-authenticated as tusii.ug@gmail.com

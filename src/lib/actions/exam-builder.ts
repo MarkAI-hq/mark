@@ -196,6 +196,27 @@ export async function updateVariantContent(
   return response;
 }
 
+// ── Path B: Generate from Curriculum ─────────────────────────────────────────
+
+export interface GenerateFromCurriculumPayload {
+  subject_id:           string;
+  grade_level:          string;
+  total_marks:          number;
+  duration_minutes:     number;
+  copies?:              1 | 2;
+  assessment_type?:     'summative' | 'formative' | 'diagnostic';
+  special_instructions?: string;
+}
+
+export async function generateFromCurriculum(
+  payload: GenerateFromCurriculumPayload,
+): Promise<ServerActionResponse<{ job_id: string | number; message: string }>> {
+  return await fetcher('/exam-builder/generate-from-curriculum', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
 // ── Image Generation ──────────────────────────────────────────────────────────
 
 /**

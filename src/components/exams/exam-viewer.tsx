@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { ExamVariant } from '@/lib/types'
+import { SourcesConsulted } from '@/components/common/sources-consulted'
 import { 
   updateExamWorkflowState, 
   updateVariantContent, 
@@ -353,6 +354,15 @@ export function ExamViewer({ variants: initialVariants }: { variants: ExamVarian
         <div className="mt-20 pt-4 border-t border-black text-center text-[10px] uppercase font-sans">
             {metadata.title} — Variant {activeVariant}
         </div>
+
+        {currentExam?.sources_consulted?.length ? (
+          <div className="mt-6 print:hidden">
+            <SourcesConsulted
+              citations={currentExam.sources_consulted}
+              title="Generated from the official syllabus"
+            />
+          </div>
+        ) : null}
       </div>
     </div>
   )

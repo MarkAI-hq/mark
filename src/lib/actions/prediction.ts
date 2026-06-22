@@ -48,8 +48,12 @@ export interface StudentNationalExamPrediction {
   topic_performance:    TopicPerformance[]
   pathway:              PathwayAction[]
   motivational_message: string
-  based_on_submissions: number
-  last_calculated:      string
+  based_on_submissions:    number
+  last_calculated:         string
+  initial_predicted_score?: number
+  // The assessment milestone this prediction targets (end-of-term / national exam).
+  milestone_type?:         string
+  milestone_label?:        string
 }
 
 // ── Actions ────────────────────────────────────────────────────────────────

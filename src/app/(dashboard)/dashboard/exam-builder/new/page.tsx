@@ -1,13 +1,13 @@
 import Link from "next/link"
 import { ChevronRight } from "lucide-react"
 import { ExamBuilderWizard } from "@/components/exams/exam-builder-wizard"
+import { ExamPathSelector } from "@/components/exams/exam-path-selector"
 
 export default function NewExamPage() {
   return (
     <div className="p-8">
       <div className="max-w-4xl mx-auto space-y-8">
         <div>
-          {/* ── Breadcrumb ───────────────────────────────────────────────── */}
           <nav className="flex items-center gap-1.5 text-sm text-muted-foreground">
             <Link href="/dashboard/exam-builder" className="hover:text-foreground transition-colors">
               Examination Centre
@@ -21,6 +21,9 @@ export default function NewExamPage() {
             Upload your content and let Mirror Intelligence detect the curriculum and generate your new assessment.
           </p>
         </div>
+
+        <ExamPathSelector />
+
         <ExamBuilderWizard />
       </div>
     </div>

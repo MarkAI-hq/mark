@@ -3,9 +3,13 @@
 import { notFound }                    from 'next/navigation'
 import { getStudent }                  from '@/lib/actions/students'
 import { getClassDetails }             from '@/lib/actions/classes'
+import { getOrganizationDetails }      from '@/lib/actions/organizations'
 import { getStudentSubmissions, getStudentCognitiveProfiles } from '@/lib/actions/student-details'
 import { getStudentReteachHistory }    from '@/lib/actions/reteach-history'
 import { getStudentGapAttribution }    from '@/lib/actions/gap-attribution'
+import { getStudentAttendance }        from '@/lib/actions/attendance'
+import { getStudentStudyPlansTeacher, getStudentPaceSettings } from '@/lib/actions/study-plans'
+import { getActiveSchemeForClass }     from '@/lib/actions/scheme-of-work'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge }                                    from '@/components/ui/badge'
 import { StudentOverviewTab }          from '@/components/students/student-overview-tab'
@@ -14,6 +18,9 @@ import { StudentCognitiveProfileTab }  from '@/components/students/student-cogni
 import { StudentInterventionsTab }     from '@/components/students/student-interventions-tab'
 import { StudentImpactTab }            from '@/components/students/student-impact-tab'
 import { StudentProfileHeader }        from '@/components/students/student-profile-header'
+import { StudentEnrichmentCards }      from './_components/student-enrichment-cards'
+import { StudentAttendanceTab }        from './_components/student-attendance-tab'
+import { StudentStudyPlansTab }        from './_components/student-study-plans-tab'
 
 interface StudentDetailPageProps {
   params: Promise<{ id: string; studentId: string }>
@@ -22,15 +29,21 @@ interface StudentDetailPageProps {
 export default async function StudentDetailPage({ params }: StudentDetailPageProps) {
   const { id: classId, studentId } = await params
 
-  const [studentRes, classRes, submissionsRes, profilesRes, interventionsRes, gapRes] =
-    await Promise.all([
-      getStudent(studentId),
-      getClassDetails(classId),
-      getStudentSubmissions(studentId),
-      getStudentCognitiveProfiles(studentId),
-      getStudentReteachHistory(studentId),
-      getStudentGapAttribution(studentId, classId),
-    ])
+  const [
+    studentRes, classRes, submissionsRes, profilesRes, interventionsRes, gapRes,
+    attendanceRes, plansRes, sowRes, paceRes,
+  ] = await Promise.all([
+    getStudent(studentId),
+    getClassDetails(classId),
+    getStudentSubmissions(studentId),
+    getStudentCognitiveProfiles(studentId),
+    getStudentReteachHistory(studentId),
+    getStudentGapAttribution(studentId, classId),
+    getStudentAttendance(studentId, classId),
+    getStudentStudyPlansTeacher(studentId),
+    getActiveSchemeForClass(classId),
+    getStudentPaceSettings(studentId),
+  ])
 
   if (studentRes.error || !studentRes.data || classRes.error || !classRes.data) {
     return notFound()
@@ -42,6 +55,16 @@ export default async function StudentDetailPage({ params }: StudentDetailPagePro
   const cognitiveProfiles   = profilesRes.data     ?? []
   const interventions       = interventionsRes.data ?? []
   const gapAttribution      = gapRes.data?.attributed_gaps ?? []
+  const attendanceData      = (attendanceRes as any).data ?? null
+  const plans               = plansRes.data         ?? []
+  const curriculumId        = sowRes.data?.curriculum_id ?? null
+  const paceSettings        = paceRes.data          ?? null
+
+  const orgRes              = student.organization_id
+    ? await getOrganizationDetails(student.organization_id)
+    : null
+  const schoolName          = orgRes?.data?.name ?? 'Mirror Intelligence'
+
   const studentName         = `${student.first_name} ${student.last_name}`.trim()
   const hasCognitiveProfile = cognitiveProfiles.length > 0
   const hasInterventions    = interventions.length > 0
@@ -49,6 +72,13 @@ export default async function StudentDetailPage({ params }: StudentDetailPagePro
   const deliveredCount = interventions.filter(
     (i) => i.status === 'delivered' || i.status === 'completed',
   ).length
+
+  const attendanceRate = (attendanceData as any)?.attendance_rate ?? null
+
+  const completedPlans = plans.filter((p: any) => p.status === 'completed').length
+  const studyPlanCompletion = plans.length > 0
+    ? Math.round((completedPlans / plans.length) * 100)
+    : null
 
   const breadcrumbItems = [
     { label: 'Classes',         href: '/dashboard/classes' },
@@ -66,6 +96,8 @@ export default async function StudentDetailPage({ params }: StudentDetailPagePro
         hasSubmissions={submissions.length > 0}
         hasCognitiveProfile={hasCognitiveProfile}
         student={student}
+        schoolName={schoolName}
+        studentClassName={currentClass.name}
       />
 
       <Tabs defaultValue="overview" className="w-full">
@@ -77,7 +109,6 @@ export default async function StudentDetailPage({ params }: StudentDetailPagePro
             Cognitive Profile
           </TabsTrigger>
 
-          {/* Interventions — uses Badge for consistency */}
           <TabsTrigger value="interventions" className="relative">
             Interventions
             {hasInterventions && (
@@ -90,7 +121,6 @@ export default async function StudentDetailPage({ params }: StudentDetailPagePro
             )}
           </TabsTrigger>
 
-          {/* Impact — uses Badge for consistency */}
           <TabsTrigger value="impact">
             Impact
             {deliveredCount > 0 && (
@@ -102,9 +132,28 @@ export default async function StudentDetailPage({ params }: StudentDetailPagePro
               </Badge>
             )}
           </TabsTrigger>
+
+          <TabsTrigger value="study-plans">
+            Study Plans
+            {plans.length > 0 && (
+              <Badge variant="secondary" className="ml-1.5 text-[10px] px-1.5 py-0">
+                {plans.length}
+              </Badge>
+            )}
+          </TabsTrigger>
+
+          <TabsTrigger value="attendance">Attendance</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="mt-4">
+          <StudentEnrichmentCards
+            attendanceRate={attendanceRate}
+            studyPlanCompletion={studyPlanCompletion}
+            curriculumId={curriculumId}
+            studentId={studentId}
+            bufferCount={plans.filter((p: any) => p.status === 'pending' || p.status === 'sent').length}
+            lessonsPerDay={paceSettings?.lessons_per_day ?? null}
+          />
           <StudentOverviewTab student={student} studentId={studentId} />
         </TabsContent>
 
@@ -144,6 +193,19 @@ export default async function StudentDetailPage({ params }: StudentDetailPagePro
 
         <TabsContent value="impact" className="mt-4">
           <StudentImpactTab studentId={studentId} />
+        </TabsContent>
+
+        <TabsContent value="study-plans" className="mt-4">
+          <StudentStudyPlansTab
+            studentId={studentId}
+            classId={classId}
+            studentName={studentName}
+            initialPlans={plans as any}
+          />
+        </TabsContent>
+
+        <TabsContent value="attendance" className="mt-4">
+          <StudentAttendanceTab data={attendanceData} />
         </TabsContent>
       </Tabs>
     </div>

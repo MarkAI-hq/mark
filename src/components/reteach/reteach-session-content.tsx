@@ -19,6 +19,7 @@ import {
 } from 'lucide-react'
 import type { ReteachSession, RemediationActivityType } from '@/lib/actions/reteach'
 import { updateSessionContent } from '@/lib/actions/reteach-history'
+import { SourcesConsulted } from '@/components/common/sources-consulted'
 
 interface ReteachSessionContentProps {
   session:    ReteachSession
@@ -634,6 +635,13 @@ export function ReteachSessionContent({ session, editable, sessionId, onSaved }:
               <p className="text-xs text-blue-600 italic">{session.zettelkasten_notes.connection_prompt}</p>
             </div>
           </div>
+        </>
+      )}
+
+      {session.sources_consulted && session.sources_consulted.length > 0 && (
+        <>
+          <Separator />
+          <SourcesConsulted citations={session.sources_consulted} />
         </>
       )}
 

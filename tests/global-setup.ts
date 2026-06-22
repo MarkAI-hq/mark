@@ -34,7 +34,7 @@ async function loginAndSave(
 
   await Promise.all([
     page
-      .waitForURL(/\/(root|dashboard|onboarding|student)/, { timeout: 30_000 })
+      .waitForURL(/\/(root|dashboard|onboarding|student)/, { timeout: 90_000 })
       .catch(() => {}),
     page.locator('button[type="submit"]').click(),
   ]);
@@ -49,13 +49,10 @@ async function loginAndSave(
 export default async function globalSetup(config: FullConfig) {
   if (!fs.existsSync(AUTH_DIR)) fs.mkdirSync(AUTH_DIR, { recursive: true });
 
-  // Warm up the dev server — Next.js compiles pages lazily; hitting /login once
-  // before creating test contexts lets the first real navigation succeed quickly.
-  try {
-    await fetch("http://localhost:3000/login");
-  } catch {
-    // Server not yet reachable; Playwright's webServer will have ensured it's up
-  }
+  // Only warm up the login page — this ensures Next.js has compiled it before
+  // the first real navigation. Warming up dashboard pages here would saturate
+  // the dev server and cause the login form submission to fail.
+  try { await fetch("http://localhost:3000/login"); } catch {}
 
   const browser = await chromium.launch();
 
@@ -63,6 +60,18 @@ export default async function globalSetup(config: FullConfig) {
   const adminCtx  = await browser.newContext({ baseURL: "http://localhost:3000", navigationTimeout: 120_000 });
   const adminPage = await adminCtx.newPage();
   await loginAndSave(adminPage, ADMIN_EMAIL, ADMIN_PASSWORD, ADMIN_AUTH, "Admin");
+
+  // Warm up lazily-compiled pages using the authenticated admin session so
+  // the tests don't hit the 90 s Next.js compile timeout on first navigation.
+  if (ADMIN_EMAIL && adminPage.url().includes("/dashboard")) {
+    for (const path of ["/dashboard/classes", "/dashboard/overview"]) {
+      try {
+        await adminPage.goto(path, { waitUntil: "domcontentloaded", timeout: 120_000 });
+        console.log(`[global-setup] Warmed up ${path}`);
+      } catch { /* non-fatal */ }
+    }
+  }
+
   await adminCtx.close();
 
   // ── Root ──────────────────────────────────────────────────────────────────

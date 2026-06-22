@@ -293,6 +293,58 @@ export async function aiSuggestFill(
   })
 }
 
+export interface CorpusTopicPreview {
+  topic_id:    string | null
+  topic_name:  string
+  chunk_count: number
+  class_levels: string[]
+  terms:       string[]
+  periods:     number | null
+  page_ref:    number | null
+  bloom_counts: Record<string, number>
+}
+
+export interface CorpusPreview {
+  subject:          string
+  curriculum_level: string
+  total_chunks:     number
+  topics:           CorpusTopicPreview[]
+}
+
+export interface EnrichResult {
+  schemaId:      string
+  topicsAdded:   number
+  outcomesAdded: number
+}
+
+export async function getCorpusPreview(id: string) {
+  return fetcher<CorpusPreview>(`/root/curricula/${id}/corpus-preview`)
+}
+
+export async function enrichFromCorpus(id: string) {
+  return fetcher<EnrichResult>(`/root/curricula/${id}/enrich-from-corpus`, {
+    method: 'POST',
+  })
+}
+
+export async function enrichAllFromCorpus() {
+  return fetcher<{ results: EnrichResult[]; failed: { schemaId: string; error: string }[] }>(
+    '/root/curricula/enrich-all-from-corpus',
+    { method: 'POST' },
+  )
+}
+
+export async function enrichFromRelated(id: string) {
+  return fetcher<EnrichResult>(`/root/curricula/${id}/enrich-from-related`, { method: 'POST' })
+}
+
+export async function enrichAllFromRelated() {
+  return fetcher<{ results: EnrichResult[]; failed: { schemaId: string; error: string }[] }>(
+    '/root/curricula/enrich-all-from-related',
+    { method: 'POST' },
+  )
+}
+
 // ── Roles & Permissions ───────────────────────────────────────────────────────
 
 export interface RoleWithPermissions {

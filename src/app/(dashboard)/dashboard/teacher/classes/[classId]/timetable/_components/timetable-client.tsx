@@ -1,12 +1,16 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useTransition, useEffect } from 'react'
 import { CalendarDays, Plus, Pencil, Trash2, Clock } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { Button }  from '@/components/ui/button'
 import { Badge }   from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import {
+  Breadcrumb, BreadcrumbItem, BreadcrumbLink,
+  BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator,
+} from '@/components/ui/breadcrumb'
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog'
@@ -24,6 +28,7 @@ import {
   createTimetableSlot, updateTimetableSlot, deleteTimetableSlot,
   type TimetableSlot,
 } from '@/lib/actions/timetable'
+import { getSubjects } from '@/lib/actions/subjects'
 
 const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'] as const
 const DAY_LABELS: Record<string, string> = {
@@ -35,6 +40,9 @@ type Day = typeof DAYS[number]
 
 interface Props {
   classId: string
+  className: string | null
+  classesUrl: string
+  classUrl: string
   initialSlots: TimetableSlot[]
   error: string | null
   defaultTerm?: string
@@ -99,10 +107,17 @@ function SlotCard({
 }
 
 export function TimetableClient({
-  classId, initialSlots, error, defaultTerm, defaultAcademicYear,
+  classId, className, classesUrl, classUrl, initialSlots, error, defaultTerm, defaultAcademicYear,
 }: Props) {
   const [slots, setSlots] = useState(initialSlots)
   const [isPending, startTransition] = useTransition()
+  const [subjectOptions, setSubjectOptions] = useState<string[]>([])
+
+  useEffect(() => {
+    getSubjects().then(({ data }) => {
+      if (data?.length) setSubjectOptions((data as any[]).map((s: any) => s.name as string))
+    })
+  }, [])
 
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingSlot, setEditingSlot] = useState<TimetableSlot | null>(null)
@@ -191,6 +206,22 @@ export function TimetableClient({
 
   return (
     <div className="space-y-6 p-6">
+      <Breadcrumb>
+        <BreadcrumbList>
+          <BreadcrumbItem>
+            <BreadcrumbLink href={classesUrl}>Classes</BreadcrumbLink>
+          </BreadcrumbItem>
+          <BreadcrumbSeparator />
+          <BreadcrumbItem>
+            <BreadcrumbLink href={classUrl}>{className ?? 'Class'}</BreadcrumbLink>
+          </BreadcrumbItem>
+          <BreadcrumbSeparator />
+          <BreadcrumbItem>
+            <BreadcrumbPage>Timetable</BreadcrumbPage>
+          </BreadcrumbItem>
+        </BreadcrumbList>
+      </Breadcrumb>
+
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-lg font-semibold">Weekly Timetable</h2>
@@ -292,7 +323,16 @@ export function TimetableClient({
             </div>
             <div className="space-y-1.5">
               <Label>Subject *</Label>
-              <Input placeholder="Mathematics" value={form.subject} onChange={(e) => setForm((f) => ({ ...f, subject: e.target.value }))} />
+              {subjectOptions.length > 0 ? (
+                <Select value={form.subject} onValueChange={(v) => setForm((f) => ({ ...f, subject: v }))}>
+                  <SelectTrigger><SelectValue placeholder="Select subject" /></SelectTrigger>
+                  <SelectContent>
+                    {subjectOptions.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <Input placeholder="Mathematics" value={form.subject} onChange={(e) => setForm((f) => ({ ...f, subject: e.target.value }))} />
+              )}
             </div>
             <div className="space-y-1.5">
               <Label>Room (optional)</Label>

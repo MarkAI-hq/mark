@@ -1,10 +1,10 @@
-'use client'
+﻿'use client'
 
 // src/app/(dashboard)/dashboard/settings/_components/settings-nav.tsx
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Building2, Users, CreditCard, Shield, LucideIcon } from 'lucide-react';
+import { Building2, Users, CreditCard, Shield, Gift, BookMarked, LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const ICON_MAP: Record<string, LucideIcon> = {
@@ -12,6 +12,8 @@ const ICON_MAP: Record<string, LucideIcon> = {
   Users,
   CreditCard,
   Shield,
+  Gift,
+  BookMarked,
 };
 
 interface NavItem {

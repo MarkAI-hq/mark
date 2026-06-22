@@ -6,6 +6,7 @@ import { Separator }          from '@/components/ui/separator'
 import { Lightbulb, AlertCircle, Brain } from 'lucide-react'
 import { ErrorType, BloomLevel }         from '@/lib/types'
 import { ReteachPanel }       from '@/components/reteach/reteach-panel'  // ← added
+import { SourcesConsulted }   from '@/components/common/sources-consulted'
 
 interface ContentPerformanceProps {
   responses:       SubmissionResponse[]
@@ -61,6 +62,11 @@ export function ContentPerformance({
                   </div>
                 </div>
               )}
+
+              <SourcesConsulted
+                citations={response.sources_consulted}
+                className="mt-3"
+              />
 
               {response.blooms_level_achieved && (
                 <div className="mt-3 flex items-start gap-3 rounded-lg border bg-muted/20 p-3">

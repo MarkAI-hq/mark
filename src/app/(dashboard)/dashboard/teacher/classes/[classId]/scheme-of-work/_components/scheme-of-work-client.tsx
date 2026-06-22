@@ -26,6 +26,10 @@ import {
 import {
   Collapsible, CollapsibleContent, CollapsibleTrigger,
 } from '@/components/ui/collapsible'
+import {
+  Breadcrumb, BreadcrumbItem, BreadcrumbLink,
+  BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator,
+} from '@/components/ui/breadcrumb'
 
 import {
   updateSchemeEntry, updateSchemeOfWork,
@@ -221,11 +225,15 @@ function CreateSowDialog({
   open,
   onClose,
   classId,
+  subjects,
+  gradeLevel,
   onCreated,
 }: {
   open: boolean
   onClose: () => void
   classId: string
+  subjects: string[]
+  gradeLevel: string | null
   onCreated: (sow: SchemeOfWork) => void
 }) {
   const [mode, setMode]     = useState<CreateMode>('notes')
@@ -235,7 +243,7 @@ function CreateSowDialog({
 
   const [form, setForm] = useState({
     subject:        '',
-    grade_level:    '',
+    grade_level:    gradeLevel ?? '',
     title:          '',
     academic_year:  '',
     term:           '',
@@ -330,11 +338,20 @@ function CreateSowDialog({
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label>Subject *</Label>
-              <Input placeholder="Mathematics" value={form.subject} onChange={(e) => setForm((f) => ({ ...f, subject: e.target.value }))} />
+              {subjects.length > 0 ? (
+                <Select value={form.subject} onValueChange={(v) => setForm((f) => ({ ...f, subject: v }))}>
+                  <SelectTrigger><SelectValue placeholder="Select subject" /></SelectTrigger>
+                  <SelectContent>
+                    {subjects.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <Input placeholder="Mathematics" value={form.subject} onChange={(e) => setForm((f) => ({ ...f, subject: e.target.value }))} />
+              )}
             </div>
             <div className="space-y-1.5">
               <Label>Grade / Level *</Label>
-              <Input placeholder="Form 4" value={form.grade_level} onChange={(e) => setForm((f) => ({ ...f, grade_level: e.target.value }))} />
+              <Input placeholder="S1, S2, Form 4…" value={form.grade_level} onChange={(e) => setForm((f) => ({ ...f, grade_level: e.target.value }))} />
             </div>
           </div>
 
@@ -546,12 +563,17 @@ function AssignSowDialog({
 
 interface Props {
   classId:    string
+  className:  string | null
+  gradeLevel: string | null
+  subjects:   string[]
+  classesUrl: string
+  classUrl:   string
   activeSow:  SchemeOfWork | null
   allSchemes: SchemeOfWork[]
   error:      string | null
 }
 
-export function SchemeOfWorkClient({ classId, activeSow: initialSow, allSchemes: initialSchemes, error }: Props) {
+export function SchemeOfWorkClient({ classId, className, gradeLevel, subjects, classesUrl, classUrl, activeSow: initialSow, allSchemes: initialSchemes, error }: Props) {
   const [sow, setSow]         = useState<SchemeOfWork | null>(initialSow)
   const [entries, setEntries] = useState<SchemeOfWorkEntry[]>(initialSow?.entries ?? [])
   const [schemes, setSchemes] = useState<SchemeOfWork[]>(initialSchemes)
@@ -618,7 +640,7 @@ export function SchemeOfWorkClient({ classId, activeSow: initialSow, allSchemes:
             </Button>
           )}
         </div>
-        <CreateSowDialog open={createOpen} onClose={() => setCreateOpen(false)} classId={classId} onCreated={handleSowCreated} />
+        <CreateSowDialog open={createOpen} onClose={() => setCreateOpen(false)} classId={classId} subjects={subjects} gradeLevel={gradeLevel} onCreated={handleSowCreated} />
         <AssignSowDialog open={assignOpen} onClose={() => setAssignOpen(false)} classId={classId} schemes={schemes} onAssigned={handleAssigned} />
       </div>
     )
@@ -626,6 +648,21 @@ export function SchemeOfWorkClient({ classId, activeSow: initialSow, allSchemes:
 
   return (
     <div className="space-y-5 p-6">
+      <Breadcrumb>
+        <BreadcrumbList>
+          <BreadcrumbItem>
+            <BreadcrumbLink href={classesUrl}>Classes</BreadcrumbLink>
+          </BreadcrumbItem>
+          <BreadcrumbSeparator />
+          <BreadcrumbItem>
+            <BreadcrumbLink href={classUrl}>{className ?? 'Class'}</BreadcrumbLink>
+          </BreadcrumbItem>
+          <BreadcrumbSeparator />
+          <BreadcrumbItem>
+            <BreadcrumbPage>Scheme of Work</BreadcrumbPage>
+          </BreadcrumbItem>
+        </BreadcrumbList>
+      </Breadcrumb>
 
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
@@ -757,7 +794,7 @@ export function SchemeOfWorkClient({ classId, activeSow: initialSow, allSchemes:
       )}
 
       {/* Dialogs */}
-      <CreateSowDialog open={createOpen} onClose={() => setCreateOpen(false)} classId={classId} onCreated={handleSowCreated} />
+      <CreateSowDialog open={createOpen} onClose={() => setCreateOpen(false)} classId={classId} subjects={subjects} gradeLevel={gradeLevel} onCreated={handleSowCreated} />
       <AssignSowDialog open={assignOpen} onClose={() => setAssignOpen(false)} classId={classId} schemes={schemes} onAssigned={handleAssigned} />
     </div>
   )

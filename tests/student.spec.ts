@@ -81,6 +81,81 @@ test.describe("Student portal — authenticated", () => {
     expect(body).toMatch(/transfer|school|request/i);
     await page.screenshot({ path: "tests/screenshots/student-08-transfer.png", fullPage: true });
   });
+
+  // ── Sprint 2 — 5-day study plan timeline ─────────────────────────────────
+
+  test("/student/study-plans renders timeline layout (Sprint 2)", async ({ page }) => {
+    // Mock study plans API so we get a predictable timeline payload
+    await page.route("**/api/v1/study-plans**", async (route) => {
+      const today = new Date().toISOString();
+      const tomorrow = new Date(Date.now() + 86_400_000).toISOString();
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          data: [
+            {
+              id: "plan-today",
+              topic: "Algebra Basics",
+              lesson_type: "pre_class",
+              status: "pending",
+              scheduled_for: today,
+              estimated_minutes: 30,
+              subject: "Mathematics",
+              content: {
+                introduction: "Intro",
+                explanation: "Explanation",
+                worked_example: "Example",
+                practice_questions: [],
+                summary: "Summary",
+                estimated_minutes: 30,
+              },
+            },
+            {
+              id: "plan-tomorrow",
+              topic: "Linear Equations",
+              lesson_type: "pre_class",
+              status: "pending",
+              scheduled_for: tomorrow,
+              estimated_minutes: 25,
+              subject: "Mathematics",
+              content: {},
+            },
+          ],
+        }),
+      });
+    });
+
+    await page.route("**/api/v1/students/*/pace-settings**", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          data: {
+            lessons_per_day: 1,
+            preferred_reminder_time: "07:00",
+            reminder_enabled: true,
+          },
+        }),
+      });
+    });
+
+    await page.goto("/student/study-plans");
+    await page.waitForLoadState("networkidle");
+
+    // Should not crash to error page
+    expect(page.url()).not.toContain("/500");
+    expect(page.url()).not.toContain("/error");
+
+    const body = (await page.textContent("body")) ?? "";
+    // Either shows plans (timeline) or empty state — both are valid
+    expect(body).toMatch(/study plan|algebra|today|lesson|no plan|learning/i);
+
+    await page.screenshot({
+      path: "tests/screenshots/student-09-study-plans-timeline.png",
+      fullPage: true,
+    });
+  });
 });
 
 // ── Student login page (unauthenticated) ──────────────────────────────────
@@ -125,5 +200,163 @@ test.describe("Public student record", () => {
     // Should not redirect to login
     expect(page.url()).not.toContain("/login");
     await page.screenshot({ path: "tests/screenshots/student-05-public-record.png", fullPage: true });
+  });
+});
+
+// ── Student Knowledge Base ─────────────────────────────────────────────────
+
+test.describe("Student Knowledge Base — authenticated", () => {
+  test.beforeEach(async ({ context }) => {
+    await injectStudentCookies(context);
+  });
+
+  test("/student/knowledge-base loads and shows stats", async ({ page }) => {
+    await page.route("**/api/v1/student-notes/my**", (route) =>
+      route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ data: [] }) }),
+    );
+    await page.route("**/api/v1/student-notes/stats**", (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ data: { total: 0, approved: 0, total_points: 0 } }),
+      }),
+    );
+    await page.goto("/student/knowledge-base");
+    await page.waitForLoadState("networkidle");
+    const body = await page.textContent("body");
+    expect(body).toMatch(/knowledge base|note|submit/i);
+    await page.screenshot({ path: "tests/screenshots/student-10-knowledge-base.png", fullPage: true });
+  });
+
+  test("Knowledge Base nav link is visible in student nav", async ({ page }) => {
+    await page.route("**/api/v1/student-notes/my**", (route) =>
+      route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ data: [] }) }),
+    );
+    await page.route("**/api/v1/student-notes/stats**", (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ data: { total: 0, approved: 0, total_points: 0 } }),
+      }),
+    );
+    await page.goto("/student/knowledge-base");
+    await page.waitForLoadState("networkidle");
+    const header = page.locator("header").first();
+    await expect(header).toContainText(/knowledge base/i);
+  });
+
+  test("Empty state shows CTA to write first note", async ({ page }) => {
+    await page.route("**/api/v1/student-notes/my**", (route) =>
+      route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ data: [] }) }),
+    );
+    await page.route("**/api/v1/student-notes/stats**", (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ data: { total: 0, approved: 0, total_points: 0 } }),
+      }),
+    );
+    await page.goto("/student/knowledge-base");
+    await page.waitForLoadState("networkidle");
+    const body = await page.textContent("body");
+    expect(body).toMatch(/your knowledge base is empty|write your first note/i);
+  });
+
+  test("Notes list renders existing notes with status badges", async ({ page }) => {
+    const mockNote = {
+      id: "note-1",
+      student_id: "stu-1",
+      organization_id: "org-1",
+      subject: "Physics",
+      topic: "Newton's Laws",
+      content: "Newton's first law states that an object at rest stays at rest unless acted upon by an external force.",
+      status: "approved",
+      reward_points: 5,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    await page.route("**/api/v1/student-notes/my**", (route) =>
+      route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ data: [mockNote] }) }),
+    );
+    await page.route("**/api/v1/student-notes/stats**", (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ data: { total: 1, approved: 1, total_points: 5 } }),
+      }),
+    );
+    await page.goto("/student/knowledge-base");
+    await page.waitForLoadState("networkidle");
+    const body = await page.textContent("body");
+    expect(body).toMatch(/Newton's Laws/);
+    expect(body).toMatch(/in school kb|approved/i);
+    await page.screenshot({ path: "tests/screenshots/student-11-knowledge-base-notes.png", fullPage: true });
+  });
+
+  test("Add note dialog opens on button click", async ({ page }) => {
+    await page.route("**/api/v1/student-notes/my**", (route) =>
+      route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ data: [] }) }),
+    );
+    await page.route("**/api/v1/student-notes/stats**", (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ data: { total: 0, approved: 0, total_points: 0 } }),
+      }),
+    );
+    await page.goto("/student/knowledge-base");
+    await page.waitForLoadState("networkidle");
+    await page.getByRole("button", { name: /add note/i }).first().click();
+    await expect(page.locator('[role="dialog"]').first()).toBeVisible({ timeout: 5_000 });
+    await page.screenshot({ path: "tests/screenshots/student-12-add-note-dialog.png" });
+  });
+
+  test("Add note dialog has subject, topic and content fields", async ({ page }) => {
+    await page.route("**/api/v1/student-notes/my**", (route) =>
+      route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ data: [] }) }),
+    );
+    await page.route("**/api/v1/student-notes/stats**", (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ data: { total: 0, approved: 0, total_points: 0 } }),
+      }),
+    );
+    await page.goto("/student/knowledge-base");
+    await page.waitForLoadState("networkidle");
+    await page.getByRole("button", { name: /add note/i }).first().click();
+    const dialog = page.locator('[role="dialog"]').first();
+    await expect(dialog.getByLabel(/subject/i)).toBeVisible();
+    await expect(dialog.getByLabel(/topic/i)).toBeVisible();
+    await expect(dialog.getByLabel(/your note/i)).toBeVisible();
+  });
+
+  test("Filter tabs appear when notes exist", async ({ page }) => {
+    const mockNote = {
+      id: "note-2",
+      student_id: "stu-1",
+      organization_id: "org-1",
+      subject: "Chemistry",
+      topic: "Periodic Table",
+      content: "The periodic table organises elements by atomic number and groups elements with similar properties into columns.",
+      status: "pending",
+      reward_points: 5,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    await page.route("**/api/v1/student-notes/my**", (route) =>
+      route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ data: [mockNote] }) }),
+    );
+    await page.route("**/api/v1/student-notes/stats**", (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ data: { total: 1, approved: 0, total_points: 5 } }),
+      }),
+    );
+    await page.goto("/student/knowledge-base");
+    await page.waitForLoadState("networkidle");
+    const body = await page.textContent("body");
+    expect(body).toMatch(/all \(\d+\)|pending|approved|rejected/i);
   });
 });

@@ -7,7 +7,7 @@ import { formatDistanceToNow }                          from 'date-fns'
 import {
   Users, FileText, CheckSquare, BookOpen,
   Clock, TrendingUp, FileEdit, Zap,
-  AlertTriangle, Loader2,
+  AlertTriangle, Loader2, ClipboardList,
 }                                                        from 'lucide-react'
 import Link                                              from 'next/link'
 import { toast }                                         from 'sonner'
@@ -156,6 +156,31 @@ export function DashboardClient({ stats, analytics, user }: DashboardClientProps
             />
           ))}
         </div>
+      )}
+
+      {/* ── Early-risk alerts ────────────────────────────────────────── */}
+      {stats.atRiskCount > 0 && (
+        <Link href="/dashboard/overview" className="block">
+          <div className="flex items-center gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 hover:bg-amber-100 transition-colors">
+            <AlertTriangle className="h-4 w-4 shrink-0 text-amber-500" />
+            <span className="flex-1">
+              <strong>{stats.atRiskCount} student{stats.atRiskCount !== 1 ? 's' : ''}</strong> averaging below 50% this month — review in Monitor.
+            </span>
+            <span className="text-xs font-medium underline underline-offset-2">View Monitor →</span>
+          </div>
+        </Link>
+      )}
+
+      {stats.pendingPlanReviews > 0 && (
+        <Link href="/dashboard/overview" className="block">
+          <div className="flex items-center gap-3 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800 hover:bg-blue-100 transition-colors">
+            <ClipboardList className="h-4 w-4 shrink-0 text-blue-500" />
+            <span className="flex-1">
+              <strong>{stats.pendingPlanReviews} study plan{stats.pendingPlanReviews !== 1 ? 's' : ''}</strong> have been pending for over 3 days and may need attention.
+            </span>
+            <span className="text-xs font-medium underline underline-offset-2">View Monitor →</span>
+          </div>
+        </Link>
       )}
 
       {/* ── Onboarding banner ─────────────────────────────────────────── */}

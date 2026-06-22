@@ -11,6 +11,8 @@ export interface ExamRegistration {
   fee_usd: string;
   status: string;
   registration_number: string | null;
+  result_grade?: string | null;
+  result_status?: string | null; // 'passed' | 'failed' | null
 }
 
 export interface RegisterExamPayload {

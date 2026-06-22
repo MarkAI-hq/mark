@@ -1,5 +1,15 @@
 // src/lib/types.ts
 
+// --- SYLLABUS CITATIONS (RAG provenance) ---
+// Mirrors the API `sources_consulted` / `citation` shape from mark-api RagService.
+export interface Citation {
+  source: string | null;
+  page: number | null;
+  topic: string | null;
+  class: string | null;
+  outcome: string | null;
+}
+
 // --- CORE AUTH & USER TYPES ---
 export type UserRole = 'Root' | 'Support' | 'Admin' | 'Teacher' | 'Student';
 
@@ -56,6 +66,17 @@ export interface Organization {
       version: string;
     };
     [key: string]: unknown;
+  } | null;
+  welcome_pack_config?: {
+    is_enabled?:         boolean;
+    pack_name?:          string;
+    description?:        string;
+    cover_image_url?:    string;
+    contents?:           string[];
+    pack_price_usd?:     number;
+    printful_store_id?:  string;
+    id_card_variant_id?: string;
+    tshirt_variant_id?:  string;
   } | null;
   createdAt: string;
   updatedAt: string;

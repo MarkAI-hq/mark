@@ -1,13 +1,14 @@
 'use client'
 
 import { useState } from 'react'
-import { Edit3, Wand2, History } from 'lucide-react'
+import { Edit3, Wand2, History, BookOpen } from 'lucide-react'
 import { CurriculumEditor } from './curriculum-editor'
 import { AiFillPanel } from './ai-fill-panel'
 import { VersionHistoryPanel } from './version-history-panel'
+import { NccdContentPanel } from './ncdc-content-panel'
 import type { CurriculumSchemaVersion } from '@/lib/actions/root'
 
-type Tab = 'edit' | 'ai-fill' | 'versions'
+type Tab = 'edit' | 'ai-fill' | 'versions' | 'ncdc'
 
 function deepMerge(
   target: Record<string, unknown>,
@@ -63,6 +64,7 @@ export function CurriculumEditorShell({
   const tabs: { id: Tab; label: string; icon: React.ElementType; badge?: number }[] = [
     { id: 'edit',     label: 'Edit',            icon: Edit3 },
     { id: 'ai-fill',  label: 'AI Fill',          icon: Wand2 },
+    { id: 'ncdc',     label: 'NCDC Content',     icon: BookOpen },
     { id: 'versions', label: 'Version History',  icon: History, badge: versions.length },
   ]
 
@@ -118,6 +120,16 @@ export function CurriculumEditorShell({
         <AiFillPanel
           schemaId={schemaId}
           onApplyPatch={handleApplyPatch}
+        />
+      )}
+
+      {activeTab === 'ncdc' && (
+        <NccdContentPanel
+          schemaId={schemaId}
+          onEnriched={() => {
+            // Switch to edit tab so user sees the updated schema
+            setActiveTab('edit')
+          }}
         />
       )}
 

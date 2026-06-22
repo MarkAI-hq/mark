@@ -92,6 +92,41 @@ export async function injectStudentCookies(context: BrowserContext): Promise<voi
   ]);
 }
 
+// ── Cookie injection: Admin role ───────────────────────────────────────────
+export const ADMIN_USER = {
+  id:             "test-admin-1",
+  name:           "Test Admin",
+  email:          "admin@mirror.test",
+  role:           "Admin",
+  roles:          ["Admin"],
+  isVerified:     true,
+  organizationId: "test-org-1",
+  onboarding_complete: true,
+};
+
+export async function injectAdminCookies(context: BrowserContext): Promise<void> {
+  await context.addCookies([
+    {
+      name:   "token",
+      value:  "fake-admin-token",
+      domain: "localhost",
+      path:   "/",
+    },
+    {
+      name:   "refreshToken",
+      value:  "fake-admin-refresh",
+      domain: "localhost",
+      path:   "/",
+    },
+    {
+      name:   "user",
+      value:  encodeURIComponent(JSON.stringify(ADMIN_USER)),
+      domain: "localhost",
+      path:   "/",
+    },
+  ]);
+}
+
 // ── Credentials ───────────────────────────────────────────────────────────
 export const ADMIN_EMAIL    = process.env.ADMIN_TEST_EMAIL    ?? "";
 export const ADMIN_PASSWORD = process.env.ADMIN_TEST_PASSWORD ?? "";

@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { refreshAccessToken } from "@/lib/actions/auth";
 
 const TRACY_URL = process.env.TRACY_URL ?? "http://localhost:4001";
+const API_BASE  = process.env.API_BASE_URL ?? process.env.NEXT_PUBLIC_API_URL ?? "";
 
 // Shared auth helper
 async function resolveJwt(): Promise<string | null> {
@@ -26,7 +27,6 @@ export async function POST(req: NextRequest) {
     const jwt = await resolveJwt();
 
     if (!jwt) {
-      // Return a minimal SSE stream with the auth-pending signal
       const stream = new ReadableStream({
         start(controller) {
           controller.enqueue(
@@ -45,13 +45,36 @@ export async function POST(req: NextRequest) {
     const body = await req.json() as {
       message: string;
       sessionId: string;
+      sourceIds?: string[];
       attachments?: Array<{ name: string; type: string; size: number }>;
     };
 
     let enrichedMessage = body.message;
+
+    // Inject student note sources as context when sourceIds are provided
+    if (body.sourceIds && body.sourceIds.length > 0) {
+      try {
+        const notesRes = await fetch(`${API_BASE}/api/v1/student-notes/my`, {
+          headers: { Authorization: `Bearer ${jwt}` },
+        });
+        if (notesRes.ok) {
+          const allNotes: Array<{ id: string; topic: string; content: string }> = await notesRes.json();
+          const sourceNotes = allNotes.filter((n) => body.sourceIds!.includes(n.id));
+          if (sourceNotes.length > 0) {
+            const sourcesBlock = sourceNotes
+              .map((n) => `[${n.topic}]\n${n.content}`)
+              .join("\n\n---\n\n");
+            enrichedMessage = `=== Student Study Sources ===\n${sourcesBlock}\n===\n\n${body.message}`;
+          }
+        }
+      } catch (err) {
+        console.warn("[Tracy proxy] Source injection failed:", err);
+      }
+    }
+
     if (body.attachments && body.attachments.length > 0) {
       const fileList = body.attachments.map((f) => `${f.name} (${f.type})`).join(", ");
-      enrichedMessage = `${body.message}\n\n[Attached files: ${fileList}]`;
+      enrichedMessage = `${enrichedMessage}\n\n[Attached files: ${fileList}]`;
     }
 
     const tracyRes = await fetch(`${TRACY_URL}/chat/stream`, {
@@ -84,7 +107,6 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // Pipe the SSE stream directly to the client
     return new Response(tracyRes.body, {
       headers: {
         "Content-Type": "text/event-stream",
