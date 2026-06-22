@@ -1,36 +1,99 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Mark
 
-## Getting Started
+Next.js 15 PWA for the Mark educational assessment platform. Multi-role UI serving Admins, Teachers, Students, and Root/Support platform operators.
 
-First, run the development server:
+Built with Next.js 15 (App Router) · React 19 · TypeScript · shadcn/ui · Tailwind CSS.
+
+## Prerequisites
+
+- Node.js 22
+- pnpm 10
+- A running [mark-api](../mark-api) instance
+
+## Quick start
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
+# 1. Clone and install
+pnpm install
+
+# 2. Configure environment
+cp .env.example .env.local
+# Set at minimum: NEXT_PUBLIC_API_URL and API_BASE_URL
+
+# 3. Start dev server
 pnpm dev
-# or
-bun dev
+# → http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Environment variables
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+| Variable | Exposure | Required | Description |
+|---|---|---|---|
+| `API_BASE_URL` | Server-side only | Yes | mark-api base URL for Server Actions and Route Handlers (never sent to the browser) |
+| `NEXT_PUBLIC_API_URL` | Client-side | Yes | mark-api base URL for browser requests |
+| `TRACY_URL` | Server-side only | No | Tracy AI service URL (default: `http://localhost:4001`) |
+| `NEXT_PUBLIC_GOOGLE_CLIENT_ID` | Client-side | No | Google OAuth client ID (SSO login button) |
+| `NEXT_PUBLIC_SENTRY_DSN` | Client-side | No | Sentry DSN for client-side error monitoring |
+| `SENTRY_AUTH_TOKEN` | Build-time | No | Sentry source map upload token |
+| `NEXT_PUBLIC_POSTHOG_KEY` | Client-side | No | PostHog analytics key |
+| `NEXT_PUBLIC_POSTHOG_HOST` | Client-side | No | PostHog host (default: `https://app.posthog.com`) |
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Architecture in 60 seconds
 
-## Learn More
+**All API calls go through Server Actions — no direct client-side fetch to the backend.**
 
-To learn more about Next.js, take a look at the following resources:
+```
+Browser
+  → Next.js middleware (edge, reads JWT cookies, enforces role access)
+    → Server Component (passes data as props)
+      → Server Action in src/lib/actions/*.ts
+        → fetcher<T>() in src/lib/fetch.ts
+          → mark-api (NestJS)
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+**Auth:** JWT stored in three cookies set by mark-api:
+- `token` — httpOnly, 15-minute access token (never readable by JS)
+- `refreshToken` — httpOnly, 7-day refresh token
+- `user` — readable by JS, 7-day serialised user object (middleware reads role at the edge)
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+**Route groups → roles:**
 
-## Deploy on Vercel
+| Route group | Roles | Landing page |
+|---|---|---|
+| `(auth)/` | Unauthenticated | `/login` |
+| `(dashboard)/dashboard/` | Admin | `/dashboard` |
+| `(dashboard)/dashboard/teacher/` | Teacher | `/dashboard/teacher` |
+| `(onboarding)/` | New Admin | `/onboarding` |
+| `student/(portal)/` | Student | `/student/dashboard` |
+| `(root)/root/` | Root, Support | `/root` |
+| `record/[id]` | Public | — |
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Feature map
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+| Feature | Route | Key files |
+|---|---|---|
+| Examination Centre | `/dashboard/exam-builder/*` | `src/lib/actions/exam-builder.ts` |
+| MirrorEditor (AI assessment review) | `/dashboard/assessments/[id]/review` | `src/components/editor/` |
+| Tracy AI Chat | `/dashboard/tracy` | `src/app/api/tracy/route.ts` |
+| Class management | `/dashboard/classes/*` | `src/lib/actions/classes.ts` |
+| Student portal | `/student/*` | `src/app/student/` |
+| Root console | `/root/*` | `src/app/(root)/` |
+| Attendance | `/dashboard/attendance/*` | `src/lib/actions/attendance.ts` |
+| Study plans | `/dashboard/study-plans/*` | `src/lib/actions/study-plans.ts` |
+
+## Key commands
+
+| Command | Description |
+|---|---|
+| `pnpm dev` | Start dev server at `http://localhost:3000` |
+| `pnpm build` | Production build (standalone output) |
+| `pnpm lint` | ESLint via `next lint` |
+
+## Related repos
+
+| Repo | Path | Role |
+|---|---|---|
+| **mark-api** | `D:\markhq\mark-api` | NestJS backend — all REST endpoints |
+| **tracy** | `D:\markhq\tracy` | AI chat service proxied by `/api/tracy` |
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the development workflow.
