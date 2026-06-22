@@ -26,6 +26,7 @@ export async function middleware(request: NextRequest) {
     '/certificates',
     '/enroll',
     '/schools',
+    '/admissions',
     '/record',
   ]
 

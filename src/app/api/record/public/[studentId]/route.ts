@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { verifyRecordToken } from "@/lib/record-share";
 
 const API = process.env.MIRROR_API_URL ?? "http://localhost:4000/api/v1";
 const SERVICE_TOKEN = process.env.MIRROR_SERVICE_TOKEN ?? "";
@@ -17,7 +18,7 @@ async function mirrorGet(path: string) {
 }
 
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ studentId: string }> }
 ) {
   if (!SERVICE_TOKEN) {
@@ -25,6 +26,16 @@ export async function GET(
   }
 
   const { studentId } = await params;
+
+  // Require a signed, unexpired share token bound to this studentId. Without it,
+  // anyone with a student's UUID could read their record.
+  const token = req.nextUrl.searchParams.get("token");
+  if (!verifyRecordToken(studentId, token)) {
+    return NextResponse.json(
+      { error: "This share link is invalid or has expired." },
+      { status: 403 },
+    );
+  }
 
   const [student, analytics, cognitiveProfile, reteachImpact, submissions] =
     await Promise.all([

@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import { useParams } from "next/navigation";
+import { createRecordShareUrl } from "@/lib/actions/record";
 import {
   Award,
   TrendingUp,
@@ -209,11 +210,12 @@ export default function ProofOfLearningRecord({
   const [data, setData] = useState<RecordData | null>(null);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
+  const [shareError, setShareError] = useState<string | null>(null);
   const printRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const endpoint = isPublic
-      ? `/api/record/public/${studentId}`
+      ? `/api/record/public/${studentId}${window.location.search}`
       : `/api/record/${studentId}`;
     fetch(endpoint)
       .then((r) => r.json())
@@ -222,11 +224,16 @@ export default function ProofOfLearningRecord({
         setLoading(false);
       })
       .catch(() => setLoading(false));
-  }, [studentId]);
+  }, [studentId, isPublic]);
 
   const handleShare = async () => {
-    const url = `${window.location.origin}/record/${studentId}`;
-    await navigator.clipboard.writeText(url);
+    const { url, error } = await createRecordShareUrl(studentId);
+    if (error || !url) {
+      setShareError(error ?? "Could not generate a share link.");
+      setTimeout(() => setShareError(null), 3000);
+      return;
+    }
+    await navigator.clipboard.writeText(`${window.location.origin}${url}`);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -319,14 +326,17 @@ export default function ProofOfLearningRecord({
               Generated {formatDate(data.generatedAt)}
             </p>
           </div>
-          <div className="flex gap-2">
-            <button
-              onClick={handleShare}
-              className="flex items-center gap-1.5 text-xs px-3 py-2 rounded-lg border border-border hover:bg-muted transition-all text-muted-foreground hover:text-foreground"
-            >
-              <Share2 className="w-3.5 h-3.5" />
-              {copied ? "Copied!" : "Share link"}
-            </button>
+          <div className="flex items-center gap-2">
+            {!isPublic && (
+              <button
+                onClick={handleShare}
+                title={shareError ?? undefined}
+                className="flex items-center gap-1.5 text-xs px-3 py-2 rounded-lg border border-border hover:bg-muted transition-all text-muted-foreground hover:text-foreground"
+              >
+                <Share2 className="w-3.5 h-3.5" />
+                {shareError ? "Couldn't share" : copied ? "Copied!" : "Share link"}
+              </button>
+            )}
             <button
               onClick={handlePrint}
               className="flex items-center gap-1.5 text-xs px-3 py-2 rounded-lg bg-primary text-primary-foreground hover:opacity-90 transition-all"
