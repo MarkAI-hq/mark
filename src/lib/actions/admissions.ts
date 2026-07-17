@@ -34,7 +34,7 @@ export interface ApplicationRecord {
   goals: string | null
   ai_summary: string | null
   ai_fit_category: 'strong_fit' | 'borderline' | 'non_traditional' | null
-  status: 'pending' | 'approved' | 'declined' | 'more_info'
+  status: 'pending' | 'more_info' | 'offer_sent' | 'approved' | 'declined'
   review_note: string | null
   student_id: string | null
   student_id_pdf_url: string | null
@@ -53,6 +53,12 @@ export async function applyToSchool(
     method: 'POST',
     body: JSON.stringify(payload),
   })
+}
+
+export async function getMyApplications(): Promise<
+  ServerActionResponse<ApplicationRecord[]>
+> {
+  return fetcher<ApplicationRecord[]>('/admissions/mine', { cache: 'no-store' })
 }
 
 export async function getPendingApplications(

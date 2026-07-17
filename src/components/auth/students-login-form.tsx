@@ -76,7 +76,7 @@ export function StudentLoginForm() {
           name="school_code"
           render={({ field }) => (
             <FormItem>
-              <FormLabel className="text-slate-700">School Code</FormLabel>
+              <FormLabel className="text-foreground">School Code</FormLabel>
               <FormControl>
                 <Input
                   placeholder="e.g. MIR-2024"
@@ -95,7 +95,7 @@ export function StudentLoginForm() {
           name="student_school_id"
           render={({ field }) => (
             <FormItem>
-              <FormLabel className="text-slate-700">Student ID</FormLabel>
+              <FormLabel className="text-foreground">Student ID</FormLabel>
               <FormControl>
                 <Input placeholder="e.g. S001" {...field} />
               </FormControl>
@@ -109,7 +109,7 @@ export function StudentLoginForm() {
           name="pin"
           render={({ field }) => (
             <FormItem>
-              <FormLabel className="text-slate-700">PIN</FormLabel>
+              <FormLabel className="text-foreground">PIN</FormLabel>
               <FormControl>
                 <Input
                   type="password"
@@ -125,13 +125,13 @@ export function StudentLoginForm() {
 
         <Button
           type="submit"
-          className="w-full mt-2 font-bold"
+          className="w-full mt-2 bg-[#926C15] hover:bg-[#7A5A10] text-white shadow-lg shadow-[#926C15]/25 font-bold"
           disabled={form.formState.isSubmitting}
         >
           {form.formState.isSubmitting ? 'Signing in...' : 'Sign in'}
         </Button>
 
-        <p className="text-center text-xs text-slate-500">
+        <p className="text-center text-xs text-muted-foreground">
           Lost your details? Ask your teacher to reset your PIN.
         </p>
 

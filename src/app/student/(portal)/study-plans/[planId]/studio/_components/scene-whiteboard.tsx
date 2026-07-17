@@ -5,6 +5,8 @@ import { PenLine, Lightbulb, CheckCircle2 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { submitStudentNote, validateSceneNotes } from '@/lib/actions/student-notes'
+import { validateStudentInput, copyProtectionProps } from '@/lib/utils/validation'
+import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 
 interface Props { scene: any; planId: string; subject: string; topic: string; onReady?: () => void }
@@ -18,14 +20,27 @@ export function SceneWhiteboard({ scene, planId, subject, topic, onReady }: Prop
   const [checking, setChecking]   = useState(false)
   const [feedback, setFeedback]   = useState<string | null>(null)
   const [passed, setPassed]       = useState(false)
+  const [validationError, setValidationError] = useState<string | null>(null)
 
   useEffect(() => {
     const timer = setTimeout(() => setShowHint(true), 30000)
     return () => clearTimeout(timer)
   }, [])
 
+  function validateNotes(): boolean {
+    const validation = validateStudentInput(notes, prompt ?? '', 20)
+    if (!validation.isValid) {
+      setValidationError(validation.feedback ?? 'Invalid input')
+      toast.error(validation.feedback ?? 'Invalid input')
+      return false
+    }
+    setValidationError(null)
+    return true
+  }
+
   async function handleCheck() {
     if (!notes.trim()) return
+    if (!validateNotes()) return
     setChecking(true)
     setFeedback(null)
     try {
@@ -50,6 +65,7 @@ export function SceneWhiteboard({ scene, planId, subject, topic, onReady }: Prop
 
   async function handleSave() {
     if (!notes.trim()) return
+    if (!validateNotes()) return
     setSaving(true)
     try {
       await submitStudentNote({ subject, topic, content: notes })
@@ -73,7 +89,7 @@ export function SceneWhiteboard({ scene, planId, subject, topic, onReady }: Prop
         )}
       </div>
 
-      <div className="rounded-xl border bg-card px-4 py-3">
+      <div {...copyProtectionProps} className={cn('rounded-xl border bg-card px-4 py-3', copyProtectionProps.className)}>
         <p className="font-medium text-base">{prompt}</p>
       </div>
 
@@ -86,11 +102,15 @@ export function SceneWhiteboard({ scene, planId, subject, topic, onReady }: Prop
 
       <textarea
         value={notes}
-        onChange={(e) => setNotes(e.target.value)}
+        onChange={(e) => { setNotes(e.target.value); setValidationError(null) }}
         placeholder="Write your response here…"
         rows={6}
         className="w-full rounded-xl border bg-background px-4 py-3 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-gold/30"
       />
+
+      {validationError && (
+        <p className="text-xs text-rose-500 font-medium">⚠️ {validationError}</p>
+      )}
 
       {/* Feedback banner */}
       {feedback && (

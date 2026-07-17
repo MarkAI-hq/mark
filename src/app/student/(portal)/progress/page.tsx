@@ -1,3 +1,4 @@
+//src/app/student/(portal)/progress/page.tsx
 import { redirect } from 'next/navigation'
 
 interface Props {

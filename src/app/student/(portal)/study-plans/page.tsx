@@ -1,6 +1,7 @@
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { getMyStudyPlans, getMyGradebook, getSuggestedTopic } from '@/lib/actions/study-plans'
+import { getMyClassSoW } from '@/lib/actions/student-dashboard'
 import { StudyPlansClient } from './_components/study-plans-client'
 
 export default async function StudyPlansPage() {
@@ -16,10 +17,12 @@ export default async function StudyPlansPage() {
     { data: plans,     error },
     { data: gradebook },
     { data: suggestion },
+    sowData,
   ] = await Promise.all([
     getMyStudyPlans(),
     getMyGradebook(),
     getSuggestedTopic(),
+    getMyClassSoW(),
   ])
 
   return (
@@ -29,6 +32,7 @@ export default async function StudyPlansPage() {
       gradebook={gradebook ?? null}
       suggestion={suggestion?.entry ? suggestion : null}
       error={error?.message ?? null}
+      classId={sowData.classId}
     />
   )
 }

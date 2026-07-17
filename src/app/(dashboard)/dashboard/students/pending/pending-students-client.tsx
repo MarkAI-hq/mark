@@ -105,6 +105,18 @@ export function PendingStudentsClient({
                     {e}
                   </Badge>
                 ))}
+                <Badge
+                  variant={s.admission_fee_status === 'paid' ? 'secondary' : 'outline'}
+                  className={
+                    s.admission_fee_status === 'paid'
+                      ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
+                      : 'text-amber-700 dark:text-amber-400 border-amber-300'
+                  }
+                >
+                  {s.admission_fee_status === 'paid'
+                    ? 'Admission fee paid'
+                    : 'Admission fee unpaid'}
+                </Badge>
               </div>
             </div>
 
@@ -125,7 +137,12 @@ export function PendingStudentsClient({
               <Button
                 size="sm"
                 className="font-semibold"
-                disabled={busy === s.student_id}
+                disabled={busy === s.student_id || s.admission_fee_status !== 'paid'}
+                title={
+                  s.admission_fee_status !== 'paid'
+                    ? 'Student has not paid the admission fee yet'
+                    : undefined
+                }
                 onClick={() => handleApprove(s)}
               >
                 {busy === s.student_id ? (

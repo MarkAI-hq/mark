@@ -1,4 +1,5 @@
 // src/app/student/dashboard/page.tsx
+
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import {
@@ -32,6 +33,33 @@ export default async function StudentDashboardPage() {
   const studentId = user?.user_id ?? user?.id
   if (!studentId) redirect('/student/login')
 
+  // 1. Resolve Class assignment first so we don't over-fetch data for pending students
+  const sowData = await getMyClassSoW()
+  const hasClass = !!sowData.classId
+
+  // 2. If the student has no class (pending approval), skip the intensive analytics fetches [4]
+  if (!hasClass) {
+    return (
+      <StudentDashboardClient
+        user={user}
+        analytics={null}
+        currentProfile={null}
+        submissions={[]}
+        examHistory={[]}
+        tools={[]}
+        studyPlans={[]}
+        streak={user?.study_streak ?? 0}
+        socialProof={null}
+        subjectProgress={[]}
+        predictions={[]}
+        currentWeekEntries={[]}
+        nextAction={null}
+        classId={sowData.classId}
+      />
+    )
+  }
+
+  // 3. Active students get the full parallelized data fetch
   const [
     { analytics, currentProfile },
     submissions,
@@ -42,19 +70,17 @@ export default async function StudentDashboardPage() {
     socialProof,
     subjectProgress,
     predictions,
-    sowData,
     nextAction,
   ] = await Promise.all([
     getStudentDashboard(studentId),
     getStudentSubmissions(studentId),
-    getStudentExamHistory(studentId),
+    getStudentExamHistory(studentId), // Note: Consider optimizing/lazy-loading this to prevent N+1 queries
     getStudentLearningTools(studentId),
     getStudentStudyPlans(studentId),
     fetcher<{ study_streak: number }>(`/students/${studentId}/streak`).catch(() => ({ data: null, error: null })),
     getStudentSocialProof(studentId),
     getStudentSubjectProgress(studentId),
     getStudentPredictions(studentId),
-    getMyClassSoW(),
     getNextAction(),
   ])
 
@@ -75,6 +101,7 @@ export default async function StudentDashboardPage() {
       predictions={predictions}
       currentWeekEntries={sowData.currentWeekEntries}
       nextAction={nextAction}
+      classId={sowData.classId}
     />
   )
 }

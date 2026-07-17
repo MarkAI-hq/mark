@@ -3,6 +3,7 @@
 // src/lib/actions/student-onboarding.ts
 // Marketplace student onboarding: diagnostic generate + submit.
 
+import { cookies } from 'next/headers'
 import { fetcher } from '@/lib/fetch'
 import type { ServerActionResponse } from '@/lib/types'
 
@@ -107,10 +108,40 @@ export async function generateDemoLesson(
   schoolCode: string,
   level?: string,
   subject?: string,
+  firstName?: string,
 ): Promise<ServerActionResponse<DemoLesson>> {
   return fetcher<DemoLesson>('/study-plans/demo-lesson', {
     method: 'POST',
-    body: JSON.stringify({ school_code: schoolCode, level, subject }),
+    body: JSON.stringify({ school_code: schoolCode, level, subject, first_name: firstName }),
+    cache: 'no-store',
+  })
+}
+
+export interface AdmissionFeePayment {
+  payment_url: string
+  amount: number
+  status: 'pending' | 'paid'
+}
+
+export interface AdmissionFeeStatus {
+  status: 'unpaid' | 'pending' | 'paid' | 'failed'
+  amount: number | null
+  paid_at: string | null
+}
+
+export async function initiateAdmissionPayment(): Promise<
+  ServerActionResponse<AdmissionFeePayment>
+> {
+  return fetcher<AdmissionFeePayment>('/students/me/admission-fee/initiate', {
+    method: 'POST',
+    cache: 'no-store',
+  })
+}
+
+export async function getAdmissionFeeStatus(): Promise<
+  ServerActionResponse<AdmissionFeeStatus>
+> {
+  return fetcher<AdmissionFeeStatus>('/students/me/admission-fee/status', {
     cache: 'no-store',
   })
 }
@@ -143,6 +174,281 @@ export async function submitDiagnostic(
   payload: SubmitDiagnosticPayload,
 ): Promise<ServerActionResponse<SubmitDiagnosticResult>> {
   return fetcher<SubmitDiagnosticResult>('/onboarding/diagnostic/submit', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
+
+export type SceneType =
+  | 'slide'
+  | 'quiz'
+  | 'simulation'
+  | 'whiteboard'
+  | 'pbl_stage'
+  | 'cornell_notes'
+  // ── Phase 1 new scene types ───────────────────────────────────────────────
+  | 'probe' // surfaces prior belief; routes past misconception_redirect
+  | 'phenomenon_story' // cultural story + 3 character viewpoints; student picks side
+  | 'hint_quiz' // quiz with 3 progressive pre-generated hints
+  | 'misconception_redirect' // 60-sec micro-lesson; shown only if probe answer wrong
+  | 'peer_teach' // student writes explanation; model explanation revealed after
+  | 'mastery_moment' // celebration when full topic arc complete
+  | 'retrieval_flash' // past-plan questions injected at session start (FSRS-driven)
+  | 'outcomes_intro' // non-gated; numbered list of lesson objectives; always position 0
+  | 'outcomes_check'; // gated; one real MCQ per objective; always final scene
+
+export type FiveEStage =
+  | 'Engage'
+  | 'Explore'
+  | 'Explain'
+  | 'Apply'
+  | 'Elaborate'
+  | 'Evaluate';
+
+export type BloomLevel =
+  | 'remember'
+  | 'understand'
+  | 'apply'
+  | 'analyse'
+  | 'evaluate'
+  | 'create';
+
+// ── Slide ─────────────────────────────────────────────────────────────────────
+
+export interface SlideContent {
+  text: string;
+  bullets?: string[];
+  image_hint?: string; // optional suggestion for a diagram
+}
+
+// ── Quiz ─────────────────────────────────────────────────────────────────────
+
+export interface QuizContent {
+  question: string;
+  options: string[];
+  correct: number; // 0-based index
+  explanation: string;
+}
+
+// ── Simulation ───────────────────────────────────────────────────────────────
+
+export interface SimulationContent {
+  simulation_html: string; // self-contained HTML ≤ 8 KB; sandbox enforced by frontend
+  description: string;
+}
+
+// ── Whiteboard ────────────────────────────────────────────────────────────────
+
+export interface WhiteboardContent {
+  prompt: string; // what to show / compare on the whiteboard
+  scaffolding?: string; // optional worked structure hint
+}
+
+// ── PBL stage ─────────────────────────────────────────────────────────────────
+
+export interface PblStageContent {
+  stage_name: string; // e.g., "Define the problem"
+  challenge: string;
+  guiding_questions: string[];
+}
+
+// ── Cornell Notes ─────────────────────────────────────────────────────────────
+// Three-zone layout: notes column (pre-filled) | cue questions (left) | summary (bottom).
+// Frontend renders as interactive: student writes their own cues + summary, which are saved.
+
+export interface CornellNotesContent {
+  notes_column: string; // main lesson content (pre-filled, 3-5 paragraphs)
+  cue_questions: string[]; // 3-5 trigger questions for the left cue column
+  summary: string; // 2-3 sentence synthesis for the bottom summary row
+}
+
+// ── Probe ──────────────────────────────────────────────────────────────────────
+// Surfaces prior belief before instruction. Routes lesson past misconception_redirect
+// if student answers correctly (handled by studio-shell frontend logic).
+
+export interface ProbeContent {
+  question: string;
+  options: string[]; // 3-4 options
+  correct: number; // 0-based index
+  misconception_tag: string; // which misconception this probes for (from curriculum schema)
+  brief_explanation: string; // shown after answer
+  repeat_at_end?: boolean; // if true, same probe is shown post-lesson to measure belief shift
+}
+
+// ── Phenomenon Story ───────────────────────────────────────────────────────────
+
+export interface PhenomenonStoryContent {
+  story: string; // 5-8 sentences, local African context
+  character_viewpoints: Array<{ character: string; claim: string }>; // 3 viewpoints
+  correct_character: number; // 0-based index — which viewpoint is scientifically correct
+  discussion_prompt: string; // "Which character do you agree with and why?"
+  resolution: string; // explanation of the correct understanding, revealed after submit
+}
+
+// ── Hint Quiz ──────────────────────────────────────────────────────────────────
+
+export interface HintQuizContent {
+  question: string;
+  options: string[];
+  correct: number; // 0-based index
+  explanation: string; // shown after answer
+  hints: [string, string, string]; // 3 progressive hints, each nudging further
+}
+
+// ── Misconception Redirect ─────────────────────────────────────────────────────
+
+export interface MisconceptionRedirectContent {
+  misconception: string; // what the student believed
+  why_it_makes_sense: string; // validates the student's logic — empathetic framing
+  correct_understanding: string;
+  analogy: string; // simple local analogy that fixes the mental model
+}
+
+// ── Peer Teach ─────────────────────────────────────────────────────────────────
+
+export interface PeerTeachContent {
+  prompt: string; // "Explain X to Tendo as if they are in S1"
+  rubric_points: string[]; // 3-4 accuracy criteria shown after submission
+  model_explanation: string; // revealed after student submits their own explanation
+  min_words: number; // word count gate before submission (default: 30)
+}
+
+// ── Mastery Moment ─────────────────────────────────────────────────────────────
+
+export interface MasteryMomentContent {
+  topic: string;
+  what_changed: string; // "You started thinking X, now you understand Y"
+  key_insight: string; // one-sentence distillation of the core concept mastered
+  share_text: string; // pre-written shareable certificate text
+}
+
+// ── Retrieval Flash ────────────────────────────────────────────────────────────
+// Assembled by backend at session start from FSRS-due past plans; not generated by Gemini.
+
+export interface RetrievalFlashQuestion {
+  question: string;
+  options: string[];
+  correct: number;
+  topic: string;
+  plan_id: string;
+  days_ago: number;
+}
+
+export interface RetrievalFlashContent {
+  questions: RetrievalFlashQuestion[];
+}
+
+// ── Outcomes Intro ─────────────────────────────────────────────────────────────
+// Non-gated; shows what this lesson will teach before any instruction begins.
+
+export interface OutcomesIntroContent {
+  topic: string;
+  outcomes: string[]; // exact SoW learning_objectives text
+  framing: string; // AI: 1-2 sentence hook connecting outcomes to real life
+  curriculum_refs: string[]; // injected post-generation — parallel to outcomes[]
+}
+
+// ── Outcomes Check ─────────────────────────────────────────────────────────────
+// Gated; one real 4-option MCQ per outcome; final scene.
+// Graded client-side: selectedIndex === correct → achieved.
+
+export interface OutcomesCheckItem {
+  outcome: string; // exact SoW objective text (label shown above question)
+  curriculum_ref: string; // injected post-generation
+  question: string; // AI: specific question testing this outcome
+  options: string[]; // exactly 4
+  correct: number; // 0-based index; varied by AI (not always 0)
+  explanation: string; // shown after answering — names the concept
+}
+
+export interface OutcomesCheckContent {
+  topic: string;
+  items: OutcomesCheckItem[];
+}
+
+// ── Union ─────────────────────────────────────────────────────────────────────
+
+export type SceneContent =
+  | SlideContent
+  | QuizContent
+  | SimulationContent
+  | WhiteboardContent
+  | PblStageContent
+  | CornellNotesContent
+  | ProbeContent
+  | PhenomenonStoryContent
+  | HintQuizContent
+  | MisconceptionRedirectContent
+  | PeerTeachContent
+  | MasteryMomentContent
+  | RetrievalFlashContent
+  | OutcomesIntroContent
+  | OutcomesCheckContent;
+
+export interface Scene {
+  type: SceneType;
+  title: string;
+  content: SceneContent;
+  bloom_level: BloomLevel;
+  five_e_stage?: FiveEStage;
+  image_url?: string;
+  image_key?: string; // R2 object key; used by startPlan() to refresh presigned image_url on each visit
+  estimated_seconds: number;
+  tts_script?: string; // populated by TTS pipeline
+  audio_url?: string; // R2 WAV path
+  // Probe routing: if true, this scene is hidden unless the preceding probe was answered incorrectly
+  skip_if_probe_correct?: boolean;
+}
+
+// ── Student: upload provisional proof-of-class document (Safe Native Upload) ──
+export async function uploadStudentDocument(
+  formData: FormData,
+): Promise<ServerActionResponse<any>> {
+  try {
+    const cookieStore = await cookies()
+    const token = cookieStore.get('token')?.value
+    const API = process.env.API_BASE_URL ?? process.env.NEXT_PUBLIC_API_URL ?? ''
+
+    const headers: HeadersInit = {
+      // We intentionally OMIT 'Content-Type' so the fetch API can 
+      // automatically generate the multipart/form-data boundary.
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    }
+
+    const res = await fetch(`${API}/api/v1/students/me/documents`, {
+      method: 'POST',
+      headers,
+      body: formData,
+    })
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ message: 'Upload failed' }))
+      return { data: null, error: { message: err.message ?? 'Upload failed' } }
+    }
+
+    const data = await res.json()
+    return { data, error: null }
+  } catch (err: any) {
+    return { data: null, error: { message: err.message ?? 'Upload failed' } }
+  }
+}
+
+// ── Student: server-side AI evaluation of freeform text responses ───────────
+export interface EvaluateResponsePayload {
+  prompt: string
+  student_answer: string
+  rubric_points?: string[]
+}
+
+export interface EvaluateResponseResult {
+  passed: boolean
+  feedback: string
+}
+
+export async function evaluateStudentResponse(
+  payload: EvaluateResponsePayload,
+): Promise<ServerActionResponse<EvaluateResponseResult>> {
+  return fetcher<EvaluateResponseResult>('/study-plans/evaluate-response', {
     method: 'POST',
     body: JSON.stringify(payload),
   })

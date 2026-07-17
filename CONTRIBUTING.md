@@ -56,9 +56,11 @@ UI conventions (see `.claude/frontend.md`):
 - Toasts: `sonner` (`toast.success`, `toast.error`)
 - Dates: `date-fns` only — never `toLocaleDateString()`
 
-## No automated test suite
+## Testing
 
-There is no Jest/Playwright suite. Verify changes manually:
+A Playwright E2E suite lives in `tests/*.spec.ts` (config in `playwright.config.ts`), with role-based specs for admin, teacher, student, root, and marketplace flows, plus Tracy chat coverage. Run it with `pnpm test:e2e` (or `pnpm test:e2e:ui` for the interactive runner).
+
+For anything the suite doesn't cover, still verify manually:
 
 1. `pnpm dev`
 2. Test the golden path (happy path)

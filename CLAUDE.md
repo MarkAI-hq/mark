@@ -10,7 +10,7 @@ pnpm build      # production build (standalone output)
 pnpm lint       # ESLint via next lint
 ```
 
-There is no test suite configured.
+E2E tests use Playwright: `pnpm test:e2e` (or `pnpm test:e2e:ui` for the UI runner). Specs live in `tests/*.spec.ts`, config in `playwright.config.ts`.
 
 ## Related repositories
 

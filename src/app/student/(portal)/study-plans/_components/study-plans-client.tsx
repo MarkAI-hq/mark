@@ -2,13 +2,13 @@
 
 // src/app/student/(portal)/study-plans/_components/study-plans-client.tsx
 
-import { useState, useTransition, useEffect, useMemo } from 'react'
+import { useState, useTransition, useEffect, useMemo, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import {
   BookOpen, CheckCircle2, Clock, ChevronRight, Sparkles,
   AlertCircle, Clapperboard, Play, RotateCcw, Target,
-  TrendingUp, TrendingDown, Minus,
+  TrendingUp, TrendingDown, Minus, BookOpenCheck, Upload, FileText, Check, Plus, Loader2
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { format, parseISO, isToday, isPast } from 'date-fns'
@@ -17,6 +17,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge }  from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input }  from '@/components/ui/input'
+import { Label }  from '@/components/ui/label'
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
@@ -27,6 +28,7 @@ import {
   type SubjectGradebook, type GradebookTopic, type NcdcLevel,
 } from '@/lib/actions/study-plans'
 import { initiateFreeStudyPlan, type StudyPlan } from '@/lib/actions/student-dashboard'
+import { uploadStudentDocument } from '@/lib/actions/student-onboarding'
 
 // ── Config ───────────────────────────────────────────────────────────────────
 
@@ -70,24 +72,17 @@ function TodayHero({
   onSelfInitiate: (sowEntryId: string) => void
   busy: boolean
 }) {
-  // Prefer a real assigned plan for today/overdue; else fall back to the SoW suggestion.
   if (plan) {
     const cfg = lessonCfg(plan.lesson_type)
     return (
       <div className="rounded-2xl border-2 border-gold/40 bg-gold/5 p-5 space-y-3">
-        <div className="flex items-center justify-between gap-2">
-          <Badge className="text-[10px] bg-gold text-gold-foreground px-2 py-0.5">Up next today</Badge>
-          <span className="flex items-center gap-1 text-xs text-muted-foreground">
-            <Clock className="h-3 w-3" />
-            {plan.content?.estimated_minutes ?? 20} min
-          </span>
-        </div>
-        <div className="space-y-1">
-          <p className="text-lg font-semibold leading-snug">{plan.topic}</p>
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-muted-foreground">{plan.subject}</span>
-            <Badge className={`text-[10px] px-1.5 py-0 ${cfg.color}`}>{cfg.icon} {cfg.label}</Badge>
+        <div className="flex items-start justify-between gap-3">
+          <div className="space-y-0.5">
+            <p className="text-xs font-semibold text-gold uppercase tracking-wide">Next Up</p>
+            <h3 className="font-semibold text-base leading-snug">{plan.topic}</h3>
+            <p className="text-xs text-muted-foreground">{plan.subject}</p>
           </div>
+          <Badge className={`text-[10px] px-1.5 py-0 shrink-0 ${cfg.color}`}>{cfg.icon} {cfg.label}</Badge>
         </div>
         <Button
           className="w-full gap-1.5 bg-gold hover:bg-gold/90 text-gold-foreground"
@@ -223,7 +218,6 @@ function SubjectSection({
   const belowPass = !subject.is_passing
   const showGap = belowPass || weakMode
 
-  // Weakest not-yet-mastered topic to anchor the gap CTA.
   const weakestTopic = [...subject.topics]
     .filter((t) => t.achievement !== 'all')
     .sort((a, b) => a.week_number - b.week_number)[0] ?? null
@@ -256,7 +250,6 @@ function SubjectSection({
         </div>
       </div>
 
-      {/* Assigned pending plans for this subject */}
       {pendingPlans.length > 0 && (
         <div className="space-y-2">
           {pendingPlans.map((p) => {
@@ -286,10 +279,8 @@ function SubjectSection({
         </div>
       )}
 
-      {/* Scheme-of-work ribbon */}
       <SowRibbon topics={subject.topics} onStartTopic={onStartTopic} pendingTopicId={pendingTopicId} />
 
-      {/* Gap callout */}
       {showGap && weakestTopic && (
         <div className="flex items-center justify-between gap-3 rounded-lg border border-amber-300/50 bg-amber-50/50 dark:bg-amber-950/20 px-3 py-2.5">
           <div className="flex items-start gap-2 min-w-0">
@@ -324,10 +315,12 @@ interface Props {
   gradebook: GradebookResponse | null
   suggestion: SuggestedTopicResponse | null
   error: string | null
+  classId?: string | null
 }
 
-export function StudyPlansClient({ user, initialPlans, gradebook, suggestion, error }: Props) {
+export function StudyPlansClient({ user, initialPlans, gradebook, suggestion, error, classId }: Props) {
   const router = useRouter()
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const plans = initialPlans
 
   const [checkedIn, setCheckedIn] = useState(false)
@@ -338,14 +331,34 @@ export function StudyPlansClient({ user, initialPlans, gradebook, suggestion, er
   const [freeSub, setFreeSub]     = useState(suggestion?.entry.subject ?? '')
   const [freeTopic, setFreeTopic] = useState(suggestion?.entry.topic ?? '')
 
-  const isMarketplace = user?.enrollment_source === 'marketplace' || !user?.class_id
-  const firstName = user?.name?.split(' ')[0] ?? user?.first_name ?? 'Student'
-  const passMark = gradebook?.scale?.passMark ?? 'D'
+  // ── Document Upload State ──────────────────────────────────────────────────
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [docType, setDocType] = useState<string>('term_report')
+  const [uploadSuccess, setUploadSuccess] = useState(false)
+  // Corrected state setter name from startUpload to setUploading [5]
+  const [uploading, setUploading] = useState(false)
+
+  // ── Sync upload and hydration states ───────────────────────────────────────
+  const [isMounted, setIsMounted] = useState(false)
+  const studentId = user?.user_id ?? user?.id
+  const [hasUploadedBefore, setHasUploadedBefore] = useState(false)
 
   useEffect(() => {
+    setIsMounted(true)
     const todayKey = `checkin_${new Date().toISOString().slice(0, 10)}`
     if (typeof window !== 'undefined' && localStorage.getItem(todayKey)) setCheckedIn(true)
   }, [])
+
+  useEffect(() => {
+    if (studentId) {
+      const isUploaded = localStorage.getItem(`proof_uploaded_${studentId}`) === 'true'
+      setHasUploadedBefore(isUploaded)
+    }
+  }, [studentId])
+
+  const isMarketplace = user?.enrollment_source === 'marketplace' || !user?.class_id
+  const firstName = user?.name?.split(' ')[0] ?? user?.first_name ?? 'Student'
+  const passMark = gradebook?.scale?.passMark ?? 'D'
 
   // ── Derived data ──────────────────────────────────────────────────────────
   const pending   = plans.filter((p) => p.status === 'pending' || p.status === 'sent')
@@ -361,7 +374,6 @@ export function StudyPlansClient({ user, initialPlans, gradebook, suggestion, er
     return [...pending].sort((a, b) => (a.scheduled_for ?? '').localeCompare(b.scheduled_for ?? ''))[0] ?? null
   }, [pending])
 
-  // Map a SoW entry → its existing plan (prefer an active plan over a completed one).
   const planBySowEntry = useMemo(() => {
     const m = new Map<string, StudyPlan>()
     for (const p of plans) {
@@ -377,7 +389,7 @@ export function StudyPlansClient({ user, initialPlans, gradebook, suggestion, er
   const pendingBySubject = useMemo(() => {
     const m = new Map<string, StudyPlan[]>()
     for (const p of pending) {
-      if (p.id === todayPlan?.id) continue // already surfaced in the hero
+      if (p.id === todayPlan?.id) continue
       const arr = m.get(p.subject) ?? []
       arr.push(p)
       m.set(p.subject, arr)
@@ -453,6 +465,42 @@ export function StudyPlansClient({ user, initialPlans, gradebook, suggestion, er
     })
   }
 
+  // ── Upload Document Form Handler ──────────────────────────────────────────
+  function handleDocumentSubmit() {
+    if (!selectedFile) {
+      toast.error('Please select a file to upload.')
+      return
+    }
+
+    setUploading(true)
+    const fd = new FormData()
+    fd.append('file', selectedFile)
+    fd.append('doc_type', docType)
+
+    uploadStudentDocument(fd)
+      .then(({ error }) => {
+        setUploading(false)
+        if (error) {
+          toast.error(error.message)
+          return
+        }
+        toast.success('Document uploaded successfully!')
+        
+        if (studentId) {
+          localStorage.setItem(`proof_uploaded_${studentId}`, 'true')
+        }
+        
+        setUploadSuccess(true)
+        setHasUploadedBefore(true)
+        setSelectedFile(null)
+        if (fileInputRef.current) fileInputRef.current.value = ''
+      })
+      .catch(() => {
+        setUploading(false)
+        toast.error('Upload failed. Please try again.')
+      })
+  }
+
   // ── Render ────────────────────────────────────────────────────────────────
   if (error) {
     return (
@@ -464,11 +512,149 @@ export function StudyPlansClient({ user, initialPlans, gradebook, suggestion, er
     )
   }
 
+  const hasClass = !!classId
+
+  if (!hasClass) {
+    return (
+      <div className="space-y-4">
+        <div>
+          <h1 className="text-xl font-semibold tracking-tight">My Study Plans</h1>
+          <p className="text-muted-foreground text-sm mt-1">Your active study tasks and dynamic plans appear here.</p>
+        </div>
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-12 text-center max-w-lg mx-auto">
+            <div className="relative mb-4">
+              <BookOpenCheck className="h-10 w-10 text-muted-foreground/30" />
+              <div className="absolute -bottom-1 -right-1 rounded-full bg-amber-500 p-0.5 text-white animate-pulse">
+                <Clock className="h-3.5 w-3.5" />
+              </div>
+            </div>
+            <h3 className="font-semibold text-lg text-foreground">Study Plans Pending Approval</h3>
+            <p className="text-sm text-muted-foreground mt-2 max-w-sm">
+              Your independent study plans at{' '}
+              <span className="font-semibold text-foreground">
+                {user?.organization_name ?? 'your school'}
+              </span>{' '}
+              will unlock as soon as a school administrator approves your class request.
+            </p>
+
+            {/* ── Proof of Class Document Upload Section (Gated on Study Plans) ── */}
+            <div className="w-full mt-6 border border-border/70 rounded-xl p-4 bg-muted/20 text-left space-y-4">
+              <div className="flex items-start gap-2.5">
+                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#C9A84C]/10 text-[#C9A84C]">
+                  <Upload className="h-4 w-4" />
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-foreground">School Approval Status</p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5 leading-normal">
+                    Optionally upload your previous term report card or results so the administrator can verify your class and accept your request faster.
+                  </p>
+                </div>
+              </div>
+
+              {hasUploadedBefore || uploadSuccess ? (
+                <div className="flex items-start gap-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 p-3 text-emerald-800 dark:text-emerald-300 text-xs font-medium w-full">
+                  <Check className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-semibold">Provisional proof uploaded!</p>
+                    <p className="text-[11px] text-muted-foreground/80 mt-0.5 leading-normal font-normal">
+                      We have received your verification document. Your school administrator is currently reviewing it.
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-3 pt-1">
+                  <div className="grid grid-cols-2 gap-2.5">
+                    <div className="space-y-1">
+                      <Label className="text-[10px] uppercase font-semibold text-muted-foreground tracking-wider">Document Type</Label>
+                      <Select value={docType} onValueChange={setDocType}>
+                        <SelectTrigger className="h-8 text-xs">
+                          <SelectValue placeholder="Select type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="term_report">Term Report Card</SelectItem>
+                          <SelectItem value="prior_results">Prior Exam Results</SelectItem>
+                          <SelectItem value="other">Other Document</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-1">
+                      <Label className="text-[10px] uppercase font-semibold text-muted-foreground tracking-wider">Choose File</Label>
+                      <div className="relative">
+                        <input
+                          ref={fileInputRef}
+                          type="file"
+                          accept="image/*,application/pdf"
+                          onChange={(e) => {
+                            setSelectedFile(e.target.files?.[0] ?? null)
+                            setUploadSuccess(false)
+                          }}
+                          className="hidden"
+                          id="study-plans-doc-file"
+                        />
+                        <label
+                          htmlFor="study-plans-doc-file"
+                          className="flex h-8 w-full items-center justify-center gap-1 px-3 border border-input rounded-lg bg-background hover:bg-muted text-xs cursor-pointer truncate font-medium transition-colors"
+                        >
+                          <FileText className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                          <span className="truncate">{selectedFile ? selectedFile.name : 'Select PDF or Photo'}</span>
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+
+                  {selectedFile && (
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        onClick={handleDocumentSubmit}
+                        disabled={uploading}
+                        className="h-8 text-xs font-bold flex-1"
+                      >
+                        {uploading ? (
+                          <>
+                            <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
+                            Uploading…
+                          </>
+                        ) : (
+                          <>
+                            <Plus className="h-3.5 w-3.5 mr-1" />
+                            Upload File to Teacher
+                          </>
+                        )}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setSelectedFile(null)}
+                        disabled={uploading}
+                        className="h-8 text-xs text-muted-foreground"
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div className="mt-4 rounded-xl bg-amber-500/5 border border-amber-500/10 p-4 text-xs text-amber-700 dark:text-amber-300 text-left w-full">
+              <p className="font-semibold mb-1">What happens next?</p>
+              <p className="leading-relaxed">
+                Once the school administrator reviews and accepts your request, your subjects, diagnostic results, and personalized study plans will unlock immediately.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
   const hasContent = subjects.length > 0 || plans.length > 0 || !!suggestion
 
   return (
     <div className="space-y-5 animate-fade-up">
-
       {/* Header */}
       <div className="space-y-0.5">
         <h1 className="text-xl font-semibold tracking-tight">My Learning</h1>
@@ -494,7 +680,7 @@ export function StudyPlansClient({ user, initialPlans, gradebook, suggestion, er
       </div>
 
       {/* Daily check-in — marketplace / self-study students only */}
-      {isMarketplace && !checkedIn && (
+      {isMounted && isMarketplace && !checkedIn && (
         <div className="flex items-center justify-between gap-3 rounded-lg border border-gold/30 bg-gold/5 px-4 py-3">
           <div className="flex items-center gap-2">
             <BookOpen className="h-4 w-4 text-gold shrink-0" />

@@ -35,6 +35,7 @@ export default async function SubjectsPage() {
       sow={sowData.sow}
       currentWeekEntries={sowData.currentWeekEntries}
       predictions={predictions}
+      classId={sowData.classId} // <-- Pass classId as a prop
     />
   )
 }

@@ -4,6 +4,9 @@ import { useState } from 'react'
 import { Users, CheckCircle2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
+import { validateStudentInput, copyProtectionProps } from '@/lib/utils/validation'
+import { cn } from '@/lib/utils'
+import { toast } from 'sonner'
 
 interface Props { scene: any; onReady?: () => void }
 
@@ -12,8 +15,21 @@ export function ScenePeerTeach({ scene, onReady }: Props) {
   const { prompt: teachPrompt, rubric_points, model_explanation, min_words = 30 } = content ?? {}
   const [text, setText]           = useState('')
   const [submitted, setSubmitted] = useState(false)
+  const [validationError, setValidationError] = useState<string | null>(null)
   const wordCount = text.trim().split(/\s+/).filter(Boolean).length
   const canSubmit = wordCount >= min_words && !submitted
+
+  function handleSubmit() {
+    const validation = validateStudentInput(text, teachPrompt ?? '', min_words)
+    if (!validation.isValid) {
+      setValidationError(validation.feedback ?? 'Invalid input')
+      toast.error(validation.feedback ?? 'Invalid input')
+      return
+    }
+    setValidationError(null)
+    setSubmitted(true)
+    onReady?.()
+  }
 
   return (
     <div className="space-y-5">
@@ -22,7 +38,7 @@ export function ScenePeerTeach({ scene, onReady }: Props) {
         <h2 className="font-bold text-2xl leading-tight">{title}</h2>
       </div>
 
-      <div className="rounded-2xl border bg-card px-5 py-4">
+      <div {...copyProtectionProps} className={cn('rounded-2xl border bg-card px-5 py-4', copyProtectionProps.className)}>
         <p className="text-base leading-relaxed">{teachPrompt}</p>
       </div>
 
@@ -30,7 +46,7 @@ export function ScenePeerTeach({ scene, onReady }: Props) {
         <div className="space-y-2">
           <Textarea
             value={text}
-            onChange={(e) => setText(e.target.value)}
+            onChange={(e) => { setText(e.target.value); setValidationError(null) }}
             placeholder="Write your explanation here…"
             className="min-h-32 resize-none text-base leading-relaxed"
           />
@@ -38,10 +54,13 @@ export function ScenePeerTeach({ scene, onReady }: Props) {
             <span className={`text-xs ${wordCount >= min_words ? 'text-emerald-600' : 'text-muted-foreground'}`}>
               {wordCount} / {min_words} words minimum
             </span>
-            <Button size="sm" disabled={!canSubmit} onClick={() => { setSubmitted(true); onReady?.() }}>
+            <Button size="sm" disabled={!canSubmit} onClick={handleSubmit}>
               Submit to Tendo
             </Button>
           </div>
+          {validationError && (
+            <p className="text-xs text-rose-500 font-medium">⚠️ {validationError}</p>
+          )}
         </div>
       ) : (
         <div className="space-y-4">

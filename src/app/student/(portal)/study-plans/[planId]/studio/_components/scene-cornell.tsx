@@ -5,6 +5,8 @@ import { NotebookText, CheckCircle2 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { submitStudentNote, validateSceneNotes } from '@/lib/actions/student-notes'
+import { validateStudentInput, copyProtectionProps } from '@/lib/utils/validation'
+import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 
 interface Props {
@@ -26,9 +28,24 @@ export function SceneCornell({ scene, planId, subject, topic, onReady }: Props) 
   const [checking, setChecking]         = useState(false)
   const [feedback, setFeedback]         = useState<string | null>(null)
   const [passed, setPassed]             = useState(false)
+  const [validationError, setValidationError] = useState<string | null>(null)
+
+  function validateNotes(): boolean {
+    const combined = [studentNotes, summary].filter(Boolean).join('\n\n')
+    const promptText = (cue_questions ?? []).join(' ')
+    const validation = validateStudentInput(combined, promptText, 20)
+    if (!validation.isValid) {
+      setValidationError(validation.feedback ?? 'Invalid input')
+      toast.error(validation.feedback ?? 'Invalid input')
+      return false
+    }
+    setValidationError(null)
+    return true
+  }
 
   async function handleCheck() {
     if (!studentNotes.trim()) return
+    if (!validateNotes()) return
     setChecking(true)
     setFeedback(null)
     try {
@@ -54,6 +71,7 @@ export function SceneCornell({ scene, planId, subject, topic, onReady }: Props) 
 
   async function handleSave() {
     if (!studentNotes.trim()) return
+    if (!validateNotes()) return
     setSaving(true)
     try {
       const fullNote = [
@@ -98,7 +116,7 @@ export function SceneCornell({ scene, planId, subject, topic, onReady }: Props) 
           </p>
           <ul className="space-y-3 flex-1">
             {(cue_questions ?? []).map((q: string, i: number) => (
-              <li key={i} className="space-y-0.5">
+              <li key={i} {...copyProtectionProps} className={cn('space-y-0.5', copyProtectionProps.className)}>
                 <span className="text-[10px] font-bold text-gold/80 uppercase tracking-wide">Q{i + 1}</span>
                 <p className="text-xs text-foreground leading-snug">{q}</p>
               </li>
@@ -113,7 +131,7 @@ export function SceneCornell({ scene, planId, subject, topic, onReady }: Props) 
           </p>
           <textarea
             value={studentNotes}
-            onChange={(e) => setStudentNotes(e.target.value)}
+            onChange={(e) => { setStudentNotes(e.target.value); setValidationError(null) }}
             placeholder="Write your own notes here — use the cue questions on the left to guide you…"
             className="flex-1 min-h-[180px] w-full bg-transparent text-sm resize-none focus:outline-none placeholder:text-muted-foreground leading-relaxed"
           />
@@ -133,6 +151,10 @@ export function SceneCornell({ scene, planId, subject, topic, onReady }: Props) 
           className="w-full bg-transparent text-sm resize-none focus:outline-none placeholder:text-muted-foreground"
         />
       </div>
+
+      {validationError && (
+        <p className="text-xs text-rose-500 font-medium">⚠️ {validationError}</p>
+      )}
 
       {/* Feedback banner */}
       {feedback && (

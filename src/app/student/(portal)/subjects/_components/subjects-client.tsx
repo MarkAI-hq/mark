@@ -1,18 +1,28 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useTransition, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import {
   BookOpenCheck, TrendingUp, Clock, ChevronRight,
   CheckCircle2, AlertCircle, Target, Sparkles, Play,
+  Upload, Loader2, FileText, Check, Plus
 } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge }    from '@/components/ui/badge'
 import { Button }   from '@/components/ui/button'
 import { toast }    from 'sonner'
+import { Label }    from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import type { SubjectProgress, StudyPlan, StudentPrediction } from '@/lib/actions/student-dashboard'
 import { initiateFreeStudyPlan } from '@/lib/actions/student-dashboard'
+import { uploadStudentDocument } from '@/lib/actions/student-onboarding'
 
 interface Props {
   user:                any
@@ -21,6 +31,7 @@ interface Props {
   sow:                 any | null
   currentWeekEntries:  any[]
   predictions:         StudentPrediction[]
+  classId?:            string | null
 }
 
 const masteryColor: Record<string, string> = {
@@ -43,11 +54,29 @@ const masteryBorder: Record<string, string> = {
 }
 
 export function SubjectsClient({
-  user, subjectProgress, studyPlans, sow, currentWeekEntries, predictions,
+  user, subjectProgress, studyPlans, sow, currentWeekEntries, predictions, classId,
 }: Props) {
   const router = useRouter()
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const [initiating, startInitiate] = useTransition()
   const [initiatingSubject, setInitiatingSubject] = useState<string | null>(null)
+
+  // ── Document Upload State ──────────────────────────────────────────────────
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [docType, setDocType] = useState<string>('term_report')
+  const [uploadSuccess, setUploadSuccess] = useState(false)
+  const [uploading, startUpload] = useTransition()
+
+  // ── Sync upload state from onboarding ──────────────────────────────────────
+  const studentId = user?.user_id ?? user?.id
+  const [hasUploadedBefore, setHasUploadedBefore] = useState(false)
+
+  useEffect(() => {
+    if (studentId) {
+      const isUploaded = localStorage.getItem(`proof_uploaded_${studentId}`) === 'true'
+      setHasUploadedBefore(isUploaded)
+    }
+  }, [studentId])
 
   const pendingBySubject = studyPlans
     .filter((p) => p.status === 'pending' || p.status === 'sent')
@@ -83,7 +112,6 @@ export function SubjectsClient({
   ])).sort()
 
   function handleStudyNow(subject: string) {
-    // Pick first SoW topic for this subject as starting point
     const firstEntry = sow?.entries?.find((e: any) => e.subject === subject)
     const topic = firstEntry?.topic ?? `Introduction to ${subject}`
     setInitiatingSubject(subject)
@@ -98,9 +126,41 @@ export function SubjectsClient({
     })
   }
 
+  // ── Upload Document Form Handler ──────────────────────────────────────────
+  function handleDocumentSubmit() {
+    if (!selectedFile) {
+      toast.error('Please select a file to upload.')
+      return
+    }
+
+    const fd = new FormData()
+    fd.append('file', selectedFile)
+    fd.append('doc_type', docType)
+
+    startUpload(async () => {
+      const { error } = await uploadStudentDocument(fd)
+      if (error) {
+        toast.error(error.message)
+        return
+      }
+      toast.success('Document uploaded successfully!')
+      
+      if (studentId) {
+        localStorage.setItem(`proof_uploaded_${studentId}`, 'true')
+      }
+      
+      setUploadSuccess(true)
+      setHasUploadedBefore(true)
+      setSelectedFile(null)
+      if (fileInputRef.current) fileInputRef.current.value = ''
+    })
+  }
+
   const isMarketplace = user?.enrollment_source === 'marketplace'
 
   if (allSubjects.length === 0) {
+    const isPendingApproval = !classId
+
     return (
       <div className="space-y-4">
         <div>
@@ -108,16 +168,143 @@ export function SubjectsClient({
           <p className="text-muted-foreground text-sm mt-1">Your enrolled class subjects appear here.</p>
         </div>
         <Card>
-          <CardContent className="flex flex-col items-center justify-center py-16 text-center">
-            <BookOpenCheck className="h-10 w-10 text-muted-foreground/30 mb-3" />
-            <p className="font-medium text-muted-foreground">
-              {isMarketplace ? 'Setting up your subjects…' : 'No subjects yet'}
-            </p>
-            <p className="text-sm text-muted-foreground mt-1">
-              {isMarketplace
-                ? 'We’re preparing your subjects for this level. Check back shortly — if this persists, contact support.'
-                : 'Ask your teacher to add a Scheme of Work for your class.'}
-            </p>
+          <CardContent className="flex flex-col items-center justify-center py-12 text-center max-w-lg mx-auto">
+            {isPendingApproval ? (
+              <>
+                <div className="relative mb-4">
+                  <BookOpenCheck className="h-10 w-10 text-muted-foreground/30" />
+                  <div className="absolute -bottom-1 -right-1 rounded-full bg-amber-500 p-0.5 text-white animate-pulse">
+                    <Clock className="h-3.5 w-3.5" />
+                  </div>
+                </div>
+                <h3 className="font-semibold text-lg text-foreground">Account Pending Approval</h3>
+                <p className="text-sm text-muted-foreground mt-2 max-w-sm">
+                  Your request to join a class at{' '}
+                  <span className="font-semibold text-foreground">
+                    {user?.organization_name ?? 'your school'}
+                  </span>{' '}
+                  is waiting to be approved by a school administrator.
+                </p>
+
+                {/* ── Proof of Class Document Upload Section ─────────────────── */}
+                <div className="w-full mt-6 border border-border/70 rounded-xl p-4 bg-muted/20 text-left space-y-4">
+                  <div className="flex items-start gap-2.5">
+                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#C9A84C]/10 text-[#C9A84C]">
+                      <Upload className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold text-foreground">School Approval Status</p>
+                      <p className="text-[11px] text-muted-foreground mt-0.5 leading-normal">
+                        Provisional academic proof helps the school administrator verify your class assignment and approve your account faster.
+                      </p>
+                    </div>
+                  </div>
+
+                  {hasUploadedBefore || uploadSuccess ? (
+                    <div className="flex items-start gap-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 p-3 text-emerald-800 dark:text-emerald-300 text-xs font-medium w-full">
+                      <Check className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" />
+                      <div>
+                        <p className="font-semibold">Provisional proof uploaded!</p>
+                        <p className="text-[11px] text-muted-foreground/80 mt-0.5 leading-normal font-normal">
+                          We have received your verification document. Your school administrator is currently reviewing it.
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-3 pt-1">
+                      <div className="grid grid-cols-2 gap-2.5">
+                        <div className="space-y-1">
+                          <Label className="text-[10px] uppercase font-semibold text-muted-foreground tracking-wider">Document Type</Label>
+                          <Select value={docType} onValueChange={setDocType}>
+                            <SelectTrigger className="h-8 text-xs">
+                              <SelectValue placeholder="Select type" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="term_report">Term Report Card</SelectItem>
+                              <SelectItem value="prior_results">Prior Exam Results</SelectItem>
+                              <SelectItem value="other">Other Document</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="space-y-1">
+                          <Label className="text-[10px] uppercase font-semibold text-muted-foreground tracking-wider">Choose File</Label>
+                          <div className="relative">
+                            <input
+                              ref={fileInputRef}
+                              type="file"
+                              accept="image/*,application/pdf"
+                              onChange={(e) => {
+                                setSelectedFile(e.target.files?.[0] ?? null)
+                                setUploadSuccess(false)
+                              }}
+                              className="hidden"
+                              id="class-doc-file"
+                            />
+                            <label
+                              htmlFor="class-doc-file"
+                              className="flex h-8 w-full items-center justify-center gap-1 px-3 border border-input rounded-lg bg-background hover:bg-muted text-xs cursor-pointer truncate font-medium transition-colors"
+                            >
+                              <FileText className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                              <span className="truncate">{selectedFile ? selectedFile.name : 'Select PDF or Photo'}</span>
+                            </label>
+                          </div>
+                        </div>
+                      </div>
+
+                      {selectedFile && (
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            onClick={handleDocumentSubmit}
+                            disabled={uploading}
+                            className="h-8 text-xs font-bold flex-1"
+                          >
+                            {uploading ? (
+                              <>
+                                <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
+                                Uploading…
+                              </>
+                            ) : (
+                              <>
+                                <Plus className="h-3.5 w-3.5 mr-1" />
+                                Upload File to Teacher
+                              </>
+                            )}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => setSelectedFile(null)}
+                            disabled={uploading}
+                            className="h-8 text-xs text-muted-foreground"
+                          >
+                            Cancel
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                <div className="mt-4 rounded-xl bg-amber-500/5 border border-amber-500/10 p-4 text-xs text-amber-700 dark:text-amber-300 text-left w-full">
+                  <p className="font-semibold mb-1">What happens next?</p>
+                  <p className="leading-relaxed">
+                    Once the school administrator reviews and accepts your request, your subjects, diagnostic results, and personalized study plans will unlock immediately.
+                  </p>
+                </div>
+              </>
+            ) : (
+              <>
+                <BookOpenCheck className="h-10 w-10 text-muted-foreground/30 mb-3" />
+                <p className="font-semibold text-foreground">No subjects yet</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  {isMarketplace
+                    ? 'We’re preparing your subjects for this level. Check back shortly — if this persists, contact support.'
+                    : 'Ask your teacher to add a Scheme of Work for your class.'}
+                </p>
+              </>
+            )}
           </CardContent>
         </Card>
       </div>

@@ -121,18 +121,6 @@ export default function RegisterSchoolPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-surface-raised/30">
-      {/* Header */}
-      <header className="border-b border-border/40 bg-background/80 backdrop-blur-sm">
-        <div className="container mx-auto flex h-14 max-w-xl items-center justify-between px-4">
-          <Link href="/" className="font-semibold tracking-tight text-foreground">
-            Mark
-          </Link>
-          <Link href="/schools" className="text-sm text-muted-foreground hover:text-foreground">
-            Browse Schools
-          </Link>
-        </div>
-      </header>
-
       <main className="container mx-auto max-w-xl px-4 py-12">
         {/* Value prop */}
         <div className="mb-8 text-center">

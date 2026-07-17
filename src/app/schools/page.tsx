@@ -1,55 +1,77 @@
 import { Metadata } from 'next'
 import Link from 'next/link'
-import { GraduationCap, MapPin, BadgeCheck, Search } from 'lucide-react'
+import { GraduationCap, MapPin, BadgeCheck, ArrowRight, ClipboardCheck } from 'lucide-react'
 import { listPublicSchools } from '@/lib/actions/enrollment'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 
 export const metadata: Metadata = {
-  title: 'Find a School — Mark',
-  description: 'Discover AI-powered schools on the Mark platform. Study free. Pay only for your certificate.',
+  title: 'Find your school — Mirror Intelligence',
+  description:
+    'The school that adapts to the learner, not the other way round. One-on-one AI tutoring, adapted to each learner — UNEB O & A Level, Uganda · Kenya · Rwanda.',
 }
 
 export default async function SchoolsPage() {
   const { data } = await listPublicSchools(1, 50)
   const schools = data?.schools ?? []
 
+  const primarySchoolCode = schools[0]?.school_code
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-surface-raised/20">
-      {/* Header */}
-      <header className="border-b border-border/40 bg-background/80 backdrop-blur-sm">
-        <div className="container mx-auto flex h-14 max-w-5xl items-center justify-between px-4">
-          <Link href="/" className="font-semibold tracking-tight text-foreground">
-            Mark
-          </Link>
-          <div className="flex items-center gap-3">
-            <Button asChild variant="outline" size="sm">
-              <Link href="/schools/register">Register your school</Link>
-            </Button>
-          </div>
-        </div>
-      </header>
-
       <main className="container mx-auto max-w-5xl px-4 py-12">
-        {/* Hero */}
-        <div className="mb-12 text-center">
+        {/* Hero — run a school */}
+        <div className="mb-12 rounded-3xl border border-[#C9A84C]/30 bg-gradient-to-br from-[#FBF5E6] to-background p-8 text-center dark:from-[#1a1600] dark:to-background sm:p-14">
+          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-[#C9A84C]/10">
+            <GraduationCap className="h-7 w-7 text-[#C9A84C]" />
+          </div>
           <h1 className="text-3xl font-bold text-foreground sm:text-4xl">
-            Find your school on Mark
+            Run a school for free
           </h1>
           <p className="mx-auto mt-3 max-w-xl text-muted-foreground">
-            AI-powered schools where you study for free and pay only when you want a certificate.
+            AI runs your operations. You work 2–4 hours a week. Your school earns ~$15,000/year.
           </p>
-          <div className="mt-6 flex items-center justify-center gap-6 text-sm text-muted-foreground">
+          <Button asChild size="lg" className="mt-6 bg-[#C9A84C] text-white hover:bg-[#A07830]">
+            <Link href="/schools/register">Register Your School — Free</Link>
+          </Button>
+        </div>
+
+        {/* Secondary — find your school */}
+        <div className="mb-12 text-center">
+          <h2 className="text-2xl font-bold text-foreground sm:text-3xl">
+            Find your Mirror school
+          </h2>
+          <p className="mx-auto mt-3 max-w-xl text-muted-foreground">
+            The school that adapts to the learner, not the other way round — a Personalized Learning
+            Assistant, one-on-one, priced so every learner can have it.
+          </p>
+          <div className="mt-6 flex flex-wrap items-center justify-center gap-6 text-sm text-muted-foreground">
             {[
-              ['Study for free', '✓'],
-              ['AI-graded assessments', '✓'],
-              ['Verified certificates', '✓'],
+              ['Available 24/7', '✓'],
+              ['Repeat exams until mastery', '✓'],
+              ['Registered UNEB candidate', '✓'],
             ].map(([label, check]) => (
               <div key={label} className="flex items-center gap-1.5">
                 <span className="text-[#C9A84C] font-bold">{check}</span>
                 <span>{label}</span>
               </div>
             ))}
+          </div>
+          <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+            {primarySchoolCode && (
+              <Button asChild size="lg" className="gap-2 bg-[#C9A84C] text-white hover:bg-[#A07830]">
+                <Link href={`/schools/${primarySchoolCode}/apply`}>
+                  <ClipboardCheck className="h-4 w-4" />
+                  Start Admissions
+                </Link>
+              </Button>
+            )}
+            <Button asChild variant="outline" size="lg">
+              <Link href="/program">
+                See how it works
+                <ArrowRight className="ml-1.5 h-4 w-4" />
+              </Link>
+            </Button>
           </div>
         </div>
 
@@ -70,7 +92,7 @@ export default async function SchoolsPage() {
             {schools.map((school) => (
               <Link
                 key={school.organization_id}
-                href={`/enroll/${school.school_code}`}
+                href={`/schools/${school.school_code}`}
                 className="group block rounded-2xl border border-border/50 bg-card p-5 shadow-sm transition-all hover:border-[#C9A84C]/40 hover:shadow-md"
               >
                 <div className="mb-3 flex items-start justify-between">
@@ -106,23 +128,12 @@ export default async function SchoolsPage() {
                   </p>
                 )}
                 <p className="mt-3 text-xs font-medium text-[#C9A84C]">
-                  Enroll free →
+                  Apply now →
                 </p>
               </Link>
             ))}
           </div>
         )}
-
-        {/* CTA for schools */}
-        <div className="mt-16 rounded-2xl border border-border/50 bg-card p-8 text-center">
-          <h2 className="text-xl font-bold text-foreground">Run a school for free</h2>
-          <p className="mt-2 text-sm text-muted-foreground">
-            AI runs your operations. You work 2–4 hours a week. Your school earns ~$15,000/year.
-          </p>
-          <Button asChild className="mt-4 bg-[#C9A84C] text-white hover:bg-[#A07830]">
-            <Link href="/schools/register">Register Your School — Free</Link>
-          </Button>
-        </div>
       </main>
     </div>
   )

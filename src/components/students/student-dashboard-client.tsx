@@ -2,16 +2,22 @@
 
 // src/components/students/student-dashboard-client.tsx
 
+import { useState, useTransition, useEffect, useRef } from 'react'
 import {
   TrendingUp, BookOpen, Target, Award,
   AlertCircle, CheckCircle2, Clock, Download, Flame,
   Calendar, ChevronRight, ArrowRight, RotateCcw,
+  BookOpenCheck, Upload, FileText, Check, Plus, Loader2, Sparkles, ShieldAlert
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge }          from '@/components/ui/badge'
 import { Progress }       from '@/components/ui/progress'
 import { Button }         from '@/components/ui/button'
+import { Label }          from '@/components/ui/label'
 import { ErrorTypeLabel } from '@/components/ui/error-type-label'
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select'
 import Link               from 'next/link'
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -19,11 +25,13 @@ import {
   PolarAngleAxis, PolarRadiusAxis,
 } from 'recharts'
 import { format } from 'date-fns'
+import { toast }                from 'sonner'
 import { ExamHistoryDetail }    from '@/components/students/exam-history-detail'
 import { LearningToolkits }     from '@/components/students/learning-toolkits'
 import { CertPreviewAnchor }    from '@/components/students/cert-preview-anchor'
 import { NextStep }             from '@/components/students/next-step'
 import type { ExamHistoryItem, LearningTool, StudentCognitiveProfile, StudyPlan, SocialProof, SubjectProgress, StudentPrediction, NextAction } from '@/lib/actions/student-dashboard'
+import { uploadStudentDocument } from '@/lib/actions/student-onboarding'
 
 const LESSON_TYPE_CONFIG: Record<string, { label: string; color: string }> = {
   catch_up:     { label: 'Catch-Up',     color: 'bg-blue-100 text-blue-800' },
@@ -49,16 +57,11 @@ interface Props {
   predictions?:        StudentPrediction[]
   currentWeekEntries?: any[]
   nextAction?:         NextAction | null
+  classId?:            string | null // <-- Gating prop passed from dashboard page
 }
 
 const perfColor = (p: number) =>
   p >= 80 ? 'text-emerald-600' : p >= 65 ? 'text-amber-600' : p >= 50 ? 'text-orange-600' : 'text-rose-600'
-
-const perfBg = (p: number) =>
-  p >= 80 ? 'bg-emerald-50 border-emerald-200'
-  : p >= 65 ? 'bg-amber-50 border-amber-200'
-  : p >= 50 ? 'bg-orange-50 border-orange-200'
-  : 'bg-rose-50 border-rose-200'
 
 const perfLabel = (p: number) =>
   p >= 80 ? 'Excellent' : p >= 65 ? 'Good' : p >= 50 ? 'Developing' : 'Needs Support'
@@ -72,8 +75,30 @@ const statusColor: Record<string, string> = {
 }
 
 export function StudentDashboardClient({
-  user, analytics, currentProfile, submissions, examHistory, tools, studyPlans = [], streak = 0, socialProof, subjectProgress = [], predictions = [], currentWeekEntries = [], nextAction = null,
+  user, analytics, currentProfile, submissions, examHistory, tools, studyPlans = [], streak = 0, socialProof, subjectProgress = [], predictions = [], currentWeekEntries = [], nextAction = null, classId,
 }: Props) {
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // ── Client-Side Local State ────────────────────────────────────────────────
+  const [dataSaver, setDataSaver] = useState(false)
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [docType, setDocType] = useState<string>('term_report')
+  const [uploadSuccess, setUploadSuccess] = useState(false)
+  
+  const [uploading, startUpload] = useTransition()
+  const [hasUploadedBefore, setHasUploadedBefore] = useState(false)
+  const studentId = user?.user_id ?? user?.id
+
+  useEffect(() => {
+    // Sync local storage preference
+    setDataSaver(localStorage.getItem('data_saver_mode') === 'true')
+    
+    if (studentId) {
+      const isUploaded = localStorage.getItem(`proof_uploaded_${studentId}`) === 'true'
+      setHasUploadedBefore(isUploaded)
+    }
+  }, [studentId])
+
   // pick the most urgent prediction (lowest gap_to_next_grade with fewest weeks)
   const topPrediction = predictions.length > 0
     ? [...predictions].sort((a, b) => {
@@ -151,6 +176,192 @@ export function StudentDashboardClient({
     }))
     .sort((a, b) => a.next_review_date!.localeCompare(b.next_review_date!))
 
+  // ── Toggle Data Saver Mode ─────────────────────────────────────────────────
+  function handleToggleDataSaver() {
+    const next = !dataSaver
+    setDataSaver(next)
+    localStorage.setItem('data_saver_mode', String(next))
+    if (next) {
+      toast.success('Data Saver Active: heavy audio files are bypassed.', {
+        description: 'Lesson Player will fallback to client-side Web Speech to save mobile data charges.',
+      })
+    } else {
+      toast.success('Data Saver Deactivated: high-quality studio audio enabled.')
+    }
+  }
+
+  // ── Document Upload Submission ─────────────────────────────────────────────
+  function handleDocumentSubmit() {
+    if (!selectedFile) {
+      toast.error('Please select a file to upload.')
+      return
+    }
+
+    const fd = new FormData()
+    fd.append('file', selectedFile)
+    fd.append('doc_type', docType)
+
+    startUpload(async () => {
+      const { error } = await uploadStudentDocument(fd)
+      if (error) {
+        toast.error(error.message)
+        return
+      }
+      toast.success('Confirmation document uploaded successfully!')
+      if (studentId) {
+        localStorage.setItem(`proof_uploaded_${studentId}`, 'true')
+      }
+      setUploadSuccess(true)
+      setHasUploadedBefore(true)
+      setSelectedFile(null)
+      if (fileInputRef.current) fileInputRef.current.value = ''
+    })
+  }
+
+  // ── Gating: Render Pending Approval State ──────────────────────────────────
+  const hasClass = !!classId
+  if (!hasClass) {
+    return (
+      <div className="space-y-4">
+        <div>
+          <h1 className="text-xl font-semibold tracking-tight font-sans">My Dashboard</h1>
+          <p className="text-muted-foreground text-sm mt-1">Gaining structured access to school subjects and performance targets.</p>
+        </div>
+        
+        <Card className="shadow-sm">
+          <CardContent className="flex flex-col items-center justify-center py-12 text-center max-w-lg mx-auto">
+            <div className="relative mb-4">
+              <BookOpenCheck className="h-10 w-10 text-muted-foreground/30 animate-pulse" />
+              <div className="absolute -bottom-1 -right-1 rounded-full bg-amber-500 p-0.5 text-white animate-pulse">
+                <Clock className="h-3.5 w-3.5" />
+              </div>
+            </div>
+            
+            <h3 className="font-semibold text-lg text-foreground font-sans">Account Verification Required</h3>
+            <p className="text-sm text-muted-foreground mt-2 px-3">
+              Your class registration request at{' '}
+              <span className="font-semibold text-foreground">
+                {user?.organization_name ?? 'your school'}
+              </span>{' '}
+              is waiting to be processed by a school administrator.
+            </p>
+
+            {/* ── Document Upload Widget ── */}
+            <div className="w-full mt-6 border border-border/70 rounded-xl p-4 bg-muted/20 text-left space-y-4">
+              <div className="flex items-start gap-2.5">
+                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#C9A84C]/10 text-[#C9A84C]">
+                  <Upload className="h-4 w-4" />
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-foreground">Upload class confirmation document</p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5 leading-normal">
+                    Submit a photo of your registration form, report card, or fee receipts so your administrator can verify and accept you faster.
+                  </p>
+                </div>
+              </div>
+
+              {hasUploadedBefore || uploadSuccess ? (
+                <div className="flex items-start gap-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 p-3 text-emerald-800 dark:text-emerald-300 text-xs font-medium w-full">
+                  <Check className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-semibold">Confirmation document submitted!</p>
+                    <p className="text-[11px] text-muted-foreground/80 mt-0.5 leading-normal font-normal">
+                      We have received your proof. An administrator is currently reviewing it.
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-3 pt-1">
+                  <div className="grid grid-cols-2 gap-2.5">
+                    <div className="space-y-1">
+                      <Label className="text-[10px] uppercase font-semibold text-muted-foreground tracking-wider">Document Type</Label>
+                      <Select value={docType} onValueChange={setDocType}>
+                        <SelectTrigger className="h-8 text-xs">
+                          <SelectValue placeholder="Select type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="term_report">Term Report Card</SelectItem>
+                          <SelectItem value="prior_results">Prior Exam Results</SelectItem>
+                          <SelectItem value="other">Other Document</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-1">
+                      <Label className="text-[10px] uppercase font-semibold text-muted-foreground tracking-wider">Choose File</Label>
+                      <div className="relative">
+                        <input
+                          ref={fileInputRef}
+                          type="file"
+                          accept="image/*,application/pdf"
+                          onChange={(e) => {
+                            setSelectedFile(e.target.files?.[0] ?? null)
+                            setUploadSuccess(false)
+                          }}
+                          className="hidden"
+                          id="dashboard-doc-file"
+                        />
+                        <label
+                          htmlFor="dashboard-doc-file"
+                          className="flex h-8 w-full items-center justify-center gap-1 px-3 border border-input rounded-lg bg-background hover:bg-muted text-xs cursor-pointer truncate font-medium transition-colors"
+                        >
+                          <FileText className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                          <span className="truncate">{selectedFile ? selectedFile.name : 'Select PDF or Photo'}</span>
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+
+                  {selectedFile && (
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        onClick={handleDocumentSubmit}
+                        disabled={uploading}
+                        className="h-8 text-xs font-bold flex-1"
+                      >
+                        {uploading ? (
+                          <>
+                            <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
+                            Uploading…
+                          </>
+                        ) : (
+                          <>
+                            <Plus className="h-3.5 w-3.5 mr-1" />
+                            Submit Confirmation
+                          </>
+                        )}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setSelectedFile(null)}
+                        disabled={uploading}
+                        className="h-8 text-xs text-muted-foreground"
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div className="mt-4 rounded-xl bg-amber-500/5 border border-amber-500/10 p-4 text-xs text-amber-700 dark:text-amber-300 text-left w-full flex items-start gap-2.5">
+              <ShieldAlert className="h-4 w-4 shrink-0 text-amber-500 mt-0.5" />
+              <div>
+                <p className="font-semibold">Need help?</p>
+                <p className="leading-relaxed mt-0.5">
+                  Your registration must be confirmed before lessons, performance metrics, and subject progressions can generate. Talk to your coordinator if this takes longer than expected.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6">
 
@@ -216,25 +427,43 @@ export function StudentDashboardClient({
       )}
 
       {/* ── Welcome header ────────────────────────────────────────────── */}
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex items-start justify-between gap-4 flex-wrap sm:flex-nowrap">
         <div>
           <h1 className="text-xl font-semibold tracking-tight">Welcome back, {firstName}</h1>
           <p className="text-muted-foreground text-sm mt-1">
             Keep the momentum going — every session counts.
           </p>
         </div>
-        {currentProfile && (
+        <div className="flex items-center gap-2 shrink-0">
+          {/* ── Data Saver Mode Toggle Button ── */}
           <Button
-            variant="outline" size="sm" onClick={handleCompassDownload}
-            className="shrink-0 gap-2 border-gold/30 text-gold hover:bg-gold/5"
+            variant="outline"
+            size="sm"
+            onClick={handleToggleDataSaver}
+            className={`gap-1.5 border-dashed transition-all ${
+              dataSaver
+                ? 'border-orange-500/50 bg-orange-50/50 text-orange-600 hover:bg-orange-50 hover:text-orange-700'
+                : 'text-muted-foreground hover:bg-muted/50'
+            }`}
+            title={dataSaver ? "Data Saver is Active" : "Enable Data Saver Mode"}
           >
-            <Download className="h-4 w-4" />
-            <span className="hidden sm:inline">Learning Compass</span>
+            <Sparkles className={`h-3.5 w-3.5 ${dataSaver ? 'text-orange-500 animate-pulse' : ''}`} />
+            {dataSaver ? 'Data Saver On' : 'Data Saver'}
           </Button>
-        )}
+
+          {currentProfile && (
+            <Button
+              variant="outline" size="sm" onClick={handleCompassDownload}
+              className="gap-2 border-gold/30 text-gold hover:bg-gold/5"
+            >
+              <Download className="h-4 w-4" />
+              <span className="hidden sm:inline">Learning Compass</span>
+            </Button>
+          )}
+        </div>
       </div>
 
-      {/* ── Learning Activity (always visible) ───────────────────────── */}
+      {/* ── Learning Activity ───────────────────────────────────────── */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <Card className={streak > 0 ? 'border-orange-200 bg-orange-50/50' : ''}>
           <CardContent className="pt-5 pb-4">
@@ -305,12 +534,12 @@ export function StudentDashboardClient({
         <div className="rounded-xl border border-violet-200 dark:border-violet-800 bg-violet-50 dark:bg-violet-900/20 p-4 space-y-3">
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
-              <RotateCcw className="h-4 w-4 text-violet-600 dark:text-violet-400" />
+              <RotateCcw className="h-4 w-4 text-violet-600 dark:text-violet-400 animate-spin" style={{ animationDuration: '6s' }} />
               <p className="text-sm font-semibold text-violet-900 dark:text-violet-200">
-                {dueReviews.length === 1 ? '1 topic due for review' : `${dueReviews.length} topics due for review`}
+                {dueReviews.length === 1 ? '1 memory review due today' : `${dueReviews.length} memory reviews due today`}
               </p>
             </div>
-            <span className="text-[11px] text-violet-600 dark:text-violet-400 font-medium">Spaced repetition</span>
+            <span className="text-[11px] text-violet-600 dark:text-violet-400 font-bold uppercase tracking-wider scale-95 origin-right">Active Recall</span>
           </div>
           <div className="space-y-1.5">
             {dueReviews.slice(0, 5).map((plan) => (
@@ -661,9 +890,7 @@ export function StudentDashboardClient({
         <Card className="border-dashed">
           <CardContent className="flex items-center gap-4 py-5 px-5">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-muted">
-              <BookOpen className="h-5 w-5 text-muted-foreground/50" />
-            </div>
-            <div>
+              <BookOpen className="h-5 w-5 text-muted-foreground/30 mb-1" />
               <p className="text-sm font-medium text-muted-foreground">Assessment results appear here once your teacher grades your first assignment</p>
               <Link href="/student/subjects" className="text-xs text-gold hover:underline mt-0.5 inline-block">
                 Go study a subject now →

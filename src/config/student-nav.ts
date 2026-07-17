@@ -13,6 +13,7 @@ import {
   Gift,
   ArrowRightLeft,
   GraduationCap,
+  ClipboardList,
   LucideIcon,
 } from 'lucide-react'
 
@@ -36,5 +37,6 @@ export const studentNavItems: StudentNavItem[] = [
   { title: 'Certificates',   href: '/student/certificates',  icon: Award                                     },
   { title: 'Exams',          href: '/student/exams',         icon: FileCheck                                 },
   { title: 'Welcome Pack',   href: '/student/welcome-pack',  icon: Gift                                      },
+  { title: 'Applications',   href: '/student/applications',  icon: ClipboardList                             },
   { title: 'Transfer',       href: '/student/transfer',      icon: ArrowRightLeft, hideForMarketplace: true  },
 ]

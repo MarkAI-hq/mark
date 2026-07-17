@@ -133,8 +133,8 @@ export default function ApplyPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-surface-raised/20">
-      <header className="border-b border-border/40 bg-background/80 backdrop-blur-sm">
-        <div className="container mx-auto flex h-14 max-w-2xl items-center justify-between px-4">
+      <main className="container mx-auto max-w-xl px-4 py-10">
+        <div className="mb-6 flex items-center justify-between">
           <Link
             href={`/schools/${schoolCode}`}
             className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
@@ -149,9 +149,7 @@ export default function ApplyPage() {
             <span className="font-semibold text-sm">Apply to {schoolCode.toUpperCase()}</span>
           </div>
         </div>
-      </header>
 
-      <main className="container mx-auto max-w-xl px-4 py-10">
         {/* Step indicator */}
         <div className="mb-8 flex items-center justify-center gap-2">
           {steps.map(({ n, label }) => (

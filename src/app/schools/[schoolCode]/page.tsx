@@ -48,19 +48,14 @@ export default async function SchoolProfilePage({ params }: Props) {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-surface-raised/20">
-      {/* Header */}
-      <header className="border-b border-border/40 bg-background/80 backdrop-blur-sm">
-        <div className="container mx-auto flex h-14 max-w-5xl items-center justify-between px-4">
-          <Link href="/schools" className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
-            ← All schools
-          </Link>
-          <Link href="/" className="font-semibold tracking-tight text-foreground">
-            Mark
-          </Link>
-        </div>
-      </header>
-
       <main className="container mx-auto max-w-3xl px-4 py-12">
+        <Link
+          href="/schools"
+          className="mb-6 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+        >
+          ← All schools
+        </Link>
+
         {/* School hero */}
         <div className="mb-8 rounded-2xl border border-border/50 bg-card p-8">
           <div className="flex items-start justify-between gap-4">

@@ -13,6 +13,9 @@ import { Input }  from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { toast }  from 'sonner'
 
+// ── Import the unified fetcher ──────────────────────────────────────────────
+import { fetcher } from '@/lib/fetch' // <-- Adjust this path to your fetch.ts file
+
 const formSchema = z.object({
   email: z.string().email({ message: 'Enter a valid email address' }),
 })
@@ -25,26 +28,22 @@ export default function ForgotPasswordForm() {
   })
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
-    try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/auth/forgot-password`, {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify(values),
-      })
+    // Utilize the unified fetcher to handle base URL, headers, and token parsing [2]
+    const res = await fetcher<any>('/auth/forgot-password', {
+      method:  'POST',
+      body:    JSON.stringify(values),
+    })
 
-      if (res.ok) {
-        toast.success('Reset link sent', {
-          description: 'Check your inbox — the link expires in 1 hour.',
-        })
-        setTimeout(() => router.push('/login'), 2000)
-      } else {
-        const errorData = await res.json()
-        toast.error('Request failed', {
-          description: errorData.message || 'Something went wrong. Please try again.',
-        })
-      }
-    } catch {
-      toast.error('Network error', { description: 'Unable to connect. Please try again later.' })
+    if (!res.error) {
+      toast.success('Reset link sent', {
+        description: 'Check your inbox — the link expires in 1 hour.',
+      })
+      setTimeout(() => router.push('/login'), 2000)
+    } else {
+      // Standard fetcher sanitizes errors and handles server-side exceptions [2]
+      toast.error('Request failed', {
+        description: res.error.message || 'Something went wrong. Please try again.',
+      })
     }
   }
 

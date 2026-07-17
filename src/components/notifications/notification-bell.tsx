@@ -125,9 +125,12 @@ export function NotificationBell() {
   const router                             = useRouter()
   const [notifications, setNotifications] = useState<AppNotification[]>([])
   const [open,          setOpen]          = useState(false)
+  const [mounted,       setMounted]       = useState(false)
   const [isPending,     startTransition]  = useTransition()
 
   const unreadCount = notifications.filter((n) => !n.is_read).length
+
+  useEffect(() => { setMounted(true) }, [])
 
   async function fetchNotifications() {
     const { data } = await getNotifications()
@@ -174,6 +177,11 @@ export function NotificationBell() {
 
   const todayItems   = notifications.filter((n) => isToday(new Date(n.createdAt)))
   const earlierItems = notifications.filter((n) => !isToday(new Date(n.createdAt)))
+
+  // Radix Popover derives `aria-controls` from useId; rendering it only after
+  // mount keeps the server and first client paint identical (same placeholder),
+  // avoiding the hydration id mismatch. Mirrors the ThemeToggle pattern.
+  if (!mounted) return <div className="h-9 w-9" />
 
   return (
     <Popover open={open} onOpenChange={handleOpenChange}>
@@ -257,6 +265,13 @@ function NotificationItem({
   notification: AppNotification
   onClick: () => void
 }) {
+  // Defensive parser check: catches both camelCase and snake_case models
+  const rawDate = notification.createdAt ?? (notification as any).created_at
+  const dateObj = rawDate ? new Date(rawDate) : new Date()
+  const displayTime = isNaN(dateObj.getTime()) 
+    ? 'Recently' 
+    : formatDistanceToNow(dateObj, { addSuffix: true })
+
   return (
     <li
       className={cn(
@@ -281,9 +296,7 @@ function NotificationItem({
           {notification.message}
         </p>
         <p className="text-[11px] text-muted-foreground/70">
-          {formatDistanceToNow(new Date(notification.createdAt), {
-            addSuffix: true,
-          })}
+          {displayTime}
         </p>
       </div>
 

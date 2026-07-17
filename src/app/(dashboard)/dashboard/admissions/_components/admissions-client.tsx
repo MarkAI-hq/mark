@@ -33,6 +33,7 @@ const FIT_CONFIG: Record<string, { label: string; color: string; bg: string }> =
 
 const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
   pending: { label: 'Pending', color: 'text-amber-600 bg-amber-50 border-amber-200' },
+  offer_sent: { label: 'Offer sent', color: 'text-[#C9A84C] bg-[#FBF5E6] border-[#C9A84C]/30' },
   approved: { label: 'Approved', color: 'text-emerald-600 bg-emerald-50 border-emerald-200' },
   declined: { label: 'Declined', color: 'text-red-600 bg-red-50 border-red-200' },
   more_info: { label: 'More info', color: 'text-blue-600 bg-blue-50 border-blue-200' },
@@ -235,7 +236,9 @@ export function AdmissionsClient({ initialApplications, total }: Props) {
   }
 
   const pending = apps.filter((a) => a.status === 'pending' || a.status === 'more_info')
-  const reviewed = apps.filter((a) => a.status === 'approved' || a.status === 'declined')
+  const reviewed = apps.filter(
+    (a) => a.status === 'approved' || a.status === 'declined' || a.status === 'offer_sent',
+  )
   const strongFit = pending.filter((a) => a.ai_fit_category === 'strong_fit').length
   const borderline = pending.filter((a) => a.ai_fit_category === 'borderline').length
   const nonTraditional = pending.filter((a) => a.ai_fit_category === 'non_traditional').length

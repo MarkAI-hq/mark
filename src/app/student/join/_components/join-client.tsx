@@ -1,6 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+// src/app/student/join/_components/join-client.tsx
+
+import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   Sparkles,
@@ -14,6 +16,12 @@ import {
   Clock,
   Hourglass,
   School,
+  AlertCircle,
+  Upload,
+  FileText,
+  Check,
+  Plus,
+  Wallet,
 } from 'lucide-react'
 
 import { toast } from '@/hooks/use-toast'
@@ -30,7 +38,7 @@ import {
 import { Card, CardContent } from '@/components/ui/card'
 import { selfEnroll, checkEnrolStatus } from '@/lib/actions/enrollment'
 import { verifyEnrolOtp, completeWhatsappEnrol } from '@/lib/actions/student-auth'
-import { updateStudentPaceSettings } from '@/lib/actions/study-plans'
+import { updateStudentPaceSettings, type NudgeChannel } from '@/lib/actions/study-plans'
 import {
   startDiagnostic,
   submitDiagnostic,
@@ -38,6 +46,9 @@ import {
   getSelfEnrollSubjects,
   generateDemoLesson,
   submitEnrollmentRequest,
+  uploadStudentDocument,
+  initiateAdmissionPayment,
+  getAdmissionFeeStatus,
   type DiagnosticSubject,
   type SubmitDiagnosticResult,
   type SelfEnrollClass,
@@ -45,9 +56,14 @@ import {
   type DemoLesson,
 } from '@/lib/actions/student-onboarding'
 
+import { LessonPlayer } from '@/app/student/(portal)/study-plans/[planId]/studio/_components/lesson-player'
+import { useKeyboardBlocker, copyProtectionProps } from '@/lib/utils/validation'
+import { Badge } from '@/components/ui/badge'
+
 type Step =
   | 'details'
   | 'verify'
+  | 'payment'
   | 'class'
   | 'subjects'
   | 'demo'
@@ -62,6 +78,25 @@ const DAYS = [
   { i: 0, label: 'Sun' },
 ]
 
+const PACING_PRESETS = [
+  { label: 'Light', hours: 5, desc: 'Quick check-ins' },
+  { label: 'Standard', hours: 10, desc: 'Recommended' },
+  { label: 'Intense', hours: 18, desc: 'Exam prep' },
+]
+
+// ── Inspiring Educational Fallback Illustration Mappings ───────────────────
+const SUBJECT_IMAGES: Record<string, string> = {
+  physics: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=600&auto=format&fit=crop',
+  chemistry: 'https://images.unsplash.com/photo-1532187643603-ba119ca4109e?w=600&auto=format&fit=crop',
+  biology: 'https://images.unsplash.com/photo-1530026405186-ed1ea0ac7a63?w=600&auto=format&fit=crop',
+  mathematics: 'https://images.unsplash.com/photo-1509228468518-180dd4864904?w=600&auto=format&fit=crop',
+  math: 'https://images.unsplash.com/photo-1509228468518-180dd4864904?w=600&auto=format&fit=crop',
+  english: 'https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?w=600&auto=format&fit=crop',
+  geography: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=600&auto=format&fit=crop',
+  history: 'https://images.unsplash.com/photo-1461360370896-922624d12aa1?w=600&auto=format&fit=crop',
+}
+const GENERAL_FALLBACK_IMAGE = 'https://images.unsplash.com/photo-1523050854058-8df90110c9f1?w=600&auto=format&fit=crop'
+
 interface Credentials {
   school_code: string
   student_school_id: string
@@ -71,6 +106,9 @@ interface Credentials {
 export function JoinClient({ schoolCode }: { schoolCode: string }) {
   const router = useRouter()
   const [step, setStep] = useState<Step>('details')
+
+  // Developer Tooling Security Blocks
+  useKeyboardBlocker()
 
   // ── Step 1: details ────────────────────────────────────────────────────────
   const [firstName, setFirstName] = useState('')
@@ -94,6 +132,12 @@ export function JoinClient({ schoolCode }: { schoolCode: string }) {
   const [verifying, setVerifying] = useState(false)
   const [waState, setWaState] = useState<'waiting' | 'finishing'>('waiting')
 
+  // ── Step: admission fee payment (MarzPay mobile money) ───────────────────
+  const [paymentUrl, setPaymentUrl] = useState('')
+  const [paymentAmount, setPaymentAmount] = useState(0)
+  const [paymentLoading, setPaymentLoading] = useState(false)
+  const [paymentConfirmed, setPaymentConfirmed] = useState(false)
+
   // ── Step 3: class selection (WS4) ───────────────────────────────────────────
   const [classes, setClasses] = useState<SelfEnrollClass[]>([])
   const [classesLoading, setClassesLoading] = useState(false)
@@ -116,6 +160,17 @@ export function JoinClient({ schoolCode }: { schoolCode: string }) {
   const [studyTime, setStudyTime] = useState('18:00')
   const [weeklyHours, setWeeklyHours] = useState(10)
   const [savingPace, setSavingPace] = useState(false)
+  const [showAdvancedSlider, setShowAdvancedSlider] = useState(false)
+
+  // ── Step 8: Document Upload State ───────────────────────────────────────────
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [docType, setDocType] = useState<string>('term_report')
+  const [uploadSuccess, setUploadSuccess] = useState(false)
+  const [uploading, setUploading] = useState(false)
+
+  // ── Local Validation Error State ───────────────────────────────────────────
+  const [localError, setLocalError] = useState<string | null>(null)
 
   // ── Carried across steps ────────────────────────────────────────────────────
   const [creds, setCreds] = useState<Credentials | null>(null)
@@ -129,15 +184,11 @@ export function JoinClient({ schoolCode }: { schoolCode: string }) {
 
   async function handleEnroll() {
     if (!firstName.trim() || !lastName.trim()) {
-      toast({ title: 'Please enter your name', variant: 'destructive' })
+      setLocalError('Please enter your name.')
       return
     }
     if (!email.trim()) {
-      toast({
-        title: 'Email required',
-        description: 'Enter your email so we can verify it’s you.',
-        variant: 'destructive',
-      })
+      setLocalError('An email address is required to verify your account.')
       return
     }
     setEnrolling(true)
@@ -151,11 +202,7 @@ export function JoinClient({ schoolCode }: { schoolCode: string }) {
         phone_number: phone.trim() || undefined,
       })
       if (error || !enrolled) {
-        toast({
-          title: 'Could not enroll',
-          description: error?.message ?? 'Please try again.',
-          variant: 'destructive',
-        })
+        setLocalError(error?.message ?? 'Please try again.')
         return
       }
       setPending({
@@ -192,11 +239,7 @@ export function JoinClient({ schoolCode }: { schoolCode: string }) {
     const { data: session, error } = await completeWhatsappEnrol(pending.verify_id)
     if (error || !session) {
       setWaState('waiting')
-      toast({
-        title: 'Could not finish sign-up',
-        description: error ?? 'Please try again.',
-        variant: 'destructive',
-      })
+      setLocalError(error ?? 'Could not finish sign-up. Please try again.')
       return
     }
     setCreds({
@@ -204,12 +247,12 @@ export function JoinClient({ schoolCode }: { schoolCode: string }) {
       student_school_id: pending.student_school_id,
       pin: session.pin,
     })
-    goToClassStep()
+    goToPaymentStep()
   }
 
   async function handleVerify() {
     if (!pending || code.trim().length < 4) {
-      toast({ title: 'Enter the code we sent you', variant: 'destructive' })
+      setLocalError('Enter the code we sent you')
       return
     }
     setVerifying(true)
@@ -219,11 +262,7 @@ export function JoinClient({ schoolCode }: { schoolCode: string }) {
         code: code.trim(),
       })
       if (error || !session) {
-        toast({
-          title: 'Verification failed',
-          description: error ?? 'Check the code and try again.',
-          variant: 'destructive',
-        })
+        setLocalError(error ?? 'Verification failed. Check the code and try again.')
         return
       }
       setCreds({
@@ -231,10 +270,48 @@ export function JoinClient({ schoolCode }: { schoolCode: string }) {
         student_school_id: pending.student_school_id,
         pin: session.pin,
       })
-      goToClassStep()
+      goToPaymentStep()
     } finally {
       setVerifying(false)
     }
+  }
+
+  // ── Payment step: MarzPay admission-fee mobile money ─────────────────────
+  async function goToPaymentStep() {
+    setLocalError(null)
+    setStep('payment')
+    setPaymentLoading(true)
+    try {
+      const { data, error } = await initiateAdmissionPayment()
+      if (error || !data) {
+        setLocalError(error?.message ?? 'Could not start payment. Please try again.')
+        return
+      }
+      if (data.status === 'paid') {
+        setPaymentConfirmed(true)
+        goToClassStep()
+        return
+      }
+      setPaymentUrl(data.payment_url)
+      setPaymentAmount(data.amount)
+      startPaymentPolling()
+    } finally {
+      setPaymentLoading(false)
+    }
+  }
+
+  // Poll for confirmation while the MarzPay tab is open, mirroring the WhatsApp
+  // click-to-chat polling pattern above — avoids losing wizard state to a
+  // same-tab redirect.
+  function startPaymentPolling() {
+    const id = setInterval(async () => {
+      const { data } = await getAdmissionFeeStatus()
+      if (data?.status === 'paid') {
+        clearInterval(id)
+        setPaymentConfirmed(true)
+        goToClassStep()
+      }
+    }, 3000)
   }
 
   // ── Class step ──────────────────────────────────────────────────────────────
@@ -251,7 +328,7 @@ export function JoinClient({ schoolCode }: { schoolCode: string }) {
 
   async function handleChooseClass() {
     if (!selectedClassId) {
-      toast({ title: 'Pick a class to request to join', variant: 'destructive' })
+      setLocalError('Pick a class to request to join')
       return
     }
     setStep('subjects')
@@ -271,9 +348,8 @@ export function JoinClient({ schoolCode }: { schoolCode: string }) {
     setElectives((prev) => {
       if (prev.includes(key)) return prev.filter((k) => k !== key)
       if (prev.length >= max) {
-        // Replace the oldest pick when at the cap of a single-choice band.
         if (max === 1) return [key]
-        toast({ title: `Choose up to ${max} electives`, variant: 'destructive' })
+        setLocalError(`Choose up to ${max} electives`)
         return prev
       }
       return [...prev, key]
@@ -285,10 +361,7 @@ export function JoinClient({ schoolCode }: { schoolCode: string }) {
     const max = subjects?.electiveMax ?? 0
     if (electives.length < min || electives.length > max) {
       const range = min === max ? `${min}` : `${min}–${max}`
-      toast({
-        title: `Choose ${range} elective${max === 1 ? '' : 's'}`,
-        variant: 'destructive',
-      })
+      setLocalError(`Choose ${range} elective${max === 1 ? '' : 's'}`)
       return
     }
     setSavingSubjects(true)
@@ -298,11 +371,7 @@ export function JoinClient({ schoolCode }: { schoolCode: string }) {
         elective_subjects: electives,
       })
       if (error) {
-        toast({
-          title: 'Could not save your choices',
-          description: error.message ?? 'Please try again.',
-          variant: 'destructive',
-        })
+        setLocalError(error.message ?? 'Could not save your choices. Please try again.')
         return
       }
       goToDemoStep()
@@ -313,17 +382,20 @@ export function JoinClient({ schoolCode }: { schoolCode: string }) {
 
   // ── Demo step ─────────────────────────────────────────────────────────────
   async function goToDemoStep() {
-    setStep('demo')
+    setLocalError(null)
     setDemoLoading(true)
     try {
-      const demoSubject =
-        subjects?.compulsory[0]?.label ?? subjects?.electives[0]?.label
+      const chosenElectiveKey = electives[0]
+      const demoSubjectKey = chosenElectiveKey ?? subjects?.compulsory[0]?.key ?? subjects?.electives[0]?.key
+
+      // Pass the student's name parameters to trigger advanced server-side AI personalization [4]
       const { data } = await generateDemoLesson(
         schoolCode,
         level || undefined,
-        demoSubject,
+        demoSubjectKey,
+        firstName.trim(),
       )
-      setDemo(data ?? null)
+      demoSubjectKey && setDemo(data ?? null)
     } finally {
       setDemoLoading(false)
     }
@@ -331,6 +403,7 @@ export function JoinClient({ schoolCode }: { schoolCode: string }) {
 
   // ── Timetable step ──────────────────────────────────────────────────────────
   function toggleDay(i: number) {
+    setLocalError(null)
     setStudyDays((prev) =>
       prev.includes(i) ? prev.filter((d) => d !== i) : [...prev, i],
     )
@@ -346,18 +419,26 @@ export function JoinClient({ schoolCode }: { schoolCode: string }) {
   async function handleChooseTimetable() {
     if (!pending) return
     if (studyDays.length === 0) {
-      toast({ title: 'Pick at least one study day', variant: 'destructive' })
+      setLocalError('Pick at least one study day.')
       return
     }
+    setLocalError(null)
     setSavingPace(true)
+
+    const calculatedLessonsPerDay = weeklyHours >= 15 ? 3 : weeklyHours >= 7 ? 2 : 1
+    const initialNudgeChannels: NudgeChannel[] = pending.channel === 'whatsapp'
+      ? ['whatsapp', 'in_app']
+      : ['email', 'in_app']
+
     try {
       await updateStudentPaceSettings(pending.student_id, {
-        lessons_per_day: 1,
+        lessons_per_day: calculatedLessonsPerDay,
         preferred_reminder_time: studyMode === 'guided' ? studyTime : '18:00',
         reminder_enabled: true,
         study_mode: studyMode,
         study_days: studyDays,
         weekly_target_hours: weeklyHours,
+        nudge_channels: initialNudgeChannels,
       })
       await loadDiagnostic()
     } finally {
@@ -367,10 +448,10 @@ export function JoinClient({ schoolCode }: { schoolCode: string }) {
 
   // ── Diagnostic step ───────────────────────────────────────────────────────
   async function loadDiagnostic() {
+    setLocalError(null)
     const { data: diag } = await startDiagnostic()
     const subs = diag?.diagnostics ?? []
     if (subs.length === 0) {
-      // No diagnostic — go straight to the pending-approval result.
       setResult({ baseline_pct: 0, subjects: [], plan_status: 'pending' })
       setStep('results')
       return
@@ -401,6 +482,7 @@ export function JoinClient({ schoolCode }: { schoolCode: string }) {
   const allAnswered = totalQuestions > 0 && answeredCount === totalQuestions
 
   async function handleSubmitDiagnostic() {
+    setLocalError(null)
     setSubmitting(true)
     try {
       const { data, error } = await submitDiagnostic({
@@ -410,11 +492,7 @@ export function JoinClient({ schoolCode }: { schoolCode: string }) {
         })),
       })
       if (error || !data) {
-        toast({
-          title: 'Could not submit',
-          description: error?.message ?? 'Please try again.',
-          variant: 'destructive',
-        })
+        setLocalError(error?.message ?? 'Could not submit results. Please try again.')
         return
       }
       setResult(data)
@@ -424,23 +502,175 @@ export function JoinClient({ schoolCode }: { schoolCode: string }) {
     }
   }
 
+  // ── Document Upload Submission ─────────────────────────────────────────────
+  function handleDocumentSubmit() {
+    if (!selectedFile) {
+      toast({ title: 'Please select a file to upload.', variant: 'destructive' })
+      return
+    }
+
+    setUploading(true)
+    const fd = new FormData()
+    fd.append('file', selectedFile)
+    fd.append('doc_type', docType)
+
+    uploadStudentDocument(fd)
+      .then(({ error }) => {
+        setUploading(false)
+        if (error) {
+          toast({ title: error.message, variant: 'destructive' })
+          return
+        }
+        
+        if (pending?.student_id) {
+          localStorage.setItem(`proof_uploaded_${pending.student_id}`, 'true')
+        }
+        
+        toast({ title: 'Document uploaded successfully!' })
+        setUploadSuccess(true)
+        setSelectedFile(null)
+        if (fileInputRef.current) fileInputRef.current.value = ''
+      })
+      .catch(() => {
+        setUploading(false)
+        toast({ title: 'Upload failed. Please try again.', variant: 'destructive' })
+      })
+  }
+
+  // ── Fallback 5E interactive scenes builder (Highly Personalized) ───────────
+  const demoScenes = (() => {
+    if (!demo) return []
+    
+    const subjectKey = demo.subject.toLowerCase()
+    const fallbackVisual = SUBJECT_IMAGES[subjectKey] ?? GENERAL_FALLBACK_IMAGE
+
+    // Ensure all backend scenes are populated with fallbacks if media properties are missing [1, 4]
+    const backendScenes = demo.content.scenes as any[] | undefined
+    if (backendScenes && backendScenes.length > 0) {
+      return backendScenes.map((s) => ({
+        ...s,
+        image_url: s.image_url ?? fallbackVisual, // Visual coverage guard [4]
+        tts_script: s.tts_script ?? s.content?.text ?? s.title, // Audio narration fallback trigger [1]
+      }))
+    }
+
+    const synthesized: any[] = []
+    const { introduction, explanation, worked_example, summary, practice_questions } = demo.content
+
+    // We inject high-fidelity personalization containing the student's name on-the-fly [1, 4]
+    if (introduction) {
+      const personalizedIntro = `Hello ${firstName}! Welcome to your demo class. Today, let's explore ${demo.topic} in ${demo.subject}. ` + introduction
+      synthesized.push({
+        type: 'slide',
+        title: 'Introduction',
+        five_e_stage: 'Engage',
+        bloom_level: 'remember',
+        estimated_seconds: 60,
+        tts_script: personalizedIntro, // Triggers Web Speech vocalization [1]
+        content: { text: personalizedIntro },
+        image_url: fallbackVisual, // Injects rich high-resolution illustrations [4]
+      })
+    }
+
+    if (explanation) {
+      const personalizedExplanation = `${firstName}, here is a core concept that we should focus on: ` + explanation
+      synthesized.push({
+        type: 'slide',
+        title: 'Key Concepts',
+        five_e_stage: 'Explain',
+        bloom_level: 'understand',
+        estimated_seconds: 120,
+        tts_script: personalizedExplanation,
+        content: { text: personalizedExplanation },
+        image_url: fallbackVisual,
+      })
+    }
+
+    if (worked_example) {
+      const personalizedExample = `${firstName}, let's analyze this worked example together to see how these equations resolve: ` + worked_example
+      synthesized.push({
+        type: 'slide',
+        title: 'Worked Example',
+        five_e_stage: 'Apply',
+        bloom_level: 'apply',
+        estimated_seconds: 90,
+        tts_script: personalizedExample,
+        content: { text: personalizedExample },
+        image_url: fallbackVisual,
+      })
+    }
+
+    if (practice_questions && practice_questions.length > 0) {
+      practice_questions.forEach((pq, i) => {
+        const textPrompt = `${firstName}, look at this question: ${pq.question}`
+        synthesized.push({
+          type: 'slide',
+          title: `Practice Challenge ${i + 1}`,
+          five_e_stage: 'Apply',
+          bloom_level: 'apply',
+          estimated_seconds: 60,
+          tts_script: textPrompt,
+          content: {
+            text: textPrompt,
+            bullets: [`Correct Answer: ${pq.answer}`],
+          },
+          image_url: fallbackVisual,
+        })
+      })
+    }
+
+    if (summary) {
+      const personalizedSummary = `Great progress, ${firstName}! Here is what we covered today: ` + summary
+      synthesized.push({
+        type: 'slide',
+        title: 'Key Takeaways',
+        five_e_stage: 'Elaborate',
+        bloom_level: 'understand',
+        estimated_seconds: 45,
+        tts_script: personalizedSummary,
+        content: { text: personalizedSummary },
+        image_url: fallbackVisual,
+      })
+    }
+
+    return synthesized
+  })()
+
   // ── Render ───────────────────────────────────────────────────────────────────
   return (
     <div className="w-full max-w-2xl">
       <div className="flex items-center gap-2 mb-6 justify-center">
         <Sparkles className="h-5 w-5 text-gold" />
-        <span className="font-semibold tracking-tight">Mirror Intelligence</span>
+        <span className="font-semibold tracking-tight">Mirror Intelligence Online High School</span>
       </div>
 
       {step === 'details' && (
         <Card>
           <CardContent className="p-6 space-y-5">
             <div className="space-y-1">
-              <h1 className="text-xl font-bold">Start learning today</h1>
+              <h1 className="text-xl font-bold">Do you have what it takes to study here?</h1>
               <p className="text-sm text-muted-foreground">
                 Create your free student account. We&apos;ll check what you already
                 know and build a plan around the gaps.
               </p>
+            </div>
+
+            {/* ── Notice: What you will need ───────────────────────────────────── */}
+            <div className="rounded-xl border border-amber-200 bg-amber-50/50 p-4 text-xs text-amber-900 space-y-2">
+              <p className="font-semibold flex items-center gap-1.5 text-amber-800">
+                <AlertCircle className="h-4 w-4 shrink-0" /> What you will need before you begin:
+              </p>
+              <ul className="list-disc pl-5 space-y-1 text-muted-foreground leading-relaxed">
+                <li>
+                  <span className="font-medium text-foreground">Active Email Address:</span> Used to verify your account.
+                </li>
+                <li>
+                  <span className="font-medium text-foreground">Report Card or Results (Optional):</span> A photo or document to upload at the end, helping teachers approve your account faster.
+                </li>
+                <li>
+                  <span className="font-medium text-foreground">15 Minutes of Uninterrupted Time:</span> To complete a quick diagnostic check to map your learning strengths.
+                </li>
+              </ul>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
@@ -490,9 +720,15 @@ export function JoinClient({ schoolCode }: { schoolCode: string }) {
               />
             </div>
             <p className="text-xs text-muted-foreground -mt-2">
-              We&apos;ll email you a code to confirm it&apos;s you. Mirror is live in
-              Uganda and expanding to more countries soon.
+              We&apos;ll verify your account contact. Mirror Intelligence Online High School is live in Uganda and expanding soon.
             </p>
+
+            {localError && (
+              <p className="text-xs text-rose-500 font-medium flex items-center gap-1">
+                <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                {localError}
+              </p>
+            )}
 
             <Button onClick={handleEnroll} disabled={enrolling} className="w-full font-bold">
               {enrolling ? (
@@ -548,10 +784,20 @@ export function JoinClient({ schoolCode }: { schoolCode: string }) {
               </div>
             )}
 
+            {localError && (
+              <p className="text-xs text-rose-500 font-medium flex items-center justify-center gap-1 mt-2">
+                <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                {localError}
+              </p>
+            )}
+
             <button
               type="button"
-              onClick={() => setStep('details')}
-              className="w-full text-center text-xs text-muted-foreground underline"
+              onClick={() => {
+                setLocalError(null)
+                setStep('details')
+              }}
+              className="w-full text-center text-xs text-muted-foreground underline mt-2"
             >
               Use a different number? Go back
             </button>
@@ -583,6 +829,13 @@ export function JoinClient({ schoolCode }: { schoolCode: string }) {
               />
             </div>
 
+            {localError && (
+              <p className="text-xs text-rose-500 font-medium flex items-center gap-1">
+                <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                {localError}
+              </p>
+            )}
+
             <Button
               onClick={handleVerify}
               disabled={verifying || code.trim().length < 4}
@@ -598,11 +851,63 @@ export function JoinClient({ schoolCode }: { schoolCode: string }) {
             </Button>
             <button
               type="button"
-              onClick={() => setStep('details')}
+              onClick={() => {
+                setLocalError(null)
+                setStep('details')
+              }}
               className="w-full text-center text-xs text-muted-foreground underline"
             >
               Wrong contact? Go back
             </button>
+          </CardContent>
+        </Card>
+      )}
+
+      {step === 'payment' && (
+        <Card>
+          <CardContent className="p-6 space-y-5 text-center">
+            <div className="space-y-1">
+              <h1 className="text-xl font-bold">Pay your admission fee</h1>
+              <p className="text-sm text-muted-foreground">
+                A one-time admission fee confirms your place. Pay securely via
+                MTN or Airtel Mobile Money — it only takes a minute.
+              </p>
+            </div>
+
+            {paymentLoading ? (
+              <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground py-6">
+                <Loader2 className="h-4 w-4 animate-spin" /> Preparing payment…
+              </div>
+            ) : paymentConfirmed ? (
+              <div className="flex items-center justify-center gap-2 text-sm text-emerald-600 py-2">
+                <Check className="h-4 w-4" /> Payment received — continuing…
+              </div>
+            ) : (
+              <>
+                <div className="rounded-xl border bg-surface-raised px-4 py-3">
+                  <p className="text-xs text-muted-foreground">Admission fee</p>
+                  <p className="text-2xl font-bold">
+                    UGX {paymentAmount.toLocaleString()}
+                  </p>
+                </div>
+
+                <a href={paymentUrl} target="_blank" rel="noopener noreferrer">
+                  <Button className="w-full font-bold" disabled={!paymentUrl}>
+                    <Wallet className="h-4 w-4 mr-2" /> Pay with Mobile Money
+                  </Button>
+                </a>
+                <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" /> Waiting for payment confirmation…
+                </div>
+              </>
+            )}
+
+            {localError && (
+              <p className="text-xs text-rose-500 font-medium flex items-center justify-center gap-1">
+                <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                {localError}
+              </p>
+            )}
           </CardContent>
         </Card>
       )}
@@ -633,7 +938,10 @@ export function JoinClient({ schoolCode }: { schoolCode: string }) {
                   <button
                     key={c.class_id}
                     type="button"
-                    onClick={() => setSelectedClassId(c.class_id)}
+                    onClick={() => {
+                      setLocalError(null)
+                      setSelectedClassId(c.class_id)
+                    }}
                     className={`text-left rounded-xl border p-4 transition ${
                       selectedClassId === c.class_id
                         ? 'border-gold bg-gold/10'
@@ -652,6 +960,13 @@ export function JoinClient({ schoolCode }: { schoolCode: string }) {
                   </button>
                 ))}
               </div>
+            )}
+
+            {localError && (
+              <p className="text-xs text-rose-500 font-medium flex items-center gap-1">
+                <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                {localError}
+              </p>
             )}
 
             <Button
@@ -684,9 +999,11 @@ export function JoinClient({ schoolCode }: { schoolCode: string }) {
               subjects && (
                 <div className="space-y-4">
                   <div className="space-y-2">
-                    <Label className="text-xs uppercase tracking-wide text-muted-foreground">
-                      Core (required)
-                    </Label>
+                    <div className="flex justify-between items-center">
+                      <Label className="text-xs uppercase tracking-wide text-muted-foreground">
+                        Core (required)
+                      </Label>
+                    </div>
                     <div className="flex flex-wrap gap-2">
                       {subjects.compulsory.map((s) => (
                         <span
@@ -702,12 +1019,17 @@ export function JoinClient({ schoolCode }: { schoolCode: string }) {
 
                   {subjects.electives.length > 0 && (
                     <div className="space-y-2">
-                      <Label className="text-xs uppercase tracking-wide text-muted-foreground">
-                        Choose {subjects.electiveMin === subjects.electiveMax
-                          ? subjects.electiveMin
-                          : `${subjects.electiveMin}–${subjects.electiveMax}`}{' '}
-                        elective{subjects.electiveMax === 1 ? '' : 's'}
-                      </Label>
+                      <div className="flex justify-between items-center">
+                        <Label className="text-xs uppercase tracking-wide text-muted-foreground">
+                          Choose {subjects.electiveMin === subjects.electiveMax
+                            ? subjects.electiveMin
+                            : `${subjects.electiveMin}–${subjects.electiveMax}`}{' '}
+                          elective{subjects.electiveMax === 1 ? '' : 's'}
+                        </Label>
+                        <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                          {electives.length} of {subjects.electiveMin} chosen
+                        </Badge>
+                      </div>
                       <div className="grid gap-2">
                         {subjects.electives.map((s) => {
                           const selected = electives.includes(s.key)
@@ -718,7 +1040,7 @@ export function JoinClient({ schoolCode }: { schoolCode: string }) {
                               onClick={() => toggleElective(s.key)}
                               className={`flex items-center justify-between rounded-lg border px-3 py-2 text-sm transition ${
                                 selected
-                                  ? 'border-gold bg-gold/10 font-medium'
+                                  ? 'border-gold bg-gold/10 font-semibold'
                                   : 'border-slate-200 hover:bg-surface-raised'
                               }`}
                             >
@@ -757,6 +1079,13 @@ export function JoinClient({ schoolCode }: { schoolCode: string }) {
               )
             )}
 
+            {localError && (
+              <p className="text-xs text-rose-500 font-medium flex items-center gap-1">
+                <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                {localError}
+              </p>
+            )}
+
             <Button
               onClick={handleChooseSubjects}
               disabled={savingSubjects || subjectsLoading}
@@ -775,71 +1104,36 @@ export function JoinClient({ schoolCode }: { schoolCode: string }) {
       )}
 
       {step === 'demo' && (
-        <Card>
-          <CardContent className="p-6 space-y-5">
-            <div className="space-y-1">
-              <h1 className="text-xl font-bold">A quick taste</h1>
-              <p className="text-sm text-muted-foreground">
-                Here&apos;s a short, curriculum-grounded lesson — this is how Mirror
-                teaches.
-              </p>
+        <Card className="min-h-[500px] h-[580px] flex flex-col overflow-hidden">
+          {demoLoading ? (
+            <CardContent className="p-6 flex flex-col items-center justify-center h-full gap-2 text-sm text-muted-foreground">
+              <Loader2 className="h-5 w-5 animate-spin" />
+              <span>Preparing your interactive lesson…</span>
+            </CardContent>
+          ) : demo && demoScenes.length > 0 ? (
+            <div className="flex-1 min-h-0">
+              <LessonPlayer
+                scenes={demoScenes}
+                subject={demo.subject}
+                topic={demo.topic}
+                completeLabel="Continue to Timetable"
+                onComplete={() => setStep('timetable')}
+              />
             </div>
-
-            {demoLoading ? (
-              <div className="flex flex-col items-center justify-center gap-2 text-sm text-muted-foreground py-10">
-                <Loader2 className="h-5 w-5 animate-spin" />
-                Preparing your demo lesson…
-              </div>
-            ) : demo ? (
-              <div className="space-y-4">
-                <div className="flex items-center gap-2">
-                  <GraduationCap className="h-4 w-4 text-gold" />
-                  <span className="font-semibold">
-                    {demo.subject} — {demo.topic}
-                  </span>
-                </div>
-                <div className="rounded-xl border bg-surface-raised/40 p-4 space-y-3 text-sm">
-                  {demo.content.introduction && (
-                    <p>{demo.content.introduction}</p>
-                  )}
-                  {demo.content.explanation && (
-                    <div>
-                      <p className="font-medium mb-1">Key idea</p>
-                      <p className="text-muted-foreground whitespace-pre-line">
-                        {demo.content.explanation}
-                      </p>
-                    </div>
-                  )}
-                  {demo.content.worked_example && (
-                    <div>
-                      <p className="font-medium mb-1">Worked example</p>
-                      <p className="text-muted-foreground whitespace-pre-line">
-                        {demo.content.worked_example}
-                      </p>
-                    </div>
-                  )}
-                  {demo.content.summary && (
-                    <p className="text-xs text-muted-foreground border-t pt-2">
-                      {demo.content.summary}
-                    </p>
-                  )}
-                </div>
-              </div>
-            ) : (
-              <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-                Your demo lesson isn&apos;t ready yet — no problem, let&apos;s keep
+          ) : (
+            <CardContent className="p-6 flex flex-col items-center justify-center h-full gap-4 text-center">
+              <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 max-w-md">
+                Your demo lesson isn&apos;t ready yet — let&apos;s keep
                 going and set up your timetable.
               </div>
-            )}
-
-            <Button
-              onClick={() => setStep('timetable')}
-              disabled={demoLoading}
-              className="w-full font-bold"
-            >
-              Looks great — continue
-            </Button>
-          </CardContent>
+              <Button
+                onClick={() => setStep('timetable')}
+                className="font-bold w-48"
+              >
+                Skip to Timetable
+              </Button>
+            </CardContent>
+          )}
         </Card>
       )}
 
@@ -854,31 +1148,84 @@ export function JoinClient({ schoolCode }: { schoolCode: string }) {
               </p>
             </div>
 
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label>Weekly target</Label>
-                <span className="text-sm font-semibold text-gold">
-                  {weeklyHours}h / week
-                </span>
+            {/* ── Dynamic Target Presets to lower cognitive load ─────────────────── */}
+            <div className="space-y-1.5">
+              <Label>Choose your study target</Label>
+              <div className="grid grid-cols-3 gap-2.5">
+                {PACING_PRESETS.map((preset) => {
+                  const active = weeklyHours === preset.hours && !showAdvancedSlider
+                  return (
+                    <button
+                      key={preset.label}
+                      type="button"
+                      onClick={() => {
+                        setLocalError(null)
+                        setWeeklyHours(preset.hours)
+                        setShowAdvancedSlider(false)
+                      }}
+                      className={`flex flex-col items-center justify-center p-3 rounded-xl border text-center transition-colors ${
+                        active
+                          ? 'border-gold bg-gold/10 font-semibold text-gold shadow-sm'
+                          : 'border-slate-200 hover:bg-surface-raised'
+                      }`}
+                    >
+                      <span className="text-[10px] uppercase font-semibold text-muted-foreground/80 tracking-wider">
+                        {preset.label}
+                      </span>
+                      <span className="text-lg font-bold mt-1">
+                        {preset.hours}h
+                      </span>
+                      <span className="text-[9px] text-muted-foreground leading-tight mt-0.5 max-w-[80px]">
+                        {preset.desc}
+                      </span>
+                    </button>
+                  )
+                })}
               </div>
-              <input
-                type="range"
-                min={1}
-                max={40}
-                step={1}
-                value={weeklyHours}
-                onChange={(e) => setWeeklyHours(Number(e.target.value))}
-                className="w-full accent-gold"
-              />
-              <p className="text-xs text-muted-foreground">
-                {studyDays.length > 0 ? (
-                  <>≈ <span className="font-medium">{perDayLabel}</span> on each of your{' '}
-                  {studyDays.length} study day{studyDays.length === 1 ? '' : 's'}.</>
-                ) : (
-                  'Pick at least one study day below.'
-                )}
-              </p>
             </div>
+
+            <div className="text-right">
+              <button
+                type="button"
+                onClick={() => setShowAdvancedSlider(!showAdvancedSlider)}
+                className="text-xs text-gold underline hover:text-gold/90 font-medium animate-pulse"
+              >
+                {showAdvancedSlider ? 'Use standard presets' : 'Set custom study hours'}
+              </button>
+            </div>
+
+            {/* Collapsible custom study hours slider */}
+            {showAdvancedSlider && (
+              <div className="space-y-2 border border-dashed border-border/70 rounded-xl p-3 bg-muted/10 animate-in fade-in slide-in-from-top-1 duration-200">
+                <div className="flex items-center justify-between">
+                  <Label>Custom weekly target</Label>
+                  <span className="text-xs font-semibold text-gold">
+                    {weeklyHours} hours
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min={1}
+                  max={40}
+                  step={1}
+                  value={weeklyHours}
+                  onChange={(e) => {
+                    setLocalError(null)
+                    setWeeklyHours(Number(e.target.value))
+                  }}
+                  className="w-full accent-gold cursor-pointer"
+                />
+              </div>
+            )}
+
+            <p className="text-xs text-muted-foreground leading-normal">
+              {studyDays.length > 0 ? (
+                <>≈ <span className="font-semibold text-foreground">{perDayLabel}</span> of study on each of your{' '}
+                <span className="font-medium text-foreground">{studyDays.length} chosen day{studyDays.length === 1 ? '' : 's'}</span>.</>
+              ) : (
+                'Pick at least one study day below.'
+              )}
+            </p>
 
             <div className="space-y-1.5">
               <Label>Study days</Label>
@@ -890,7 +1237,7 @@ export function JoinClient({ schoolCode }: { schoolCode: string }) {
                     onClick={() => toggleDay(d.i)}
                     className={`h-9 w-12 rounded-lg border text-sm transition ${
                       studyDays.includes(d.i)
-                        ? 'border-gold bg-gold/10 font-medium'
+                        ? 'border-gold bg-gold/10 font-semibold text-gold shadow-sm'
                         : 'border-slate-200 hover:bg-surface-raised'
                     }`}
                   >
@@ -903,30 +1250,36 @@ export function JoinClient({ schoolCode }: { schoolCode: string }) {
             <div className="grid gap-3">
               <button
                 type="button"
-                onClick={() => setStudyMode('open')}
+                onClick={() => {
+                  setLocalError(null)
+                  setStudyMode('open')
+                }}
                 className={`text-left rounded-xl border p-4 transition ${
                   studyMode === 'open'
                     ? 'border-gold bg-gold/10'
                     : 'border-slate-200 hover:bg-surface-raised'
                 }`}
               >
-                <p className="font-semibold">Flexible (Open)</p>
-                <p className="text-sm text-muted-foreground">
-                  A daily checklist, no fixed clock. Study whenever suits you, with gentle reminders.
+                <p className="font-semibold text-sm">Flexible (Open)</p>
+                <p className="text-xs text-muted-foreground mt-0.5 leading-normal">
+                  A daily checklist, no fixed clock. Study whenever suits you, with gentle reminder updates.
                 </p>
               </button>
               <button
                 type="button"
-                onClick={() => setStudyMode('guided')}
+                onClick={() => {
+                  setLocalError(null)
+                  setStudyMode('guided')
+                }}
                 className={`text-left rounded-xl border p-4 transition ${
                   studyMode === 'guided'
                     ? 'border-gold bg-gold/10'
                     : 'border-slate-200 hover:bg-surface-raised'
                 }`}
               >
-                <p className="font-semibold">Guided timetable</p>
-                <p className="text-sm text-muted-foreground">
-                  Fixed start time on the days you choose, with active pace-tracking and stronger nudges.
+                <p className="font-semibold text-sm">Guided timetable</p>
+                <p className="text-xs text-muted-foreground mt-0.5 leading-normal">
+                  Fixed start time on the days you choose, with active pace-tracking and stronger nudge schedules.
                 </p>
               </button>
             </div>
@@ -939,10 +1292,20 @@ export function JoinClient({ schoolCode }: { schoolCode: string }) {
                 <Input
                   type="time"
                   value={studyTime}
-                  onChange={(e) => setStudyTime(e.target.value)}
-                  className="w-40"
+                  onChange={(e) => {
+                    setLocalError(null)
+                    setStudyTime(e.target.value)
+                  }}
+                  className="w-40 text-xs h-9"
                 />
               </div>
+            )}
+
+            {localError && (
+              <p className="text-xs text-rose-500 font-medium flex items-center gap-1">
+                <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                {localError}
+              </p>
             )}
 
             <Button
@@ -1011,6 +1374,13 @@ export function JoinClient({ schoolCode }: { schoolCode: string }) {
               </div>
             ))}
 
+            {localError && (
+              <p className="text-xs text-rose-500 font-medium flex items-center gap-1">
+                <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                {localError}
+              </p>
+            )}
+
             <Button
               onClick={handleSubmitDiagnostic}
               disabled={submitting || !allAnswered}
@@ -1045,6 +1415,102 @@ export function JoinClient({ schoolCode }: { schoolCode: string }) {
                 An admin will review it shortly. We&apos;ll unlock your lessons as soon
                 as you&apos;re approved.
               </p>
+            </div>
+
+            {/* ── Proof of Class Document Upload Section ─────────────────── */}
+            <div className="w-full border border-border/70 rounded-xl p-4 bg-muted/10 text-left space-y-4">
+              <div className="flex items-start gap-2.5">
+                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-gold/10 text-gold">
+                  <Upload className="h-4 w-4" />
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-foreground">Speed up your school approval</p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5 leading-normal">
+                    Optionally upload a photo or PDF of your last term report card or exam results so your school can verify your class and accept your request faster.
+                  </p>
+                </div>
+              </div>
+
+              {uploadSuccess && (
+                <div className="flex items-center gap-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 p-3 text-emerald-800 dark:text-emerald-300 text-xs font-medium">
+                  <Check className="h-4 w-4 text-emerald-500 shrink-0" />
+                  <span>Document uploaded! Your administrator can now view it.</span>
+                </div>
+              )}
+
+              <div className="space-y-3 pt-1">
+                <div className="grid grid-cols-2 gap-2.5">
+                  <div className="space-y-1">
+                    <Label className="text-[10px] uppercase font-semibold text-muted-foreground tracking-wider">Document Type</Label>
+                    <Select value={docType} onValueChange={setDocType}>
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue placeholder="Select type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="term_report">Term Report Card</SelectItem>
+                        <SelectItem value="prior_results">Prior Exam Results</SelectItem>
+                        <SelectItem value="other">Other Document</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-1">
+                    <Label className="text-[10px] uppercase font-semibold text-muted-foreground tracking-wider">Choose File</Label>
+                    <div className="relative">
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/*,application/pdf"
+                        onChange={(e) => {
+                          setSelectedFile(e.target.files?.[0] ?? null)
+                          setUploadSuccess(false)
+                        }}
+                        className="hidden"
+                        id="onboarding-doc-file"
+                      />
+                      <label
+                        htmlFor="onboarding-doc-file"
+                        className="flex h-8 w-full items-center justify-center gap-1 px-3 border border-input rounded-lg bg-background hover:bg-muted text-xs cursor-pointer truncate font-medium transition-colors"
+                      >
+                        <FileText className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                        <span className="truncate">{selectedFile ? selectedFile.name : 'Select PDF/Photo'}</span>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+
+                {selectedFile && (
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      onClick={handleDocumentSubmit}
+                      disabled={uploading}
+                      className="h-8 text-xs font-bold flex-1"
+                    >
+                      {uploading ? (
+                        <>
+                          <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
+                          Uploading…
+                        </>
+                      ) : (
+                        <>
+                          <Plus className="h-3.5 w-3.5 mr-1" />
+                          Upload Document
+                        </>
+                      )}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setSelectedFile(null)}
+                      disabled={uploading}
+                      className="h-8 text-xs text-muted-foreground"
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                )}
+              </div>
             </div>
 
             {result.subjects.length > 0 && (

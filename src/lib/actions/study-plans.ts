@@ -21,7 +21,7 @@ export interface SuggestedTopicResponse {
   lesson_type: string
 }
 
-export type StudyMode = 'open' | 'guided'
+export type StudyMode = 'open' | 'guided' | 'accelerated'
 export type NudgeChannel = 'in_app' | 'email' | 'whatsapp' | 'sms'
 
 export interface PacingBlock {
@@ -47,6 +47,7 @@ export interface PacingSubjectSummary {
   scheme_id: string
   curriculum_id: string | null
   weeks_remaining: number | null
+  effective_weeks_remaining: number | null
   remaining_lessons: number
   required_blocks_per_week: number
   scheduled_blocks: number
@@ -129,6 +130,7 @@ export interface PaceSettings {
   study_mode?: StudyMode
   nudge_channels?: NudgeChannel[]
   study_days?: number[]
+  acceleration_weeks?: number | null
 }
 
 export async function getStudentPaceSettings(studentId: string) {
@@ -146,6 +148,7 @@ export async function updateStudentPaceSettings(
     study_days?: number[]
     weekly_target_hours?: number
     daily_target_overrides?: Record<string, number>
+    acceleration_weeks?: number
   },
 ) {
   const res = await fetcher<PaceSettings>(`/students/${studentId}/pace-settings`, {

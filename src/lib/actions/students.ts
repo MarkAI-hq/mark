@@ -51,6 +51,7 @@ export interface PendingStudent {
   requested_class_id: string | null
   requested_class_name: string | null
   requested_at: string
+  admission_fee_status: 'unpaid' | 'pending' | 'paid' | 'failed'
 }
 
 export async function getPendingStudents(): Promise<
