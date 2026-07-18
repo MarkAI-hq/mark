@@ -16,6 +16,7 @@ import {
   ShoppingBag,
   ShieldCheck,
   UserCheck,
+  Wallet,
   LucideIcon,
 } from 'lucide-react'
 
@@ -86,6 +87,12 @@ export const dashboardConfig = {
       href:  '/dashboard/certificates',
       roles: ['Admin'],
       icon:  Award,
+    },
+    {
+      title: 'Term Billing',
+      href:  '/dashboard/term-billing',
+      roles: ['Admin'],
+      icon:  Wallet,
     },
     {
       title:                 'Admissions',
