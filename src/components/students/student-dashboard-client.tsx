@@ -30,6 +30,7 @@ import { ExamHistoryDetail }    from '@/components/students/exam-history-detail'
 import { LearningToolkits }     from '@/components/students/learning-toolkits'
 import { CertPreviewAnchor }    from '@/components/students/cert-preview-anchor'
 import { NextStep }             from '@/components/students/next-step'
+import { TermBillingStatusCard } from '@/components/students/term-billing-status-card'
 import type { ExamHistoryItem, LearningTool, StudentCognitiveProfile, StudyPlan, SocialProof, SubjectProgress, StudentPrediction, NextAction } from '@/lib/actions/student-dashboard'
 import { uploadStudentDocument } from '@/lib/actions/student-onboarding'
 
@@ -367,6 +368,9 @@ export function StudentDashboardClient({
 
       {/* ── Next-Best-Action hero — total mental clarity ──────────────── */}
       <NextStep nextAction={nextAction} />
+
+      {/* ── Term-billing status — renders nothing for free-tier students ── */}
+      <TermBillingStatusCard />
 
       {/* ── Exam countdown banner ─────────────────────────────────────── */}
       {topPrediction && (

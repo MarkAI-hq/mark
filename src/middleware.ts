@@ -29,6 +29,7 @@ export async function middleware(request: NextRequest) {
     '/program',
     '/admissions',
     '/record',
+    '/pay',
   ]
 
   const isPublicPath =
