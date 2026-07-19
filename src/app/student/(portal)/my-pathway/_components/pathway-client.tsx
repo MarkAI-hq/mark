@@ -354,7 +354,7 @@ export function PathwayClient({ user, hasClass, predictions, prediction, curricu
           <Info className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
           <p className="text-xs text-amber-800 dark:text-amber-200 leading-relaxed">
             <span className="font-semibold">Prediction based on {prediction.based_on_submissions} assessment.</span>{' '}
-            Complete at least 2 graded assessments to unlock trajectory tracking and see how you're improving over time.
+            Complete at least 2 graded assessments to unlock trajectory tracking and see how you&apos;re improving over time.
           </p>
         </div>
       )}

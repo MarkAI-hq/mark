@@ -45,7 +45,7 @@ export function NextStep({ nextAction }: { nextAction: NextAction | null }) {
               On track for your {goal_state.goal_grade} in {goal_state.subject}!
             </p>
             <p className="text-xs text-emerald-700 dark:text-emerald-300 mt-0.5">
-              You're predicted {goal_state.predicted_grade}
+              You&apos;re predicted {goal_state.predicted_grade}
               {goal_state.milestone_label ? ` for ${goal_state.milestone_label}` : ''}. Keep it locked in.
             </p>
           </div>

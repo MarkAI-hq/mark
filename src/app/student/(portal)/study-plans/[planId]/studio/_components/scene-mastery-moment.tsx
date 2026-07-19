@@ -40,7 +40,7 @@ export function SceneMasteryMoment({ scene, initialMisconception }: Props) {
         <div className="rounded-2xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 px-6 py-5 text-left space-y-3">
           <div className="space-y-1">
             <p className="text-xs font-semibold uppercase tracking-wide text-amber-600 dark:text-amber-400">You began thinking</p>
-            <p className="text-amber-900 dark:text-amber-200 leading-relaxed italic">"{initialMisconception}"</p>
+            <p className="text-amber-900 dark:text-amber-200 leading-relaxed italic">&ldquo;{initialMisconception}&rdquo;</p>
           </div>
           <div className="border-t border-amber-200 dark:border-amber-700 pt-3 space-y-1">
             <p className="text-xs font-semibold uppercase tracking-wide text-emerald-600 dark:text-emerald-400">Now you understand</p>

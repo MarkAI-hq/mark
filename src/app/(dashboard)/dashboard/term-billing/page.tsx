@@ -34,7 +34,7 @@ export default async function TermBillingAdminPage() {
           <Wallet className="mb-3 h-10 w-10 text-muted-foreground/40" />
           <p className="font-medium text-muted-foreground">No term-billing plans yet</p>
           <p className="mt-1 text-sm text-muted-foreground">
-            Plans appear once term billing is enabled and a student's payment starts.
+            Plans appear once term billing is enabled and a student&apos;s payment starts.
           </p>
         </div>
       ) : (
