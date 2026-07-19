@@ -31,7 +31,7 @@ export function DashboardShell({ children, organizationName, isPublic }: Dashboa
       {/* Main content column — margin matches sidebar width, animates with it */}
       <div
         className={`flex-1 min-w-0 flex flex-col transition-all duration-300 will-change-[margin-left] ${
-          collapsed ? 'lg:ml-[60px]' : 'lg:ml-64'
+          collapsed ? 'md:ml-[60px]' : 'md:ml-64'
         }`}
       >
         {/* Top bar */}

@@ -51,7 +51,7 @@ export function StudentSidebarNav({
       {!mobileOpen && (
         <Button
           variant="ghost"
-          className="fixed top-4 left-4 z-50 lg:hidden"
+          className="fixed top-4 left-4 z-50 md:hidden"
           onClick={() => setMobileOpen(true)}
         >
           <Menu className="w-6 h-6" />
@@ -61,7 +61,7 @@ export function StudentSidebarNav({
       {/* Desktop sidebar */}
       <nav
         className={cn(
-          'hidden lg:flex fixed left-0 top-0 z-40 h-screen flex-col border-r border-border/50 bg-surface-raised overflow-hidden transition-all duration-300 ease-in-out',
+          'hidden md:flex fixed left-0 top-0 z-40 h-screen flex-col border-r border-border/50 bg-surface-raised overflow-hidden transition-all duration-300 ease-in-out',
           collapsed ? 'w-[60px] bg-background/80 backdrop-blur-md' : 'w-64',
         )}
       >
@@ -79,10 +79,10 @@ export function StudentSidebarNav({
       {mobileOpen && (
         <>
           <div
-            className="fixed inset-0 z-30 bg-black/40 backdrop-blur-md lg:hidden"
+            className="fixed inset-0 z-30 bg-black/40 backdrop-blur-md md:hidden"
             onClick={() => setMobileOpen(false)}
           />
-          <div className="fixed inset-y-0 left-0 z-40 w-64 bg-background border-r shadow-xl lg:hidden overflow-hidden">
+          <div className="fixed inset-y-0 left-0 z-40 w-64 bg-background border-r shadow-xl md:hidden overflow-hidden">
             <NavContent
               user={user}
               organizationName={organizationName}

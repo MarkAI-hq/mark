@@ -32,7 +32,7 @@ export function StudentShell({ children, user, organizationName }: StudentShellP
 
       <div
         className={`flex-1 min-w-0 flex flex-col transition-all duration-300 will-change-[margin-left] ${
-          collapsed ? 'lg:ml-[60px]' : 'lg:ml-64'
+          collapsed ? 'md:ml-[60px]' : 'md:ml-64'
         }`}
       >
         {/* Top bar — hidden on fullscreen pages (Tracy/Studio handle their own chrome) */}
