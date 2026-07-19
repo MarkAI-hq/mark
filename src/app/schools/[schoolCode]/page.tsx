@@ -28,6 +28,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
 }
 
+const FLAGSHIP_SCHOOL_CODE = process.env.NEXT_PUBLIC_DEFAULT_SCHOOL_CODE || 'MCS-2026'
+
 const FIT_LABELS: Record<string, string> = {
   cambridge: 'Cambridge International',
   ib: 'International Baccalaureate',
@@ -45,6 +47,7 @@ export default async function SchoolProfilePage({ params }: Props) {
 
   const certPrice = school.partner_config?.cert_price_ea_usd
     ?? school.partner_config?.cert_price_usd
+  const isFlagship = schoolCode === FLAGSHIP_SCHOOL_CODE
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-surface-raised/20">
@@ -63,7 +66,7 @@ export default async function SchoolProfilePage({ params }: Props) {
               <GraduationCap className="h-7 w-7 text-[#C9A84C]" />
             </div>
             {school.is_verified && (
-              <Badge variant="outline" className="gap-1 text-xs text-emerald-600 border-emerald-200 shrink-0">
+              <Badge variant="outline" className="gap-1 text-xs text-emerald-600 border-emerald-200 dark:border-emerald-500/30 shrink-0">
                 <BadgeCheck className="h-3.5 w-3.5" />
                 Verified School
               </Badge>
@@ -93,11 +96,18 @@ export default async function SchoolProfilePage({ params }: Props) {
 
           {/* Value props */}
           <div className="mt-6 grid grid-cols-3 gap-3">
-            {[
-              { icon: BookOpen, label: 'AI-powered learning', sub: 'Study at your pace' },
-              { icon: Award, label: `Certificates from $${certPrice ?? 15}`, sub: 'Pay only for proof' },
-              { icon: Users, label: 'Free to join', sub: 'No tuition fees' },
-            ].map(({ icon: Icon, label, sub }) => (
+            {(isFlagship
+              ? [
+                  { icon: BookOpen, label: 'AI-powered learning', sub: 'Study at your pace' },
+                  { icon: Award, label: 'Admission: 50,000 UGX', sub: 'One-time, per enrollment' },
+                  { icon: Users, label: 'Tuition: 145 USD / term', sub: '500,000 UGX, pay in halves' },
+                ]
+              : [
+                  { icon: BookOpen, label: 'AI-powered learning', sub: 'Study at your pace' },
+                  { icon: Award, label: `Certificates from $${certPrice ?? 15}`, sub: 'Pay only for proof' },
+                  { icon: Users, label: 'Free to join', sub: 'No tuition fees' },
+                ]
+            ).map(({ icon: Icon, label, sub }) => (
               <div key={label} className="rounded-xl border border-border/40 bg-muted/30 p-3 text-center">
                 <div className="mx-auto mb-2 flex h-8 w-8 items-center justify-center rounded-lg bg-[#C9A84C]/10">
                   <Icon className="h-4 w-4 text-[#C9A84C]" />
@@ -119,14 +129,9 @@ export default async function SchoolProfilePage({ params }: Props) {
           </p>
           <div className="mt-6 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
             <Button asChild size="lg" className="gap-2 bg-[#C9A84C] text-white hover:bg-[#A07830]">
-              <Link href={`/schools/${schoolCode}/apply`}>
+              <Link href={`/student/join?school=${schoolCode}`}>
                 Apply Now
                 <ArrowRight className="h-4 w-4" />
-              </Link>
-            </Button>
-            <Button asChild variant="ghost" size="lg">
-              <Link href={`/enroll/${schoolCode}`}>
-                Already accepted? Enroll directly
               </Link>
             </Button>
           </div>

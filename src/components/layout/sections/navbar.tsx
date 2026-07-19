@@ -23,9 +23,8 @@ const routeList: RouteItem[] = [
   // { href: "", label: "Demo", cal: true },
   { href: "/program", label: "The Program" },
   { href: "/schools", label: "Explore Schools" },
-  { href: "/register", label: "Start for free" },
+  { href: "/schools/register", label: "Start for free" },
   { href: "/login", label: "Login" },
-  { href: "#faq", label: "FAQ" },
 ];
 
 const calAttrs = {
@@ -48,7 +47,7 @@ export const Navbar = () => {
     <header
       className={cn(
         "sticky top-5 mx-auto z-40 flex items-center justify-between px-3 py-2 transition-all duration-300",
-        "w-[92%] md:w-[72%] lg:w-[76%] lg:max-w-screen-xl",
+        "w-[92%] md:w-[88%] lg:w-[76%] lg:max-w-screen-xl",
         "rounded-2xl",
         scrolled
           ? "border border-[#926C15]/20 bg-background/90 shadow-md shadow-black/5 backdrop-blur-xl"
@@ -67,7 +66,7 @@ export const Navbar = () => {
       </Link>
 
       {/* Mobile */}
-      <div className="flex items-center lg:hidden">
+      <div className="flex items-center md:hidden">
         <Sheet open={isOpen} onOpenChange={setIsOpen}>
           <SheetTrigger asChild>
             <Button variant="ghost" size="icon" className="h-9 w-9">
@@ -128,13 +127,13 @@ export const Navbar = () => {
       </div>
 
       {/* Desktop */}
-      <nav className="hidden lg:flex items-center gap-0.5">
+      <nav className="hidden md:flex items-center gap-0.5">
         {routeList.map(({ href, label, cal }) =>
           cal ? (
             <button
               key={label}
               {...calAttrs}
-              className="rounded-lg px-3.5 py-2 text-sm font-medium text-muted-foreground transition-all duration-200 hover:bg-[#926C15]/8 hover:text-[#926C15]"
+              className="rounded-lg px-2.5 py-2 text-sm font-medium whitespace-nowrap text-muted-foreground transition-all duration-200 hover:bg-[#926C15]/8 hover:text-[#926C15] lg:px-3.5"
             >
               {label}
             </button>
@@ -142,7 +141,7 @@ export const Navbar = () => {
             <Link
               key={href}
               href={href}
-              className="rounded-lg px-3.5 py-2 text-sm font-medium text-muted-foreground transition-all duration-200 hover:bg-[#926C15]/8 hover:text-[#926C15]"
+              className="rounded-lg px-2.5 py-2 text-sm font-medium whitespace-nowrap text-muted-foreground transition-all duration-200 hover:bg-[#926C15]/8 hover:text-[#926C15] lg:px-3.5"
             >
               {label}
             </Link>
@@ -150,7 +149,7 @@ export const Navbar = () => {
         )}
       </nav>
 
-      <div className="hidden lg:flex">
+      <div className="hidden md:flex">
         <ThemeToggle />
       </div>
     </header>

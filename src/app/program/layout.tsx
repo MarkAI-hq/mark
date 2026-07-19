@@ -6,7 +6,6 @@ export default function ProgramLayout({ children }: { children: React.ReactNode 
     <>
       <Navbar />
       {children}
-      <FooterSection />
     </>
   )
 }

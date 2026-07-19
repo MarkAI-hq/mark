@@ -95,7 +95,7 @@ export default function RegisterSchoolPage() {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-background to-surface-raised/30 px-4">
         <div className="w-full max-w-sm rounded-2xl border border-border/50 bg-card p-8 shadow-sm text-center">
-          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-50">
+          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-50 dark:bg-emerald-500/10">
             <CheckCircle2 className="h-7 w-7 text-emerald-500" />
           </div>
           <h2 className="text-xl font-semibold text-foreground">
@@ -123,13 +123,23 @@ export default function RegisterSchoolPage() {
     <div className="min-h-screen bg-gradient-to-b from-background to-surface-raised/30">
       <main className="container mx-auto max-w-xl px-4 py-12">
         {/* Value prop */}
-        <div className="mb-8 text-center">
+        <div className="mb-6 text-center">
           <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-[#C9A84C]/10">
             <GraduationCap className="h-6 w-6 text-[#C9A84C]" />
           </div>
-          <h1 className="text-2xl font-bold text-foreground">Register your school</h1>
+          <h1 className="text-2xl font-bold text-foreground">
+            Put <span className="italic">your</span> school on Mirror Intelligence
+          </h1>
           <p className="mt-2 text-sm text-muted-foreground">
             100% free. AI runs operations. You work 2–4 hours a week.
+          </p>
+        </div>
+
+        <div className="mb-8 flex items-start gap-3 rounded-xl border border-[#C9A84C]/30 bg-[#C9A84C]/[0.06] p-4">
+          <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-[#C9A84C]" />
+          <p className="text-sm text-foreground">
+            Your students only ever see <strong>your school&apos;s</strong> name and branding — never
+            &ldquo;Mirror Intelligence.&rdquo; It&apos;s the AI running underneath, not the storefront.
           </p>
         </div>
 

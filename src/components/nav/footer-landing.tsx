@@ -123,7 +123,7 @@ export const FooterSection = () => {
             className="flex flex-col items-center gap-3 sm:flex-row sm:justify-center"
           >
             <Link
-              href="/register"
+              href="/schools/register"
               className="group inline-flex items-center gap-2.5 rounded-xl bg-[#926C15] px-8 py-3.5 text-sm font-bold text-white shadow-lg shadow-[#926C15]/30 transition-all duration-300 hover:bg-[#7A5A10] hover:shadow-xl hover:shadow-[#926C15]/40 hover:-translate-y-1 active:translate-y-0"
             >
               Start for free
