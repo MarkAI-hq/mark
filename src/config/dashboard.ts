@@ -11,7 +11,6 @@ import {
   Library,
   MonitorCheck,
   Award,
-  ClipboardList,
   Building2,
   ShoppingBag,
   ShieldCheck,
@@ -93,13 +92,6 @@ export const dashboardConfig = {
       href:  '/dashboard/term-billing',
       roles: ['Admin'],
       icon:  Wallet,
-    },
-    {
-      title:                 'Admissions',
-      href:                  '/dashboard/admissions',
-      roles:                 ['Admin'],
-      icon:                  ClipboardList,
-      requiresPublicListing: true,
     },
     {
       title:                 'Approvals',

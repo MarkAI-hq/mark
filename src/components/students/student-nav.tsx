@@ -6,7 +6,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import {
   GraduationCap, LogOut, BookOpenCheck, LayoutDashboard, Award, Users,
   ArrowRightLeft, FileCheck, Gift, Library, CalendarDays, TrendingUp,
-  Sparkles, MoreHorizontal, ClipboardList,
+  Sparkles, MoreHorizontal,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { NotificationBell } from '@/components/notifications/notification-bell'
@@ -63,7 +63,6 @@ export function StudentNav({ user }: StudentNavProps) {
     { href: '/student/certificates',   label: 'Certificates',   icon: Award },
     { href: '/student/exams',          label: 'Exams',          icon: FileCheck },
     { href: '/student/welcome-pack',   label: 'Welcome Pack',   icon: Gift },
-    { href: '/student/applications',   label: 'Applications',   icon: ClipboardList },
     { href: '/student/transfer',       label: 'Transfer',       icon: ArrowRightLeft, hideForMarketplace: true },
   ].filter((l) => !(isMarketplace && (l as any).hideForMarketplace))
 
