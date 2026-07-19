@@ -2,7 +2,7 @@
 
 // src/app/student/join/_components/join-client.tsx
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   Sparkles,
@@ -44,7 +44,8 @@ import {
   submitDiagnostic,
   getSelfEnrollClasses,
   getSelfEnrollSubjects,
-  generateDemoLesson,
+  queueDemoLesson,
+  pollDemoLesson,
   submitEnrollmentRequest,
   uploadStudentDocument,
   initiateAdmissionPayment,
@@ -153,6 +154,27 @@ export function JoinClient({ schoolCode }: { schoolCode: string }) {
   // ── Step 5: demo lesson (WS6) ───────────────────────────────────────────────
   const [demo, setDemo] = useState<DemoLesson | null>(null)
   const [demoLoading, setDemoLoading] = useState(false)
+  const [demoQueuePosition, setDemoQueuePosition] = useState<number | null>(null)
+  const [demoWaitSeconds, setDemoWaitSeconds] = useState(0)
+
+  // Demo-lesson generation runs as a queued job (backend: study-plans queue,
+  // 'demo-lesson' job) shared with every other student onboarding at once —
+  // so we can poll its real position instead of guessing from elapsed time.
+  useEffect(() => {
+    if (!demoLoading) {
+      setDemoWaitSeconds(0)
+      return
+    }
+    const interval = setInterval(() => setDemoWaitSeconds((s) => s + 1), 1000)
+    return () => clearInterval(interval)
+  }, [demoLoading])
+
+  const demoWaitMessage =
+    demoQueuePosition !== null && demoQueuePosition > 0
+      ? `You're #${demoQueuePosition} in line — a lot of students are starting lessons right now, hang tight…`
+      : demoWaitSeconds < 6
+        ? 'Preparing your interactive lesson…'
+        : 'Grounding it in your school’s curriculum…'
 
   // ── Step 6: weekly-target timetable (WS5) ───────────────────────────────────
   const [studyMode, setStudyMode] = useState<'open' | 'guided'>('open')
@@ -381,23 +403,46 @@ export function JoinClient({ schoolCode }: { schoolCode: string }) {
   }
 
   // ── Demo step ─────────────────────────────────────────────────────────────
+  const DEMO_POLL_INTERVAL_MS = 1500
+  const DEMO_POLL_MAX_ATTEMPTS = 60 // ~90s ceiling before we give up and let the student skip
+
   async function goToDemoStep() {
     setLocalError(null)
     setDemoLoading(true)
+    setDemoQueuePosition(null)
     try {
       const chosenElectiveKey = electives[0]
       const demoSubjectKey = chosenElectiveKey ?? subjects?.compulsory[0]?.key ?? subjects?.electives[0]?.key
+      if (!demoSubjectKey) return
 
       // Pass the student's name parameters to trigger advanced server-side AI personalization [4]
-      const { data } = await generateDemoLesson(
+      const { data: queued, error: queueError } = await queueDemoLesson(
         schoolCode,
         level || undefined,
         demoSubjectKey,
         firstName.trim(),
       )
-      demoSubjectKey && setDemo(data ?? null)
+      if (queueError || !queued?.job_id) return
+
+      for (let attempt = 0; attempt < DEMO_POLL_MAX_ATTEMPTS; attempt++) {
+        await new Promise((r) => setTimeout(r, DEMO_POLL_INTERVAL_MS))
+        const { data: poll } = await pollDemoLesson(queued.job_id)
+        if (!poll) continue
+
+        if (poll.status === 'waiting' || poll.status === 'active') {
+          setDemoQueuePosition(poll.status === 'waiting' ? poll.position : 0)
+          continue
+        }
+        if (poll.status === 'completed') {
+          setDemo(poll.result)
+        }
+        // 'failed' / 'not_found' fall through — demo stays null, existing
+        // fallback UI lets the student skip straight to the timetable step.
+        break
+      }
     } finally {
       setDemoLoading(false)
+      setDemoQueuePosition(null)
     }
   }
 
@@ -1106,9 +1151,13 @@ export function JoinClient({ schoolCode }: { schoolCode: string }) {
       {step === 'demo' && (
         <Card className="min-h-[500px] h-[580px] flex flex-col overflow-hidden">
           {demoLoading ? (
-            <CardContent className="p-6 flex flex-col items-center justify-center h-full gap-2 text-sm text-muted-foreground">
-              <Loader2 className="h-5 w-5 animate-spin" />
-              <span>Preparing your interactive lesson…</span>
+            <CardContent className="p-6 flex flex-col items-center justify-center h-full gap-2 text-sm text-muted-foreground text-center">
+              {demoWaitSeconds < 15 ? (
+                <Loader2 className="h-5 w-5 animate-spin" />
+              ) : (
+                <Hourglass className="h-5 w-5 text-amber-500" />
+              )}
+              <span className="max-w-xs">{demoWaitMessage}</span>
             </CardContent>
           ) : demo && demoScenes.length > 0 ? (
             <div className="flex-1 min-h-0">

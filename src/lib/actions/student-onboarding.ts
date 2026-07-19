@@ -104,15 +104,29 @@ export async function getSelfEnrollSubjects(
   })
 }
 
-export async function generateDemoLesson(
+export async function queueDemoLesson(
   schoolCode: string,
   level?: string,
   subject?: string,
   firstName?: string,
-): Promise<ServerActionResponse<DemoLesson>> {
-  return fetcher<DemoLesson>('/study-plans/demo-lesson', {
+): Promise<ServerActionResponse<{ job_id: string }>> {
+  return fetcher<{ job_id: string }>('/study-plans/demo-lesson', {
     method: 'POST',
     body: JSON.stringify({ school_code: schoolCode, level, subject, first_name: firstName }),
+    cache: 'no-store',
+  })
+}
+
+export type DemoLessonPoll =
+  | { status: 'waiting' | 'active'; position: number }
+  | { status: 'completed'; result: DemoLesson }
+  | { status: 'failed'; reason?: string }
+  | { status: 'not_found' }
+
+export async function pollDemoLesson(
+  jobId: string,
+): Promise<ServerActionResponse<DemoLessonPoll>> {
+  return fetcher<DemoLessonPoll>(`/study-plans/demo-lesson/status/${jobId}`, {
     cache: 'no-store',
   })
 }
