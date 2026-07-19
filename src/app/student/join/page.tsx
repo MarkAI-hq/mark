@@ -12,20 +12,24 @@ export default async function StudentJoinPage({
   searchParams: Promise<{ school?: string }>
 }) {
   const params = await searchParams
+  const explicitSchoolCode = params.school?.toUpperCase()
   const schoolCode =
-    params.school?.toUpperCase() ||
+    explicitSchoolCode ||
     process.env.NEXT_PUBLIC_DEFAULT_SCHOOL_CODE ||
     'MCS-2026'
+  // Return to the specific school profile the student came from, not the generic
+  // marketing homepage — only fall back to the directory when we have no school context.
+  const backHref = explicitSchoolCode ? `/schools/${explicitSchoolCode}` : '/schools'
 
   return (
     <main className="min-h-screen bg-surface-base">
       <div className="mx-auto flex max-w-2xl items-center justify-between px-4 pt-6 sm:px-0">
         <Link
-          href="/"
+          href={backHref}
           className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-[#926C15] transition-colors"
         >
           <ArrowLeft className="h-3.5 w-3.5" />
-          Back to home
+          Back
         </Link>
         <p className="text-sm text-muted-foreground">
           Already have an account?{' '}
