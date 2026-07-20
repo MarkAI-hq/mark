@@ -64,12 +64,13 @@ import { Badge } from '@/components/ui/badge'
 type Step =
   | 'details'
   | 'verify'
-  | 'payment'
   | 'class'
   | 'subjects'
   | 'demo'
   | 'timetable'
   | 'diagnostic'
+  | 'upload'
+  | 'payment'
   | 'results'
 
 const LEVELS = ['S1', 'S2', 'S3', 'S4', 'S5', 'S6']
@@ -104,7 +105,56 @@ interface Credentials {
   pin: string
 }
 
-export function JoinClient({ schoolCode }: { schoolCode: string }) {
+interface PendingSignup {
+  student_id: string
+  channel: 'email' | 'whatsapp'
+  school_code: string
+  student_school_id: string
+  contact?: string
+  verify_id?: string
+  wa_link?: string
+}
+
+// ── Resume-after-disconnect support ─────────────────────────────────────────
+// The wizard is otherwise pure in-memory React state — a refresh or lost
+// connection mid-signup would normally throw the student back to a blank
+// 'details' form, and re-submitting it 500s with "student already exists"
+// since the first attempt's account was already created server-side. We
+// snapshot just enough to localStorage to resume instead of restart.
+//
+// Resuming lands on one of three checkpoints rather than the exact step:
+//   - 'verify'   — restore `pending` and re-show the OTP/WhatsApp screen.
+//   - 'class'    — anywhere from class picking through the diagnostic; these
+//                  steps fetch fresh data anyway (classes, subjects, demo,
+//                  diagnostic) and are cheap to redo, so we just restart the
+//                  loader there instead of trying to restore ephemeral,
+//                  server-fetched lists.
+//   - 'upload'   — diagnostic already scored (the most costly step to redo)
+//                  and/or payment already in flight; resume right there.
+type ResumeCheckpoint = 'verify' | 'class' | 'upload'
+
+const CLASS_CHECKPOINT_STEPS: Step[] = ['class', 'subjects', 'demo', 'timetable', 'diagnostic']
+const UPLOAD_CHECKPOINT_STEPS: Step[] = ['upload', 'payment', 'results']
+
+interface SavedProgress {
+  step: Step
+  firstName?: string
+  lastName?: string
+  level?: string
+  email?: string
+  phone?: string
+  pending?: PendingSignup | null
+  creds?: Credentials | null
+  selectedClassId?: string
+  electives?: string[]
+  result?: SubmitDiagnosticResult | null
+}
+
+function progressStorageKey(schoolCode: string) {
+  return `mi_onboarding_progress:${schoolCode.toUpperCase()}`
+}
+
+export function JoinClient({ schoolCode, schoolName }: { schoolCode: string; schoolName?: string }) {
   const router = useRouter()
   const [step, setStep] = useState<Step>('details')
 
@@ -120,22 +170,16 @@ export function JoinClient({ schoolCode }: { schoolCode: string }) {
   const [enrolling, setEnrolling] = useState(false)
 
   // ── Step 2: verify (email OTP, or WhatsApp click-to-chat) ────────────────────
-  const [pending, setPending] = useState<{
-    student_id: string
-    channel: 'email' | 'whatsapp'
-    school_code: string
-    student_school_id: string
-    contact?: string
-    verify_id?: string
-    wa_link?: string
-  } | null>(null)
+  const [pending, setPending] = useState<PendingSignup | null>(null)
   const [code, setCode] = useState('')
   const [verifying, setVerifying] = useState(false)
   const [waState, setWaState] = useState<'waiting' | 'finishing'>('waiting')
 
-  // ── Step: admission fee payment (MarzPay mobile money) ───────────────────
-  const [paymentUrl, setPaymentUrl] = useState('')
+  // ── Step: admission fee payment (MarzPay mobile money — direct charge) ───
+  const [paymentPhone, setPaymentPhone] = useState('')
   const [paymentAmount, setPaymentAmount] = useState(0)
+  const [paymentMessage, setPaymentMessage] = useState('')
+  const [paymentSubmitted, setPaymentSubmitted] = useState(false)
   const [paymentLoading, setPaymentLoading] = useState(false)
   const [paymentConfirmed, setPaymentConfirmed] = useState(false)
 
@@ -156,6 +200,48 @@ export function JoinClient({ schoolCode }: { schoolCode: string }) {
   const [demoLoading, setDemoLoading] = useState(false)
   const [demoQueuePosition, setDemoQueuePosition] = useState<number | null>(null)
   const [demoWaitSeconds, setDemoWaitSeconds] = useState(0)
+  const [selectedDemoKey, setSelectedDemoKey] = useState<string | null>(null)
+
+  // Two-subject "short interview" picker shown before the demo lesson is
+  // generated — one of the student's chosen electives plus a compulsory
+  // subject, so they see a contrast between what they picked and a core class.
+  const demoOptions = (() => {
+    if (!subjects) return []
+    const opts: { key: string; label: string }[] = []
+    const electiveKey = electives[0]
+    const electiveSubject = subjects.electives.find((s) => s.key === electiveKey)
+    if (electiveSubject) opts.push(electiveSubject)
+
+    const compulsory = subjects.compulsory.find((s) => s.key !== electiveKey)
+    if (compulsory) opts.push(compulsory)
+
+    if (opts.length < 2) {
+      const secondElective = subjects.electives.find(
+        (s) => !opts.some((o) => o.key === s.key),
+      )
+      if (secondElective) opts.push(secondElective)
+    }
+    return opts.slice(0, 2)
+  })()
+
+  const DEMO_TEASERS = [
+    (name: string, label: string) =>
+      `${name}, see what a live ${label} lesson feels like — pick this to try it.`,
+    (name: string, label: string) =>
+      `Curious how we teach ${label}, ${name}? This one's a quick taste.`,
+  ]
+
+  // When there aren't 2 distinct subjects to offer (e.g. no electives chosen
+  // and only one compulsory subject came back), skip the picker and run the
+  // old single-subject auto-select behavior instead.
+  useEffect(() => {
+    if (step !== 'demo' || selectedDemoKey || demo || demoLoading) return
+    if (demoOptions.length >= 2) return
+    const fallbackKey =
+      electives[0] ?? subjects?.compulsory[0]?.key ?? subjects?.electives[0]?.key
+    if (fallbackKey) startDemoLesson(fallbackKey)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step])
 
   // Demo-lesson generation runs as a queued job (backend: study-plans queue,
   // 'demo-lesson' job) shared with every other student onboarding at once —
@@ -200,6 +286,119 @@ export function JoinClient({ schoolCode }: { schoolCode: string }) {
   const [answers, setAnswers] = useState<Record<string, number[]>>({})
   const [submitting, setSubmitting] = useState(false)
   const [result, setResult] = useState<SubmitDiagnosticResult | null>(null)
+
+  // ── Resume-after-disconnect ─────────────────────────────────────────────
+  const [hasHydrated, setHasHydrated] = useState(false)
+  const [resumedFromStorage, setResumedFromStorage] = useState(false)
+
+  function handleStartOver() {
+    try {
+      localStorage.removeItem(progressStorageKey(schoolCode))
+    } catch {
+      // best-effort
+    }
+    setResumedFromStorage(false)
+    setStep('details')
+    setPending(null)
+    setCreds(null)
+    setFirstName('')
+    setLastName('')
+    setLevel('')
+    setEmail('')
+    setPhone('')
+    setSelectedClassId('')
+    setElectives([])
+    setResult(null)
+    setLocalError(null)
+  }
+
+  // Restore once on mount. Runs before the save-effect below (declaration
+  // order = effect run order on the same commit), so the very first save
+  // sees the just-restored state rather than clobbering it with defaults.
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(progressStorageKey(schoolCode))
+      if (raw) {
+        const saved = JSON.parse(raw) as SavedProgress
+        if (saved.firstName) setFirstName(saved.firstName)
+        if (saved.lastName) setLastName(saved.lastName)
+        if (saved.level) setLevel(saved.level)
+        if (saved.email) setEmail(saved.email)
+        if (saved.phone) setPhone(saved.phone)
+        if (saved.pending) setPending(saved.pending)
+        if (saved.creds) setCreds(saved.creds)
+        if (saved.selectedClassId) setSelectedClassId(saved.selectedClassId)
+        if (saved.electives) setElectives(saved.electives)
+        if (saved.result) setResult(saved.result)
+
+        if (saved.step === 'verify' && saved.pending) {
+          setStep('verify')
+          setResumedFromStorage(true)
+        } else if (
+          saved.creds &&
+          CLASS_CHECKPOINT_STEPS.includes(saved.step)
+        ) {
+          setResumedFromStorage(true)
+          goToClassStep(saved.level)
+        } else if (
+          saved.creds &&
+          UPLOAD_CHECKPOINT_STEPS.includes(saved.step)
+        ) {
+          setResumedFromStorage(true)
+          setStep('upload')
+        }
+      }
+    } catch {
+      // corrupt/unavailable storage — just start fresh
+    } finally {
+      setHasHydrated(true)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Snapshot progress after every meaningful change. Guarded by hasHydrated
+  // so the initial render (before restore runs) never overwrites a saved
+  // snapshot with blank defaults.
+  useEffect(() => {
+    if (!hasHydrated) return
+    try {
+      const key = progressStorageKey(schoolCode)
+      if (step === 'details' && !pending) {
+        localStorage.removeItem(key)
+        return
+      }
+      const snapshot: SavedProgress = {
+        step,
+        firstName,
+        lastName,
+        level,
+        email,
+        phone,
+        pending,
+        creds,
+        selectedClassId,
+        electives,
+        result,
+      }
+      localStorage.setItem(key, JSON.stringify(snapshot))
+    } catch {
+      // localStorage unavailable (private browsing, quota) — best-effort only
+    }
+  }, [
+    hasHydrated,
+    schoolCode,
+    step,
+    firstName,
+    lastName,
+    level,
+    email,
+    phone,
+    pending,
+    creds,
+    selectedClassId,
+    electives,
+    result,
+  ])
 
   const selectedClassName =
     classes.find((c) => c.class_id === selectedClassId)?.name ?? null
@@ -269,7 +468,7 @@ export function JoinClient({ schoolCode }: { schoolCode: string }) {
       student_school_id: pending.student_school_id,
       pin: session.pin,
     })
-    goToPaymentStep()
+    goToClassStep()
   }
 
   async function handleVerify() {
@@ -292,56 +491,90 @@ export function JoinClient({ schoolCode }: { schoolCode: string }) {
         student_school_id: pending.student_school_id,
         pin: session.pin,
       })
-      goToPaymentStep()
+      goToClassStep()
     } finally {
       setVerifying(false)
     }
   }
 
-  // ── Payment step: MarzPay admission-fee mobile money ─────────────────────
+  // ── Payment step: MarzPay admission-fee mobile money — direct charge (last
+  // step, right before results are shown). Enters by checking current status
+  // only (no phone number needed yet); a fresh charge is only fired once the
+  // student submits their number in handleSubmitPayment below — unlike a
+  // hosted checkout link, a direct charge can't be safely re-served, so we
+  // never auto-fire one on entry/resume.
   async function goToPaymentStep() {
     setLocalError(null)
     setStep('payment')
     setPaymentLoading(true)
     try {
-      const { data, error } = await initiateAdmissionPayment()
+      const { data } = await getAdmissionFeeStatus()
+      if (data?.status === 'paid') {
+        setPaymentConfirmed(true)
+        setStep('results')
+        return
+      }
+      if (data?.amount) setPaymentAmount(data.amount)
+      if (!paymentPhone && phone) setPaymentPhone(phone)
+      if (data?.status === 'pending') {
+        setPaymentSubmitted(true)
+        setPaymentMessage('A payment request is already on its way to your phone — check for the PIN prompt.')
+        startPaymentPolling()
+      }
+    } finally {
+      setPaymentLoading(false)
+    }
+  }
+
+  async function handleSubmitPayment() {
+    setLocalError(null)
+    if (!paymentPhone.trim()) {
+      setLocalError('Enter your mobile money number to continue.')
+      return
+    }
+    setPaymentLoading(true)
+    try {
+      const { data, error } = await initiateAdmissionPayment(paymentPhone.trim())
       if (error || !data) {
         setLocalError(error?.message ?? 'Could not start payment. Please try again.')
         return
       }
       if (data.status === 'paid') {
         setPaymentConfirmed(true)
-        goToClassStep()
+        setStep('results')
         return
       }
-      setPaymentUrl(data.payment_url)
       setPaymentAmount(data.amount)
+      setPaymentMessage(data.message)
+      setPaymentSubmitted(true)
       startPaymentPolling()
     } finally {
       setPaymentLoading(false)
     }
   }
 
-  // Poll for confirmation while the MarzPay tab is open, mirroring the WhatsApp
-  // click-to-chat polling pattern above — avoids losing wizard state to a
-  // same-tab redirect.
+  // Poll for confirmation while the student's phone is prompting them,
+  // mirroring the WhatsApp click-to-chat polling pattern above.
   function startPaymentPolling() {
     const id = setInterval(async () => {
       const { data } = await getAdmissionFeeStatus()
       if (data?.status === 'paid') {
         clearInterval(id)
         setPaymentConfirmed(true)
-        goToClassStep()
+        setStep('results')
       }
     }, 3000)
   }
 
   // ── Class step ──────────────────────────────────────────────────────────────
-  async function goToClassStep() {
+  // Accepts an explicit level override for the resume-from-storage path, where
+  // `level` state was just set in the same effect and hasn't re-rendered yet
+  // (so the closure here would otherwise still see the pre-restore value).
+  async function goToClassStep(levelOverride?: string) {
     setStep('class')
     setClassesLoading(true)
     try {
-      const { data } = await getSelfEnrollClasses(schoolCode, level || undefined)
+      const { data } = await getSelfEnrollClasses(schoolCode, (levelOverride ?? level) || undefined)
       setClasses(data?.classes ?? [])
     } finally {
       setClassesLoading(false)
@@ -396,7 +629,7 @@ export function JoinClient({ schoolCode }: { schoolCode: string }) {
         setLocalError(error.message ?? 'Could not save your choices. Please try again.')
         return
       }
-      goToDemoStep()
+      setStep('demo')
     } finally {
       setSavingSubjects(false)
     }
@@ -406,13 +639,12 @@ export function JoinClient({ schoolCode }: { schoolCode: string }) {
   const DEMO_POLL_INTERVAL_MS = 1500
   const DEMO_POLL_MAX_ATTEMPTS = 60 // ~90s ceiling before we give up and let the student skip
 
-  async function goToDemoStep() {
+  async function startDemoLesson(demoSubjectKey: string) {
     setLocalError(null)
+    setSelectedDemoKey(demoSubjectKey)
     setDemoLoading(true)
     setDemoQueuePosition(null)
     try {
-      const chosenElectiveKey = electives[0]
-      const demoSubjectKey = chosenElectiveKey ?? subjects?.compulsory[0]?.key ?? subjects?.electives[0]?.key
       if (!demoSubjectKey) return
 
       // Pass the student's name parameters to trigger advanced server-side AI personalization [4]
@@ -498,7 +730,7 @@ export function JoinClient({ schoolCode }: { schoolCode: string }) {
     const subs = diag?.diagnostics ?? []
     if (subs.length === 0) {
       setResult({ baseline_pct: 0, subjects: [], plan_status: 'pending' })
-      setStep('results')
+      setStep('upload')
       return
     }
     setDiagnostics(subs)
@@ -541,7 +773,7 @@ export function JoinClient({ schoolCode }: { schoolCode: string }) {
         return
       }
       setResult(data)
-      setStep('results')
+      setStep('upload')
     } finally {
       setSubmitting(false)
     }
@@ -689,6 +921,19 @@ export function JoinClient({ schoolCode }: { schoolCode: string }) {
         <span className="font-semibold tracking-tight">Mirror Intelligence Online High School</span>
       </div>
 
+      {resumedFromStorage && step !== 'details' && (
+        <div className="mb-4 flex items-center justify-center gap-2 text-xs text-muted-foreground">
+          <span>Welcome back — continuing where you left off.</span>
+          <button
+            type="button"
+            onClick={handleStartOver}
+            className="underline hover:text-foreground"
+          >
+            Not you? Start over
+          </button>
+        </div>
+      )}
+
       {step === 'details' && (
         <Card>
           <CardContent className="p-6 space-y-5">
@@ -785,7 +1030,7 @@ export function JoinClient({ schoolCode }: { schoolCode: string }) {
               )}
             </Button>
             <p className="text-center text-xs text-muted-foreground">
-              Joining <span className="font-medium">{schoolCode}</span>. Already have
+              Joining <span className="font-medium">{schoolName || schoolCode}</span>. Already have
               an account?{' '}
               <a href="/student/login" className="underline">
                 Sign in
@@ -914,8 +1159,9 @@ export function JoinClient({ schoolCode }: { schoolCode: string }) {
             <div className="space-y-1">
               <h1 className="text-xl font-bold">Pay your admission fee</h1>
               <p className="text-sm text-muted-foreground">
-                A one-time admission fee confirms your place. Pay securely via
-                MTN or Airtel Mobile Money — it only takes a minute.
+                A one-time admission fee confirms your place. Enter your MTN
+                or Airtel number and approve the prompt on your phone — it
+                only takes a minute.
               </p>
             </div>
 
@@ -927,7 +1173,7 @@ export function JoinClient({ schoolCode }: { schoolCode: string }) {
               <div className="flex items-center justify-center gap-2 text-sm text-emerald-600 py-2">
                 <Check className="h-4 w-4" /> Payment received — continuing…
               </div>
-            ) : (
+            ) : paymentSubmitted ? (
               <>
                 <div className="rounded-xl border bg-surface-raised px-4 py-3">
                   <p className="text-xs text-muted-foreground">Admission fee</p>
@@ -935,15 +1181,40 @@ export function JoinClient({ schoolCode }: { schoolCode: string }) {
                     UGX {paymentAmount.toLocaleString()}
                   </p>
                 </div>
-
-                <a href={paymentUrl} target="_blank" rel="noopener noreferrer">
-                  <Button className="w-full font-bold" disabled={!paymentUrl}>
-                    <Wallet className="h-4 w-4 mr-2" /> Pay with Mobile Money
-                  </Button>
-                </a>
-                <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
-                  <Loader2 className="h-4 w-4 animate-spin" /> Waiting for payment confirmation…
+                <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground text-left">
+                  <Loader2 className="h-4 w-4 animate-spin shrink-0" />
+                  <span>{paymentMessage || 'Check your phone for a PIN prompt…'}</span>
                 </div>
+                <button
+                  type="button"
+                  onClick={() => setPaymentSubmitted(false)}
+                  className="text-xs text-muted-foreground underline"
+                >
+                  Didn&apos;t get a prompt? Try a different number
+                </button>
+              </>
+            ) : (
+              <>
+                {paymentAmount > 0 && (
+                  <div className="rounded-xl border bg-surface-raised px-4 py-3">
+                    <p className="text-xs text-muted-foreground">Admission fee</p>
+                    <p className="text-2xl font-bold">
+                      UGX {paymentAmount.toLocaleString()}
+                    </p>
+                  </div>
+                )}
+                <div className="space-y-1.5 text-left">
+                  <Label>Mobile money number</Label>
+                  <Input
+                    type="tel"
+                    placeholder="07XXXXXXXX"
+                    value={paymentPhone}
+                    onChange={(e) => setPaymentPhone(e.target.value)}
+                  />
+                </div>
+                <Button className="w-full font-bold" onClick={handleSubmitPayment}>
+                  <Wallet className="h-4 w-4 mr-2" /> Send payment request
+                </Button>
               </>
             )}
 
@@ -1072,7 +1343,7 @@ export function JoinClient({ schoolCode }: { schoolCode: string }) {
                           elective{subjects.electiveMax === 1 ? '' : 's'}
                         </Label>
                         <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
-                          {electives.length} of {subjects.electiveMin} chosen
+                          {electives.length} of {subjects.electiveMax} chosen
                         </Badge>
                       </div>
                       <div className="grid gap-2">
@@ -1150,7 +1421,39 @@ export function JoinClient({ schoolCode }: { schoolCode: string }) {
 
       {step === 'demo' && (
         <Card className="min-h-[500px] h-[580px] flex flex-col overflow-hidden">
-          {demoLoading ? (
+          {!selectedDemoKey && !demoLoading && !demo && demoOptions.length >= 2 ? (
+            <CardContent className="p-6 flex flex-col justify-center h-full gap-5">
+              <div className="space-y-1 text-center">
+                <h1 className="text-xl font-bold">Quick interview</h1>
+                <p className="text-sm text-muted-foreground">
+                  Let&apos;s do a short interview to find your starting point.
+                  Pick a subject and we&apos;ll run a live demo lesson.
+                </p>
+              </div>
+              <div className="grid gap-3">
+                {demoOptions.map((opt, i) => (
+                  <button
+                    key={opt.key}
+                    type="button"
+                    onClick={() => startDemoLesson(opt.key)}
+                    className="text-left rounded-xl border border-slate-200 p-4 transition hover:border-gold hover:bg-gold/10"
+                  >
+                    <div className="flex items-center gap-2 font-semibold">
+                      <BookOpen className="h-4 w-4 text-gold" />
+                      {opt.label}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {DEMO_TEASERS[i % DEMO_TEASERS.length](firstName.trim() || 'Hey', opt.label)}
+                    </p>
+                  </button>
+                ))}
+              </div>
+            </CardContent>
+          ) : !selectedDemoKey && !demoLoading && !demo ? (
+            <CardContent className="p-6 flex flex-col items-center justify-center h-full gap-2 text-sm text-muted-foreground text-center">
+              <Loader2 className="h-5 w-5 animate-spin" />
+            </CardContent>
+          ) : demoLoading ? (
             <CardContent className="p-6 flex flex-col items-center justify-center h-full gap-2 text-sm text-muted-foreground text-center">
               {demoWaitSeconds < 15 ? (
                 <Loader2 className="h-5 w-5 animate-spin" />
@@ -1449,33 +1752,27 @@ export function JoinClient({ schoolCode }: { schoolCode: string }) {
         </Card>
       )}
 
-      {step === 'results' && result && (
+      {step === 'upload' && (
         <Card>
-          <CardContent className="p-6 space-y-6">
-            <div className="text-center space-y-2">
-              <Hourglass className="h-10 w-10 text-amber-500 mx-auto" />
-              <h1 className="text-xl font-bold">Request sent!</h1>
+          <CardContent className="p-6 space-y-5">
+            <div className="space-y-1">
+              <h1 className="text-xl font-bold">Speed up your school approval</h1>
               <p className="text-sm text-muted-foreground">
-                {selectedClassName
-                  ? <>Your request to join <span className="font-medium">{selectedClassName}</span> is pending approval.</>
-                  : <>Your request to join is pending approval.</>}
-              </p>
-              <p className="text-xs text-muted-foreground">
-                An admin will review it shortly. We&apos;ll unlock your lessons as soon
-                as you&apos;re approved.
+                Optionally upload a photo or PDF of your last term report card or
+                exam results so your school can verify your class and accept your
+                request faster. You can skip this and add it later.
               </p>
             </div>
 
-            {/* ── Proof of Class Document Upload Section ─────────────────── */}
             <div className="w-full border border-border/70 rounded-xl p-4 bg-muted/10 text-left space-y-4">
               <div className="flex items-start gap-2.5">
                 <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-gold/10 text-gold">
                   <Upload className="h-4 w-4" />
                 </div>
                 <div>
-                  <p className="text-xs font-semibold text-foreground">Speed up your school approval</p>
+                  <p className="text-xs font-semibold text-foreground">Proof of class document</p>
                   <p className="text-[11px] text-muted-foreground mt-0.5 leading-normal">
-                    Optionally upload a photo or PDF of your last term report card or exam results so your school can verify your class and accept your request faster.
+                    Term report card, prior exam results, or another document showing your class.
                   </p>
                 </div>
               </div>
@@ -1562,6 +1859,30 @@ export function JoinClient({ schoolCode }: { schoolCode: string }) {
               </div>
             </div>
 
+            <Button onClick={goToPaymentStep} className="w-full font-bold">
+              {uploadSuccess ? 'Continue' : 'Skip for now'}
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {step === 'results' && result && (
+        <Card>
+          <CardContent className="p-6 space-y-6">
+            <div className="text-center space-y-2">
+              <Hourglass className="h-10 w-10 text-amber-500 mx-auto" />
+              <h1 className="text-xl font-bold">Request sent!</h1>
+              <p className="text-sm text-muted-foreground">
+                {selectedClassName
+                  ? <>Your request to join <span className="font-medium">{selectedClassName}</span> is pending approval.</>
+                  : <>Your request to join is pending approval.</>}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                An admin will review it shortly. We&apos;ll unlock your lessons as soon
+                as you&apos;re approved.
+              </p>
+            </div>
+
             {result.subjects.length > 0 && (
               <div className="space-y-3">
                 <div className="text-center">
@@ -1618,6 +1939,11 @@ export function JoinClient({ schoolCode }: { schoolCode: string }) {
             <Button
               className="w-full font-bold"
               onClick={() => {
+                try {
+                  localStorage.removeItem(progressStorageKey(schoolCode))
+                } catch {
+                  // best-effort
+                }
                 router.push('/student/dashboard')
                 router.refresh()
               }}

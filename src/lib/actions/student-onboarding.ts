@@ -132,9 +132,9 @@ export async function pollDemoLesson(
 }
 
 export interface AdmissionFeePayment {
-  payment_url: string
-  amount: number
   status: 'pending' | 'paid'
+  amount: number
+  message: string
 }
 
 export interface AdmissionFeeStatus {
@@ -143,11 +143,14 @@ export interface AdmissionFeeStatus {
   paid_at: string | null
 }
 
-export async function initiateAdmissionPayment(): Promise<
-  ServerActionResponse<AdmissionFeePayment>
-> {
+// Charges the phone number directly (MarzPay "Collections") — the student
+// gets a PIN prompt on their phone immediately, no hosted checkout page.
+export async function initiateAdmissionPayment(
+  phoneNumber: string,
+): Promise<ServerActionResponse<AdmissionFeePayment>> {
   return fetcher<AdmissionFeePayment>('/students/me/admission-fee/initiate', {
     method: 'POST',
+    body: JSON.stringify({ phone_number: phoneNumber }),
     cache: 'no-store',
   })
 }

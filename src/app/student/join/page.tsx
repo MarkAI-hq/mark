@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
 import { JoinClient } from './_components/join-client'
+import { getPublicSchoolProfile } from '@/lib/actions/enrollment'
 
 export const metadata = {
   title: 'Join · Mirror Intelligence',
@@ -21,6 +22,9 @@ export default async function StudentJoinPage({
   // marketing homepage — only fall back to the directory when we have no school context.
   const backHref = explicitSchoolCode ? `/schools/${explicitSchoolCode}` : '/schools'
 
+  const { data: school } = await getPublicSchoolProfile(schoolCode)
+  const schoolName = school?.name || schoolCode
+
   return (
     <main className="min-h-screen bg-surface-base">
       <div className="mx-auto flex max-w-2xl items-center justify-between px-4 pt-6 sm:px-0">
@@ -39,7 +43,7 @@ export default async function StudentJoinPage({
         </p>
       </div>
       <div className="flex items-start justify-center px-4 py-10">
-        <JoinClient schoolCode={schoolCode} />
+        <JoinClient schoolCode={schoolCode} schoolName={schoolName} />
       </div>
     </main>
   )
