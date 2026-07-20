@@ -26,6 +26,12 @@ const nextConfig: NextConfig = {
     serverActions: {
       bodySizeLimit: '50mb',
     },
+    // Disabled: default chunking can split Tailwind's single utility sheet
+    // across multiple output files whose load order doesn't preserve the
+    // base-utilities-before-responsive-variants cascade guarantee, causing
+    // unconditional rules (e.g. .flex) to beat matching responsive rules
+    // (e.g. md:hidden) when the "base" chunk loads after the "variant" one.
+    cssChunking: false,
   },
 
   async headers() {
