@@ -3,13 +3,14 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { Check, X, Loader2, GraduationCap, Users } from 'lucide-react'
+import { Check, X, Loader2, GraduationCap, Users, Banknote } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import {
   approvePendingStudent,
   declinePendingStudent,
+  markAdmissionFeePaid,
   type PendingStudent,
 } from '@/lib/actions/students'
 
@@ -36,6 +37,35 @@ export function PendingStudentsClient({
           s.requested_class_name ? ` → ${s.requested_class_name}` : ''
         }`,
       )
+      router.refresh()
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  async function handleMarkFeePaid(s: PendingStudent) {
+    const name = [s.first_name, s.last_name].filter(Boolean).join(' ') || 'this student'
+    const note = window.prompt(
+      `Confirm ${name}'s admission fee was received outside MarzPay (e.g. bank transfer, cash, mobile money confirmed by phone).\n\nBriefly note how it was paid (required):`,
+    )
+    if (note === null) return // cancelled
+    if (!note.trim()) {
+      toast.error('A short note is required to mark a fee paid manually.')
+      return
+    }
+    setBusy(s.student_id)
+    try {
+      const { error } = await markAdmissionFeePaid(s.student_id, note.trim())
+      if (error) {
+        toast.error(error.message ?? 'Could not mark fee paid')
+        return
+      }
+      setRows((prev) =>
+        prev.map((r) =>
+          r.student_id === s.student_id ? { ...r, admission_fee_status: 'paid' } : r,
+        ),
+      )
+      toast.success(`${name}'s admission fee marked paid`)
       router.refresh()
     } finally {
       setBusy(null)
@@ -121,6 +151,22 @@ export function PendingStudentsClient({
             </div>
 
             <div className="flex shrink-0 gap-2">
+              {s.admission_fee_status !== 'paid' && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={busy === s.student_id}
+                  title="Mark paid manually — e.g. if MarzPay is unavailable and payment was confirmed another way"
+                  onClick={() => handleMarkFeePaid(s)}
+                >
+                  {busy === s.student_id ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Banknote className="h-4 w-4" />
+                  )}
+                  Mark fee received
+                </Button>
+              )}
               <Button
                 variant="outline"
                 size="sm"

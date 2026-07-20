@@ -82,6 +82,24 @@ export async function declinePendingStudent(
   return res
 }
 
+// Stop-gap for when MarzPay itself is unavailable — lets an admin who has
+// confirmed payment through another channel (bank transfer, cash, mobile
+// money confirmed by phone) mark the admission fee paid directly.
+export async function markAdmissionFeePaid(
+  id: string,
+  note: string,
+): Promise<ServerActionResponse<{ status: string; amount: number; paid_at: string | null }>> {
+  const res = await fetcher<{ status: string; amount: number; paid_at: string | null }>(
+    `/students/${id}/admission-fee/mark-paid`,
+    {
+      method: 'POST',
+      body: JSON.stringify({ note }),
+    },
+  )
+  if (!res.error) revalidatePath('/dashboard/students/pending')
+  return res
+}
+
 export async function getStudent(id: string): Promise<ServerActionResponse<Student>> {
   return fetcher<Student>(`/students/${id}`, { cache: 'no-store' })
 }
