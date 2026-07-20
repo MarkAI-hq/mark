@@ -349,7 +349,7 @@ export function OnboardingWizard({ adminName, schoolName }: OnboardingWizardProp
         <div className="flex-1 bg-slate-50 flex flex-col">
 
           {/* Mobile logo */}
-          <div className="flex lg:hidden items-center gap-2.5 p-6 border-b bg-white">
+          <div className="flex lg:!hidden items-center gap-2.5 p-6 border-b bg-white">
             <Image
               src="/assets/images/markBlackBg.png"
               alt="Mark logo"

@@ -25,7 +25,7 @@ export function MobileNav({ organizationName }: MobileNavProps) {
         <Button
           variant="outline"
           size="icon"
-          className="shrink-0 md:hidden" // Only show on mobile
+          className="shrink-0 md:!hidden" // Only show on mobile
         >
           <Menu className="h-5 w-5" />
           <span className="sr-only">Toggle navigation menu</span>

@@ -51,7 +51,7 @@ export function StudentSidebarNav({
       {!mobileOpen && (
         <Button
           variant="ghost"
-          className="fixed top-4 left-4 z-50 md:hidden"
+          className="fixed top-4 left-4 z-50 md:!hidden"
           onClick={() => setMobileOpen(true)}
         >
           <Menu className="w-6 h-6" />

@@ -972,7 +972,7 @@ export function StudentTracyPage({ user, weakSubjects, currentTopics, initialNot
         style={{ boxShadow: '0 2px 6px rgba(42,39,34,.07), 0 18px 40px rgba(42,39,34,.10)' }}>
 
         {/* Mobile tab bar — only visible below lg */}
-        <div className="flex lg:hidden shrink-0 items-center border-b border-[#e8e8e6] dark:border-[#1f1f1f] bg-[#f6f6f5] dark:bg-[#141414] px-3 py-1">
+        <div className="flex lg:!hidden shrink-0 items-center border-b border-[#e8e8e6] dark:border-[#1f1f1f] bg-[#f6f6f5] dark:bg-[#141414] px-3 py-1">
           {([
             { id: 'sources', label: 'Sources', Icon: FileText },
             { id: 'chat',    label: 'Chat',    Icon: Sparkles },
