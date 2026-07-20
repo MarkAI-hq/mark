@@ -42,6 +42,7 @@ export default defineConfig({
         "**/student-marketplace.spec.ts",
         "**/teacher.spec.ts",
         "**/public-marketplace.spec.ts",
+        "**/marzpay.spec.ts",
         "**/tracy-widget-visual.spec.ts",
         "**/tracy-form-wizard.spec.ts",
         "**/tracy-chat.spec.ts",

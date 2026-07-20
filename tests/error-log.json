@@ -103,5 +103,23 @@
       "pageErrors": []
     },
     "timestamp": "2026-06-08T12:24:29.630Z"
+  },
+  {
+    "test": "/student/join loads the sign-up form",
+    "suite": "marzpay.spec.ts > Student join — admission-fee payment step (entry point only)",
+    "status": "passed",
+    "screenshot": "D:\\markhq\\mark\\tests\\screenshots\\error-2026-07-19T14-14-11-434Z.png",
+    "captured": {
+      "console": [
+        {
+          "level": "error",
+          "text": "A tree hydrated but some attributes of the server rendered HTML didn't match the client properties. This won't be patched up. This can happen if a SSR-ed Client Component used:\n\n- A server/client branch `if (typeof window !== 'undefined')`.\n- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.\n- Date formatting in a user's locale which doesn't match the server.\n- External changing data without sending a snapshot of it along with the HTML.\n- Invalid HTML tag nesting.\n\nIt can also happen if the client has a browser extension installed which messes with the HTML before React loaded.\n\n%s%s https://react.dev/link/hydration-mismatch \n\n  ...\n    <RedirectErrorBoundary router={{...}}>\n      <InnerLayoutRouter url=\"/student/j...\" tree={[...]} cacheNode={{lazyData:null, ...}} segmentPath={[...]}>\n        <SegmentViewNode type=\"page\" pagePath=\"student/jo...\">\n          <SegmentTrieNode>\n          <StudentJoinPage>\n            <main className=\"min-h-scre...\">\n              <div>\n              <div className=\"flex items...\">\n                <JoinClient schoolCode=\"MCS-2026\" schoolName=\"MCS-2026\">\n                  <div className=\"w-full max...\">\n                    <div>\n                    <_c>\n                      <div ref={null} className=\"rounded-xl...\">\n                        <_c8 className=\"p-6 space-y-5\">\n                          <div ref={null} className=\"p-6 space-y-5\">\n                            <div>\n                            <div>\n                            <div>\n                            <div>\n                            <div>\n                            <div className=\"space-y-1.5\">\n                              <_c>\n                              <_c type=\"tel\" placeholder=\"+256…\" value=\"\" onChange={function onChange}>\n                                <input\n                                  type=\"tel\"\n                                  className=\"flex h-9 w-full rounded-lg border border-input bg-transparent px-3 py-1 t...\"\n                                  ref={null}\n                                  placeholder=\"+256…\"\n                                  value=\"\"\n                                  onChange={function onChange}\n-                                 style={{caret-color:\"transparent\"}}\n                                >\n                            ...\n        ...\n      ...\n",
+          "timestamp": "2026-07-19T14:14:02.964Z"
+        }
+      ],
+      "network": [],
+      "pageErrors": []
+    },
+    "timestamp": "2026-07-19T14:14:11.663Z"
   }
 ]
