@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { Zap, CheckCircle2, XCircle } from 'lucide-react'
+import { LessonProse } from '@/components/lesson/lesson-prose'
 
 interface FlashQuestion {
   question: string
@@ -44,7 +45,7 @@ export function SceneRetrievalFlash({ scene, onReady }: Props) {
         return (
           <div key={qIdx} className="rounded-2xl border bg-card p-5 space-y-4">
             <div className="flex items-start justify-between gap-2">
-              <p className="font-medium text-base leading-snug flex-1">{q.question}</p>
+              <p className="font-medium text-base leading-snug flex-1"><LessonProse text={q.question} /></p>
               <span className="text-[11px] text-muted-foreground whitespace-nowrap shrink-0">
                 {q.topic} · {q.days_ago}d ago
               </span>
@@ -68,7 +69,7 @@ export function SceneRetrievalFlash({ scene, onReady }: Props) {
                     <span className="shrink-0 h-6 w-6 rounded-full border flex items-center justify-center text-xs font-bold">
                       {String.fromCharCode(65 + oIdx)}
                     </span>
-                    <span className="flex-1">{opt}</span>
+                    <span className="flex-1"><LessonProse text={opt} /></span>
                     {answered && isCorrect                && <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 shrink-0" />}
                     {answered && isSelected && !isCorrect && <XCircle      className="h-3.5 w-3.5 text-rose-500 shrink-0" />}
                   </button>

@@ -8,6 +8,7 @@ import { submitStudentNote, validateSceneNotes } from '@/lib/actions/student-not
 import { validateStudentInput, copyProtectionProps } from '@/lib/utils/validation'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
+import { LessonProse } from '@/components/lesson/lesson-prose'
 
 interface Props { scene: any; planId: string; subject: string; topic: string; onReady?: () => void }
 
@@ -90,13 +91,13 @@ export function SceneWhiteboard({ scene, planId, subject, topic, onReady }: Prop
       </div>
 
       <div {...copyProtectionProps} className={cn('rounded-xl border bg-card px-4 py-3', copyProtectionProps.className)}>
-        <p className="font-medium text-base">{prompt}</p>
+        <p className="font-medium text-base"><LessonProse text={prompt} /></p>
       </div>
 
       {showHint && scaffolding && (
         <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 flex gap-2">
           <Lightbulb className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
-          <p className="text-sm text-amber-900">{scaffolding}</p>
+          <p className="text-sm text-amber-900"><LessonProse text={scaffolding} /></p>
         </div>
       )}
 
@@ -120,7 +121,7 @@ export function SceneWhiteboard({ scene, planId, subject, topic, onReady }: Prop
             : 'border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/20 text-amber-900 dark:text-amber-200'
         }`}>
           {passed && <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />}
-          <span>{feedback}</span>
+          <span><LessonProse text={feedback} /></span>
         </div>
       )}
 

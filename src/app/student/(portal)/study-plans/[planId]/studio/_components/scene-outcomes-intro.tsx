@@ -1,6 +1,7 @@
 'use client'
 
 import { Target } from 'lucide-react'
+import { LessonProse } from '@/components/lesson/lesson-prose'
 
 interface Props {
   scene: any
@@ -23,7 +24,7 @@ export function SceneOutcomesIntro({ scene }: Props) {
       </h2>
 
       {framing && (
-        <p className="text-base text-foreground/80 leading-relaxed">{framing}</p>
+        <p className="text-base text-foreground/80 leading-relaxed"><LessonProse text={framing} /></p>
       )}
 
       <div className="rounded-2xl border bg-card px-5 py-4 space-y-3">
@@ -36,7 +37,7 @@ export function SceneOutcomesIntro({ scene }: Props) {
               <span className="shrink-0 mt-0.5 h-6 w-6 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 flex items-center justify-center text-xs font-bold">
                 {i + 1}
               </span>
-              <span className="text-base leading-snug">{outcome}</span>
+              <span className="text-base leading-snug"><LessonProse text={outcome} /></span>
             </li>
           ))}
         </ol>

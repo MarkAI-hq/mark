@@ -7,6 +7,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { validateStudentInput, copyProtectionProps } from '@/lib/utils/validation'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
+import { LessonProse } from '@/components/lesson/lesson-prose'
 
 interface Props { scene: any; onReady?: () => void }
 
@@ -39,7 +40,7 @@ export function ScenePeerTeach({ scene, onReady }: Props) {
       </div>
 
       <div {...copyProtectionProps} className={cn('rounded-2xl border bg-card px-5 py-4', copyProtectionProps.className)}>
-        <p className="text-base leading-relaxed">{teachPrompt}</p>
+        <p className="text-base leading-relaxed"><LessonProse text={teachPrompt} /></p>
       </div>
 
       {!submitted ? (
@@ -74,7 +75,7 @@ export function ScenePeerTeach({ scene, onReady }: Props) {
               {rubric_points.map((point: string, i: number) => (
                 <div key={i} className="flex items-start gap-2 text-sm text-foreground/80">
                   <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" />
-                  {point}
+                  <LessonProse text={point} />
                 </div>
               ))}
             </div>
@@ -83,7 +84,7 @@ export function ScenePeerTeach({ scene, onReady }: Props) {
           {model_explanation && (
             <div className="rounded-2xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/20 px-5 py-4 space-y-1">
               <p className="text-sm font-medium text-emerald-700 dark:text-emerald-300">Model explanation</p>
-              <p className="text-emerald-900 dark:text-emerald-200 leading-relaxed text-base">{model_explanation}</p>
+              <p className="text-emerald-900 dark:text-emerald-200 leading-relaxed text-base"><LessonProse text={model_explanation} /></p>
             </div>
           )}
         </div>

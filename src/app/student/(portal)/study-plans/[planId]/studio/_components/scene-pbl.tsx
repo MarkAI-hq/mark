@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
 import { validateStudentInput, copyProtectionProps } from '@/lib/utils/validation'
+import { LessonProse } from '@/components/lesson/lesson-prose'
 
 interface Props { 
   scene: any 
@@ -54,7 +55,7 @@ export function ScenePbl({ scene, onReady }: Props) {
 
       {/* Protect the challenge card against text copying */}
       <div {...copyProtectionProps} className="rounded-xl border-l-4 border-gold bg-gold/5 px-4 py-3">
-        <p className="font-medium text-base">{challenge}</p>
+        <p className="font-medium text-base"><LessonProse text={challenge} /></p>
       </div>
 
       {(guiding_questions ?? []).length > 0 && (
@@ -66,7 +67,7 @@ export function ScenePbl({ scene, onReady }: Props) {
                 className="w-full flex items-center justify-between px-4 py-3 text-left text-sm hover:bg-muted/30 transition-colors"
                 onClick={() => setOpenQ(openQ === i ? null : i)}
               >
-                <span {...copyProtectionProps}>{q}</span>
+                <span {...copyProtectionProps}><LessonProse text={q} /></span>
                 {openQ === i ? <ChevronUp className="h-4 w-4 shrink-0" /> : <ChevronDown className="h-4 w-4 shrink-0" />}
               </button>
               {openQ === i && (

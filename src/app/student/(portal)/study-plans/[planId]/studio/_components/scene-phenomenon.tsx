@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { BookOpen, CheckCircle2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
+import { LessonProse } from '@/components/lesson/lesson-prose'
 
 interface Props { scene: any; onReady?: () => void }
 
@@ -23,12 +24,12 @@ export function ScenePhenomenon({ scene, onReady }: Props) {
       </div>
 
       <div className="rounded-2xl border bg-card px-5 py-4 text-base leading-relaxed text-foreground/80">
-        {story}
+        <LessonProse text={story} />
       </div>
 
       {!submitted ? (
         <div className="space-y-4">
-          <p className="font-medium text-base">{discussion_prompt}</p>
+          <p className="font-medium text-base"><LessonProse text={discussion_prompt} /></p>
 
           <div className="space-y-2.5">
             {(character_viewpoints ?? []).map((vp: { character: string; claim: string }, i: number) => (
@@ -42,7 +43,7 @@ export function ScenePhenomenon({ scene, onReady }: Props) {
                 }`}
               >
                 <p className="font-medium text-sm text-muted-foreground mb-0.5">{vp.character}</p>
-                <p className="text-base leading-snug">{vp.claim}</p>
+                <p className="text-base leading-snug"><LessonProse text={vp.claim} /></p>
               </button>
             ))}
           </div>
@@ -81,7 +82,7 @@ export function ScenePhenomenon({ scene, onReady }: Props) {
                   {i === correct_character && <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />}
                   {vp.character}
                 </div>
-                <p>{vp.claim}</p>
+                <p><LessonProse text={vp.claim} /></p>
               </div>
             ))}
           </div>
@@ -89,7 +90,7 @@ export function ScenePhenomenon({ scene, onReady }: Props) {
           {resolution && (
             <div className="rounded-2xl border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20 px-5 py-4 space-y-1">
               <p className="text-sm font-medium text-blue-700 dark:text-blue-300">The scientific explanation</p>
-              <p className="text-blue-900 dark:text-blue-200 leading-relaxed">{resolution}</p>
+              <p className="text-blue-900 dark:text-blue-200 leading-relaxed"><LessonProse text={resolution} /></p>
             </div>
           )}
         </div>

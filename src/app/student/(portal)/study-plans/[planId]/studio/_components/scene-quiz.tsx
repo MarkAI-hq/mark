@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { HelpCircle, CheckCircle2, XCircle } from 'lucide-react'
+import { LessonProse } from '@/components/lesson/lesson-prose'
 
 interface Props { scene: any; onReady?: () => void }
 
@@ -19,7 +20,7 @@ export function SceneQuiz({ scene, onReady }: Props) {
       </div>
 
       <div className="rounded-2xl border bg-card px-5 py-4">
-        <p className="font-medium text-lg leading-snug">{question}</p>
+        <p className="font-medium text-lg leading-snug"><LessonProse text={question} /></p>
       </div>
 
       <div className="space-y-2.5">
@@ -40,7 +41,7 @@ export function SceneQuiz({ scene, onReady }: Props) {
               <span className="shrink-0 h-7 w-7 rounded-full border flex items-center justify-center text-xs font-bold">
                 {String.fromCharCode(65 + i)}
               </span>
-              <span className="flex-1 leading-snug">{opt}</span>
+              <span className="flex-1 leading-snug"><LessonProse text={opt} /></span>
               {answered && isCorrect                && <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />}
               {answered && isSelected && !isCorrect && <XCircle      className="h-4 w-4 text-rose-500 shrink-0" />}
             </button>
@@ -51,7 +52,7 @@ export function SceneQuiz({ scene, onReady }: Props) {
       {answered && explanation && (
         <div className="rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20 px-4 py-3 text-sm text-blue-900 dark:text-blue-200">
           <p className="font-medium mb-1">Explanation</p>
-          <p className="leading-relaxed">{explanation}</p>
+          <p className="leading-relaxed"><LessonProse text={explanation} /></p>
         </div>
       )}
     </div>

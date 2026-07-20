@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { BookOpen, X } from 'lucide-react'
+import { LessonProse } from '@/components/lesson/lesson-prose'
 
 interface Props {
   scene: any
@@ -64,7 +65,7 @@ export function SceneSlide({ scene, imageUrl }: Props) {
               <h2 className={`font-bold leading-tight ${showImage ? 'text-xl' : 'text-2xl'}`}>{title}</h2>
             </div>
             {text && (
-              <p className={`leading-relaxed text-foreground ${showImage ? 'text-sm' : 'text-base'}`}>{text}</p>
+              <p className={`leading-relaxed text-foreground ${showImage ? 'text-sm' : 'text-base'}`}><LessonProse text={text} /></p>
             )}
           </div>
         </div>
@@ -75,7 +76,7 @@ export function SceneSlide({ scene, imageUrl }: Props) {
             {bullets.map((b: string, i: number) => (
               <li key={i} className="flex gap-3 text-base pt-2">
                 <span className="mt-2 h-1.5 w-1.5 rounded-full bg-gold shrink-0" />
-                <span className="leading-relaxed">{b}</span>
+                <span className="leading-relaxed"><LessonProse text={b} /></span>
               </li>
             ))}
           </ul>
@@ -92,7 +93,7 @@ export function SceneSlide({ scene, imageUrl }: Props) {
       </div>
 
       {text && (
-        <p className="text-base leading-relaxed text-foreground">{text}</p>
+        <p className="text-base leading-relaxed text-foreground"><LessonProse text={text} /></p>
       )}
 
       {bullets && bullets.length > 0 && (
@@ -100,7 +101,7 @@ export function SceneSlide({ scene, imageUrl }: Props) {
           {bullets.map((b: string, i: number) => (
             <li key={i} className="flex gap-3 text-base">
               <span className="mt-2 h-1.5 w-1.5 rounded-full bg-gold shrink-0" />
-              <span className="leading-relaxed">{b}</span>
+              <span className="leading-relaxed"><LessonProse text={b} /></span>
             </li>
           ))}
         </ul>

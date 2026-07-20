@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { CheckCircle2, XCircle } from 'lucide-react'
+import { LessonProse } from '@/components/lesson/lesson-prose'
 
 interface Props {
   scene:     any
@@ -31,7 +32,7 @@ export function SceneProbe({ scene, onAnswer, onReady }: Props) {
       <h2 className="font-bold text-2xl leading-tight">{title}</h2>
 
       <div className="rounded-2xl border bg-card px-5 py-4">
-        <p className="font-medium text-lg leading-snug">{question}</p>
+        <p className="font-medium text-lg leading-snug"><LessonProse text={question} /></p>
       </div>
 
       <div className="space-y-2.5">
@@ -52,7 +53,7 @@ export function SceneProbe({ scene, onAnswer, onReady }: Props) {
               <span className="shrink-0 h-7 w-7 rounded-full border flex items-center justify-center text-xs font-bold">
                 {String.fromCharCode(65 + i)}
               </span>
-              <span className="flex-1 leading-snug">{opt}</span>
+              <span className="flex-1 leading-snug"><LessonProse text={opt} /></span>
               {answered && isCorrect                && <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />}
               {answered && isSelected && !isCorrect && <XCircle      className="h-4 w-4 text-rose-500 shrink-0" />}
             </button>
@@ -62,7 +63,7 @@ export function SceneProbe({ scene, onAnswer, onReady }: Props) {
 
       {answered && brief_explanation && (
         <div className="rounded-xl border border-muted bg-muted/40 px-4 py-3 text-sm text-foreground/80 leading-relaxed">
-          {brief_explanation}
+          <LessonProse text={brief_explanation} />
         </div>
       )}
     </div>

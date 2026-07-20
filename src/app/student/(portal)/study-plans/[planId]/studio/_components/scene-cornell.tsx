@@ -8,6 +8,7 @@ import { submitStudentNote, validateSceneNotes } from '@/lib/actions/student-not
 import { validateStudentInput, copyProtectionProps } from '@/lib/utils/validation'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
+import { LessonProse } from '@/components/lesson/lesson-prose'
 
 interface Props {
   scene:    any
@@ -118,7 +119,7 @@ export function SceneCornell({ scene, planId, subject, topic, onReady }: Props) 
             {(cue_questions ?? []).map((q: string, i: number) => (
               <li key={i} {...copyProtectionProps} className={cn('space-y-0.5', copyProtectionProps.className)}>
                 <span className="text-[10px] font-bold text-gold/80 uppercase tracking-wide">Q{i + 1}</span>
-                <p className="text-xs text-foreground leading-snug">{q}</p>
+                <p className="text-xs text-foreground leading-snug"><LessonProse text={q} /></p>
               </li>
             ))}
           </ul>
@@ -164,7 +165,7 @@ export function SceneCornell({ scene, planId, subject, topic, onReady }: Props) 
             : 'border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/20 text-amber-900 dark:text-amber-200'
         }`}>
           {passed && <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />}
-          <span>{feedback}</span>
+          <span><LessonProse text={feedback} /></span>
         </div>
       )}
 

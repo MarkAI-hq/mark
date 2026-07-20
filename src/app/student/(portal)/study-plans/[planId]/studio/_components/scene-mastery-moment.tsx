@@ -3,6 +3,7 @@
 import { Star, Share2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
+import { LessonProse } from '@/components/lesson/lesson-prose'
 
 interface Props {
   scene: any
@@ -44,7 +45,7 @@ export function SceneMasteryMoment({ scene, initialMisconception }: Props) {
           </div>
           <div className="border-t border-amber-200 dark:border-amber-700 pt-3 space-y-1">
             <p className="text-xs font-semibold uppercase tracking-wide text-emerald-600 dark:text-emerald-400">Now you understand</p>
-            <p className="text-emerald-900 dark:text-emerald-200 leading-relaxed">{what_changed}</p>
+            <p className="text-emerald-900 dark:text-emerald-200 leading-relaxed"><LessonProse text={what_changed} /></p>
           </div>
         </div>
       )}
@@ -59,7 +60,7 @@ export function SceneMasteryMoment({ scene, initialMisconception }: Props) {
       {key_insight && (
         <div className="rounded-2xl border bg-card px-6 py-4 text-left">
           <p className="text-sm text-muted-foreground mb-1">Key insight</p>
-          <p className="font-medium text-base leading-snug">{key_insight}</p>
+          <p className="font-medium text-base leading-snug"><LessonProse text={key_insight} /></p>
         </div>
       )}
 

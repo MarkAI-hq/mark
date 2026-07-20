@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { FlaskConical } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
+import { LessonProse } from '@/components/lesson/lesson-prose'
 
 interface Props { scene: any }
 
@@ -96,7 +97,7 @@ export function SceneSimulation({ scene }: Props) {
       </div>
 
       {description && (
-        <p className="text-sm text-muted-foreground leading-relaxed">{description}</p>
+        <p className="text-sm text-muted-foreground leading-relaxed"><LessonProse text={description} /></p>
       )}
 
       {prepared ? (

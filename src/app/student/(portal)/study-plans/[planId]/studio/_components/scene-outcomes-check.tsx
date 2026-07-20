@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { CheckCircle2, XCircle, Target } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { LessonProse } from '@/components/lesson/lesson-prose'
 
 interface OutcomesCheckItem {
   outcome: string
@@ -81,14 +82,14 @@ export function SceneOutcomesCheck({ scene, onReady, onOutcomesAchieved }: Props
                   {itemIdx + 1}
                 </span>
                 <p className="text-xs text-muted-foreground leading-snug">
-                  {item.outcome}
+                  <LessonProse text={item.outcome} />
                 </p>
               </div>
             </div>
 
             {/* Question */}
             <div className="px-5 pt-4 pb-3">
-              <p className="font-medium text-base leading-snug">{item.question}</p>
+              <p className="font-medium text-base leading-snug"><LessonProse text={item.question} /></p>
             </div>
 
             {/* Options */}
@@ -114,7 +115,7 @@ export function SceneOutcomesCheck({ scene, onReady, onOutcomesAchieved }: Props
                     <span className="shrink-0 h-6 w-6 rounded-full border flex items-center justify-center text-xs font-bold">
                       {String.fromCharCode(65 + optIdx)}
                     </span>
-                    <span className="flex-1 leading-snug">{opt}</span>
+                    <span className="flex-1 leading-snug"><LessonProse text={opt} /></span>
                     {submitted && isCorrect                && <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />}
                     {submitted && isSelected && !isCorrect && <XCircle      className="h-4 w-4 text-rose-500 shrink-0" />}
                   </button>
@@ -125,7 +126,7 @@ export function SceneOutcomesCheck({ scene, onReady, onOutcomesAchieved }: Props
             {/* Explanation after submit */}
             {submitted && item.explanation && (
               <div className="mx-5 mb-4 rounded-xl border border-muted bg-muted/40 px-4 py-3 text-sm text-foreground/80 leading-relaxed">
-                {item.explanation}
+                <LessonProse text={item.explanation} />
               </div>
             )}
           </div>
