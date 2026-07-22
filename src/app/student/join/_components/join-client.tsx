@@ -50,6 +50,9 @@ import {
   uploadStudentDocument,
   initiateAdmissionPayment,
   getAdmissionFeeStatus,
+  redeemAdmissionCode,
+  getPledgeStatus,
+  acceptPledge,
   type DiagnosticSubject,
   type SubmitDiagnosticResult,
   type SelfEnrollClass,
@@ -64,6 +67,7 @@ import { Badge } from '@/components/ui/badge'
 type Step =
   | 'details'
   | 'verify'
+  | 'pledge'
   | 'class'
   | 'subjects'
   | 'demo'
@@ -175,8 +179,17 @@ export function JoinClient({ schoolCode, schoolName }: { schoolCode: string; sch
   const [verifying, setVerifying] = useState(false)
   const [waState, setWaState] = useState<'waiting' | 'finishing'>('waiting')
 
+  // ── Step: pledge (Mirror Campus Code signature) ─────────────────────────────
+  const [pledgeSigned, setPledgeSigned] = useState(false)
+  const [pledgeNameTyped, setPledgeNameTyped] = useState('')
+  const [pledgeLoading, setPledgeLoading] = useState(false)
+  const [pledgeSubmitting, setPledgeSubmitting] = useState(false)
+
   // ── Step: admission fee payment (MarzPay mobile money — direct charge) ───
   const [paymentPhone, setPaymentPhone] = useState('')
+  const [accessCode, setAccessCode] = useState('')
+  const [showAccessCode, setShowAccessCode] = useState(false)
+  const [redeemingCode, setRedeemingCode] = useState(false)
   const [paymentAmount, setPaymentAmount] = useState(0)
   const [paymentMessage, setPaymentMessage] = useState('')
   const [paymentSubmitted, setPaymentSubmitted] = useState(false)
@@ -334,6 +347,12 @@ export function JoinClient({ schoolCode, schoolName }: { schoolCode: string; sch
         if (saved.step === 'verify' && saved.pending) {
           setStep('verify')
           setResumedFromStorage(true)
+        } else if (saved.step === 'pledge' && saved.creds) {
+          // Not yet in CLASS_CHECKPOINT_STEPS — the pledge itself may still be
+          // unsigned, so resume back into the pledge step rather than skipping
+          // ahead to class selection.
+          setResumedFromStorage(true)
+          goToPledgeStep()
         } else if (
           saved.creds &&
           CLASS_CHECKPOINT_STEPS.includes(saved.step)
@@ -468,7 +487,7 @@ export function JoinClient({ schoolCode, schoolName }: { schoolCode: string; sch
       student_school_id: pending.student_school_id,
       pin: session.pin,
     })
-    goToClassStep()
+    goToPledgeStep()
   }
 
   async function handleVerify() {
@@ -491,9 +510,47 @@ export function JoinClient({ schoolCode, schoolName }: { schoolCode: string; sch
         student_school_id: pending.student_school_id,
         pin: session.pin,
       })
-      goToClassStep()
+      goToPledgeStep()
     } finally {
       setVerifying(false)
+    }
+  }
+
+  // ── Pledge step: sign the Mirror Campus Code (typed-name signature) ───────
+  // The student is authenticated by this point (creds/session just issued),
+  // so this is the earliest point we can call the pledge endpoint.
+  async function goToPledgeStep() {
+    setLocalError(null)
+    setStep('pledge')
+    setPledgeLoading(true)
+    try {
+      const { data } = await getPledgeStatus()
+      if (data?.signed) {
+        setPledgeSigned(true)
+        goToClassStep()
+      }
+    } finally {
+      setPledgeLoading(false)
+    }
+  }
+
+  async function handleSignPledge() {
+    setLocalError(null)
+    if (!pledgeNameTyped.trim()) {
+      setLocalError('Type your full name to sign the code.')
+      return
+    }
+    setPledgeSubmitting(true)
+    try {
+      const { error } = await acceptPledge(pledgeNameTyped.trim())
+      if (error) {
+        setLocalError(error.message ?? 'Could not sign the pledge. Please try again.')
+        return
+      }
+      setPledgeSigned(true)
+      goToClassStep()
+    } finally {
+      setPledgeSubmitting(false)
     }
   }
 
@@ -550,6 +607,28 @@ export function JoinClient({ schoolCode, schoolName }: { schoolCode: string; sch
       startPaymentPolling()
     } finally {
       setPaymentLoading(false)
+    }
+  }
+
+  // Scholarship / internal-testing bypass — a valid code is a full bypass,
+  // no mobile-money charge involved.
+  async function handleRedeemCode() {
+    setLocalError(null)
+    if (!accessCode.trim()) {
+      setLocalError('Enter your access code.')
+      return
+    }
+    setRedeemingCode(true)
+    try {
+      const { data, error } = await redeemAdmissionCode(accessCode.trim())
+      if (error || !data) {
+        setLocalError(error?.message ?? 'That code did not work. Please check it and try again.')
+        return
+      }
+      setPaymentConfirmed(true)
+      setStep('results')
+    } finally {
+      setRedeemingCode(false)
     }
   }
 
@@ -1153,6 +1232,62 @@ export function JoinClient({ schoolCode, schoolName }: { schoolCode: string; sch
         </Card>
       )}
 
+      {step === 'pledge' && (
+        <Card>
+          <CardContent className="p-6 space-y-5">
+            <div className="space-y-1">
+              <h1 className="text-xl font-bold">The Mirror Campus Code</h1>
+              <p className="text-sm text-muted-foreground">
+                Before you continue, read and sign the code every Mirror Campus student agrees to.
+              </p>
+            </div>
+
+            {pledgeLoading ? (
+              <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground py-6">
+                <Loader2 className="h-4 w-4 animate-spin" /> Loading…
+              </div>
+            ) : (
+              <>
+                <div className="rounded-xl border bg-surface-raised px-4 py-4 text-sm space-y-2">
+                  <p>I&apos;m joining Mirror Campus to grow — not just to pass. I agree to:</p>
+                  <ul className="list-disc pl-5 space-y-1 text-muted-foreground">
+                    <li>Show up and do my own work — my answers, my thinking, my effort.</li>
+                    <li>Use Tracy and every tool here to learn, not to shortcut learning.</li>
+                    <li>Treat my classmates, teachers, and the platform with honesty and respect.</li>
+                    <li>Keep trying after a wrong answer — that&apos;s where the real learning happens.</li>
+                  </ul>
+                </div>
+
+                <div className="space-y-1.5 text-left">
+                  <Label>Type your full name to sign</Label>
+                  <Input
+                    placeholder={firstName && lastName ? `${firstName} ${lastName}` : 'Your full name'}
+                    value={pledgeNameTyped}
+                    onChange={(e) => setPledgeNameTyped(e.target.value)}
+                  />
+                </div>
+
+                <Button
+                  className="w-full font-bold"
+                  onClick={handleSignPledge}
+                  disabled={pledgeSubmitting}
+                >
+                  {pledgeSubmitting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+                  Sign and continue
+                </Button>
+              </>
+            )}
+
+            {localError && (
+              <p className="text-xs text-rose-500 font-medium flex items-center gap-1">
+                <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                {localError}
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       {step === 'payment' && (
         <Card>
           <CardContent className="p-6 space-y-5 text-center">
@@ -1215,6 +1350,35 @@ export function JoinClient({ schoolCode, schoolName }: { schoolCode: string; sch
                 <Button className="w-full font-bold" onClick={handleSubmitPayment}>
                   <Wallet className="h-4 w-4 mr-2" /> Send payment request
                 </Button>
+
+                {!showAccessCode ? (
+                  <button
+                    type="button"
+                    onClick={() => setShowAccessCode(true)}
+                    className="text-xs text-muted-foreground underline"
+                  >
+                    Have a scholarship or access code?
+                  </button>
+                ) : (
+                  <div className="space-y-1.5 text-left pt-2 border-t">
+                    <Label>Access code</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="SCHOLAR-XXXX"
+                        value={accessCode}
+                        onChange={(e) => setAccessCode(e.target.value)}
+                        className="uppercase"
+                      />
+                      <Button
+                        variant="secondary"
+                        onClick={handleRedeemCode}
+                        disabled={redeemingCode}
+                      >
+                        {redeemingCode ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Redeem'}
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </>
             )}
 

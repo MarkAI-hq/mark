@@ -16,6 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { COUNTRIES } from '@/lib/constants/countries'
 
 const EDUCATION_SYSTEMS = [
   'Uganda Certificate of Education (UCE)',
@@ -27,19 +28,6 @@ const EDUCATION_SYSTEMS = [
   'National Curriculum (Nigeria)',
   'WAEC',
   'Other',
-]
-
-const COUNTRIES = [
-  { code: 'UG', name: 'Uganda' },
-  { code: 'KE', name: 'Kenya' },
-  { code: 'TZ', name: 'Tanzania' },
-  { code: 'RW', name: 'Rwanda' },
-  { code: 'NG', name: 'Nigeria' },
-  { code: 'GH', name: 'Ghana' },
-  { code: 'ZA', name: 'South Africa' },
-  { code: 'GB', name: 'United Kingdom' },
-  { code: 'US', name: 'United States' },
-  { code: 'OTHER', name: 'Other' },
 ]
 
 export default function RegisterSchoolPage() {

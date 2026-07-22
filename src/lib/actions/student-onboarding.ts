@@ -163,6 +163,36 @@ export async function getAdmissionFeeStatus(): Promise<
   })
 }
 
+// A valid code is a full bypass — no mobile-money charge, no admin step.
+export async function redeemAdmissionCode(
+  code: string,
+): Promise<ServerActionResponse<{ status: 'paid'; amount: number }>> {
+  return fetcher('/students/me/admission-fee/redeem-code', {
+    method: 'POST',
+    body: JSON.stringify({ code }),
+    cache: 'no-store',
+  })
+}
+
+export interface PledgeStatus {
+  signed: boolean
+  pledge_version: string | null
+}
+
+export async function getPledgeStatus(): Promise<ServerActionResponse<PledgeStatus>> {
+  return fetcher<PledgeStatus>('/students/me/pledge', { cache: 'no-store' })
+}
+
+export async function acceptPledge(
+  fullNameTyped: string,
+): Promise<ServerActionResponse<{ signed: true; accepted_at: string }>> {
+  return fetcher('/students/me/pledge', {
+    method: 'POST',
+    body: JSON.stringify({ full_name_typed: fullNameTyped }),
+    cache: 'no-store',
+  })
+}
+
 export async function submitEnrollmentRequest(payload: {
   requested_class_id?: string
   elective_subjects?: string[]
