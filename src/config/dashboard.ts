@@ -16,6 +16,7 @@ import {
   ShieldCheck,
   UserCheck,
   Wallet,
+  Megaphone,
   LucideIcon,
 } from 'lucide-react'
 
@@ -86,6 +87,12 @@ export const dashboardConfig = {
       href:  '/dashboard/certificates',
       roles: ['Admin'],
       icon:  Award,
+    },
+    {
+      title: 'Notices & Calendar',
+      href:  '/dashboard/notices',
+      roles: ['Admin', 'Teacher'],
+      icon:  Megaphone,
     },
     {
       title: 'Term Billing',

@@ -2,6 +2,7 @@ import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { getMyClassmates, getStudentSocialProof, getMyClassSoW, getLeaderboard } from '@/lib/actions/student-dashboard'
 import { listExtrasForSchool, getMyEnrollments } from '@/lib/actions/extras'
+import { getSchoolNotices } from '@/lib/actions/school-notices'
 import { SchoolClient } from './_components/school-client'
 
 export default async function SchoolPage() {
@@ -18,12 +19,13 @@ export default async function SchoolPage() {
 
   if (!studentId) redirect('/student/login')
 
-  const [classmatesData, socialProof, enrollmentsRes, sowData, initialLeaderboard] = await Promise.all([
+  const [classmatesData, socialProof, enrollmentsRes, sowData, initialLeaderboard, noticesRes] = await Promise.all([
     getMyClassmates(),
     getStudentSocialProof(studentId),
     getMyEnrollments(),
     getMyClassSoW(),
     isMarketplace ? Promise.resolve(null) : getLeaderboard('class', 'overall'),
+    getSchoolNotices(),
   ])
 
   // Prefer school_code from the server response (classmates endpoint has it via JWT),
@@ -53,6 +55,7 @@ export default async function SchoolPage() {
       classInfo={sowData.sow}
       orgName={orgName}
       initialLeaderboard={initialLeaderboard}
+      notices={noticesRes.data ?? []}
     />
   )
 }

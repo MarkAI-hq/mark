@@ -14,6 +14,8 @@ import type {
   LeaderboardMetric,
 } from '@/lib/actions/student-dashboard'
 import { getLeaderboard } from '@/lib/actions/student-dashboard'
+import type { SchoolNotice } from '@/lib/actions/school-notices'
+import { Pin, Megaphone } from 'lucide-react'
 
 interface Props {
   user:               any
@@ -25,9 +27,10 @@ interface Props {
   classInfo:          any | null
   orgName:            string | null
   initialLeaderboard: LeaderboardResult | null
+  notices:            SchoolNotice[]
 }
 
-export function SchoolClient({ user, classmatesData, socialProof, extras, enrollments, isMarketplace, classInfo, orgName, initialLeaderboard }: Props) {
+export function SchoolClient({ user, classmatesData, socialProof, extras, enrollments, isMarketplace, classInfo, orgName, initialLeaderboard, notices }: Props) {
   const [tab, setTab] = useState<'class' | 'life' | 'leaderboard'>('class')
 
   const { classmates } = classmatesData
@@ -191,6 +194,39 @@ export function SchoolClient({ user, classmatesData, socialProof, extras, enroll
       {/* ── School Life tab ── */}
       {tab === 'life' && (
         <div className="space-y-3">
+          {notices.length > 0 && (
+            <div className="space-y-2">
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Notices &amp; calendar
+              </h3>
+              {notices.map((n) => (
+                <Card key={n.id}>
+                  <CardContent className="pt-4 pb-3">
+                    <div className="flex items-start gap-2">
+                      {n.is_pinned ? (
+                        <Pin className="h-4 w-4 text-gold shrink-0 mt-0.5" />
+                      ) : (
+                        <Megaphone className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+                      )}
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium text-sm">{n.title}</p>
+                          <Badge variant="outline" className="text-[10px] shrink-0">{n.category}</Badge>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-1 whitespace-pre-line">{n.body}</p>
+                        {n.event_date && (
+                          <p className="text-[11px] text-muted-foreground mt-1">
+                            {new Date(n.event_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+
           {extras.length === 0 ? (
             <Card>
               <CardContent className="flex flex-col items-center justify-center py-12 text-center">
