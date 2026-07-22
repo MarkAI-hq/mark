@@ -4,6 +4,16 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { refreshAccessToken } from './lib/actions/auth'
 
+// A Student who hasn't finished the /student/join wizard (no pledge signed /
+// no class picked yet) belongs back in that flow, not the dashboard — mirrors
+// the Admin `onboarding_complete` → /onboarding redirect below.
+function studentDestination(user: { onboarding_complete?: boolean; school_code?: string }): string {
+  if (user.onboarding_complete === false) {
+    return user.school_code ? `/student/join?school=${user.school_code}` : '/student/join'
+  }
+  return '/student/dashboard'
+}
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
   const token        = request.cookies.get('token')?.value
@@ -36,14 +46,14 @@ export async function middleware(request: NextRequest) {
     publicPaths.some(p => pathname === p || pathname.startsWith(p + '/') || pathname.startsWith(p + '?')) ||
     pathname.startsWith('/assets')
 
-  const getUser = (): { role: string; id: string; onboarding_complete?: boolean } | null => {
+  const getUser = (): { role: string; id: string; onboarding_complete?: boolean; school_code?: string } | null => {
     if (!userCookie) return null
     try {
       const user   = JSON.parse(decodeURIComponent(userCookie))
       const roles: string[] = user?.roles ?? [user?.role].filter(Boolean)
       if (roles.includes('Root'))    return { role: 'Root',    id: user.id }
       if (roles.includes('Support')) return { role: 'Support', id: user.id }
-      if (roles.includes('Student')) return { role: 'Student', id: user.id }
+      if (roles.includes('Student')) return { role: 'Student', id: user.id, onboarding_complete: user.onboarding_complete ?? true, school_code: user.school_code }
       if (roles.includes('Admin'))   return { role: 'Admin',   id: user.id, onboarding_complete: user.onboarding_complete ?? true }
       if (roles.includes('Teacher')) return { role: 'Teacher', id: user.id }
       return null
@@ -57,12 +67,16 @@ export async function middleware(request: NextRequest) {
       const user = getUser()
       if (pathname === '/login' || pathname === '/signup' || pathname === '/register') {
         if (user?.role === 'Root' || user?.role === 'Support') return NextResponse.redirect(new URL('/root', request.url))
-        if (user?.role === 'Student') return NextResponse.redirect(new URL('/student/dashboard', request.url))
+        if (user?.role === 'Student') return NextResponse.redirect(new URL(studentDestination(user), request.url))
         if (user?.role === 'Teacher') return NextResponse.redirect(new URL('/dashboard/teacher', request.url))
         if (user?.role === 'Admin')   return NextResponse.redirect(new URL('/dashboard',          request.url))
       }
+      // An authenticated Student hitting /student/login (e.g. the "Sign in" link
+      // shown mid-signup) must not be bounced straight to the dashboard if they
+      // haven't finished the /student/join wizard (pledge, class pick, etc.) —
+      // send them back to resume it instead of silently skipping those steps.
       if (pathname === '/student/login' && user?.role === 'Student') {
-        return NextResponse.redirect(new URL('/student/dashboard', request.url))
+        return NextResponse.redirect(new URL(studentDestination(user), request.url))
       }
       // Authenticated admin who has already completed onboarding visiting /onboarding → dashboard
       if (pathname === '/onboarding' && user?.role === 'Admin' && user.onboarding_complete === true) {
@@ -102,7 +116,13 @@ export async function middleware(request: NextRequest) {
 
   if (user?.role === 'Student') {
     if (pathname.startsWith('/dashboard') || pathname === '/student') {
-      return NextResponse.redirect(new URL('/student/dashboard', request.url))
+      return NextResponse.redirect(new URL(studentDestination(user), request.url))
+    }
+    // Mid-signup student (no pledge/class pick yet) hitting a portal route
+    // directly (e.g. a stale bookmark or the browser's back/forward cache) →
+    // back into the join wizard, which resumes from its own saved progress.
+    if (user.onboarding_complete === false && pathname.startsWith('/student') && !pathname.startsWith('/student/join')) {
+      return NextResponse.redirect(new URL(studentDestination(user), request.url))
     }
     return NextResponse.next()
   }

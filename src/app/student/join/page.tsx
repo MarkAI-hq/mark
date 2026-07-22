@@ -27,7 +27,7 @@ export default async function StudentJoinPage({
 
   return (
     <main className="min-h-screen bg-surface-base">
-      <div className="mx-auto flex max-w-2xl items-center justify-between px-4 pt-6 sm:px-0">
+      <div className="mx-auto flex max-w-2xl items-center px-4 pt-6 sm:px-0">
         <Link
           href={backHref}
           className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-[#926C15] transition-colors"
@@ -35,12 +35,6 @@ export default async function StudentJoinPage({
           <ArrowLeft className="h-3.5 w-3.5" />
           Back
         </Link>
-        <p className="text-sm text-muted-foreground">
-          Already have an account?{' '}
-          <Link href="/student/login" className="font-semibold text-[#926C15] hover:underline underline-offset-2">
-            Sign in
-          </Link>
-        </p>
       </div>
       <div className="flex items-start justify-center px-4 py-10">
         <JoinClient schoolCode={schoolCode} schoolName={schoolName} />
