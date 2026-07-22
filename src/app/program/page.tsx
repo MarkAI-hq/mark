@@ -479,6 +479,13 @@ export default function ProgramPage() {
               <ArrowRight className="h-4 w-4" />
             </Link>
           </Button>
+          <p className="mt-6 text-sm text-[#c5cad1]">
+            Not ready to apply?{' '}
+            <Link href="/learning-compass" className="font-medium text-[#faf6ef] underline underline-offset-4">
+              Try the free Learning Compass
+            </Link>{' '}
+            first.
+          </p>
         </div>
       </section>
     </div>

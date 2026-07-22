@@ -6,6 +6,7 @@ import { StatsBar } from '@/components/layout/sections/stats-bar'
 import { OurStory } from '@/components/layout/sections/ourstory'
 import { HowMirrorWorks } from '@/components/layout/sections/how-it-works'
 import { TracySection } from '@/components/layout/sections/tracy'
+import { LearningCompassCtaSection } from '@/components/layout/sections/learning-compass-cta'
 import { ValueCalculator } from '@/components/layout/sections/value-calculator'
 import { TestimonialsSection } from '@/components/layout/sections/testimonials'
 import SponsorsSection from '@/components/layout/sections/sponsors'
@@ -36,6 +37,7 @@ Cal.ns["30min"]("ui", {"hideEventTypeDetails":false,"layout":"month_view"});`,
       <OurStory />
       <HowMirrorWorks />
       <TracySection />
+      <LearningCompassCtaSection />
       <ValueCalculator />
       <TestimonialsSection />
       <SponsorsSection />

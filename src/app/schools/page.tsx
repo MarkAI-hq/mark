@@ -37,6 +37,13 @@ export default async function SchoolsPage() {
               live and enrolling today. Private schools are now onboarding to run their own school on the
               same AI — this directory will grow as they join.
             </p>
+            <p className="mt-3 text-sm text-muted-foreground">
+              Not sure which subjects fit you yet?{' '}
+              <Link href="/learning-compass" className="font-medium text-[#C9A84C] underline underline-offset-4">
+                Try the free Learning Compass
+              </Link>
+              .
+            </p>
           </div>
           <div className="flex gap-6 lg:justify-end">
             <div className="text-center lg:text-right">
