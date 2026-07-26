@@ -17,9 +17,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { ThemeToggle } from "../theme-toggle";
-import { FLAGSHIP_SCHOOL_CODE } from "@/config/site-domains";
+import { FLAGSHIP_SCHOOL_CODE, WHATSAPP_GROUP_URL } from "@/config/site-domains";
 
-type RouteItem = { href: string; label: string; cal?: boolean };
+type RouteItem = { href: string; label: string; cal?: boolean; external?: boolean };
 const baseRouteList: RouteItem[] = [
   // { href: "", label: "Demo", cal: true },
   { href: "/program", label: "The Program" },
@@ -42,13 +42,16 @@ const calAttrs = {
 // in the nav would just duplicate that.
 export const Navbar = ({ isSchoolSite = false }: { isSchoolSite?: boolean }) => {
   const routeList = isSchoolSite
-    ? baseRouteList
-        .filter((route) => route.href !== "/schools/register" && route.href !== "/program")
-        .map((route) =>
-          route.href === "/login"
-            ? { href: `/student/join?school=${FLAGSHIP_SCHOOL_CODE}`, label: "Apply" }
-            : route
-        )
+    ? [
+        ...baseRouteList
+          .filter((route) => route.href !== "/schools/register" && route.href !== "/program")
+          .map((route) =>
+            route.href === "/login"
+              ? { href: `/student/join?school=${FLAGSHIP_SCHOOL_CODE}`, label: "Apply" }
+              : route
+          ),
+        { href: WHATSAPP_GROUP_URL, label: "Contact Us", external: true },
+      ]
     : baseRouteList;
 
   const [isOpen, setIsOpen] = useState(false);
@@ -110,7 +113,7 @@ export const Navbar = ({ isSchoolSite = false }: { isSchoolSite?: boolean }) => 
               </SheetHeader>
 
               <div className="flex flex-col gap-1 px-1">
-                {routeList.map(({ href, label, cal }) =>
+                {routeList.map(({ href, label, cal, external }) =>
                   cal ? (
                     <button
                       key={label}
@@ -128,7 +131,11 @@ export const Navbar = ({ isSchoolSite = false }: { isSchoolSite?: boolean }) => 
                       variant="ghost"
                       className="justify-start text-sm font-medium text-muted-foreground hover:text-[#926C15] hover:bg-[#926C15]/8"
                     >
-                      <Link href={href}>{label}</Link>
+                      {external ? (
+                        <a href={href} target="_blank" rel="noopener noreferrer">{label}</a>
+                      ) : (
+                        <Link href={href}>{label}</Link>
+                      )}
                     </Button>
                   )
                 )}
@@ -145,7 +152,7 @@ export const Navbar = ({ isSchoolSite = false }: { isSchoolSite?: boolean }) => 
 
       {/* Desktop */}
       <nav className="hidden md:flex items-center gap-0.5">
-        {routeList.map(({ href, label, cal }) =>
+        {routeList.map(({ href, label, cal, external }) =>
           cal ? (
             <button
               key={label}
@@ -154,6 +161,16 @@ export const Navbar = ({ isSchoolSite = false }: { isSchoolSite?: boolean }) => 
             >
               {label}
             </button>
+          ) : external ? (
+            <a
+              key={href}
+              href={href}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="rounded-lg px-2.5 py-2 text-sm font-medium whitespace-nowrap text-muted-foreground transition-all duration-200 hover:bg-[#926C15]/8 hover:text-[#926C15] lg:px-3.5"
+            >
+              {label}
+            </a>
           ) : (
             <Link
               key={href}
