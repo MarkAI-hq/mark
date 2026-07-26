@@ -3,6 +3,7 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { refreshAccessToken } from './lib/actions/auth'
+import { SCHOOL_DOMAIN_HOSTS } from './config/site-domains'
 
 // A Student who hasn't finished the /student/join wizard (no pledge signed /
 // no class picked yet) belongs back in that flow, not the dashboard — mirrors
@@ -14,21 +15,19 @@ function studentDestination(user: { onboarding_complete?: boolean; school_code?:
   return '/student/dashboard'
 }
 
-// mirror.education is the flagship school's own front door; intel.mirror.education
-// (and every other host — localhost, preview URLs) keeps serving the platform
-// pitch that already lives at "/". Rewrite (not redirect) so the URL bar stays clean.
-const FLAGSHIP_SCHOOL_CODE = process.env.NEXT_PUBLIC_DEFAULT_SCHOOL_CODE || 'MCS-2026'
-const SCHOOL_DOMAIN_HOSTS  = ['mirror.education', 'www.mirror.education']
-
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
   const token        = request.cookies.get('token')?.value
   const userCookie   = request.cookies.get('user')?.value
 
+  // mirror.education is the flagship school's own front door — "/" shows the
+  // program page (what the school is), not the platform pitch that lives
+  // there on intel.mirror.education. Rewrite, not redirect, so the URL bar
+  // stays clean.
   const host = request.headers.get('host') || ''
   if (pathname === '/' && SCHOOL_DOMAIN_HOSTS.includes(host)) {
     const url = request.nextUrl.clone()
-    url.pathname = `/schools/${FLAGSHIP_SCHOOL_CODE}`
+    url.pathname = '/program'
     return NextResponse.rewrite(url)
   }
 

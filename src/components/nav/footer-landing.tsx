@@ -40,7 +40,9 @@ const links: Record<string, { label: string; href: string; cal?: boolean }[]> = 
   ],
 };
 
-export const FooterSection = () => {
+// The CTA band pitches other schools to join the Mirror Intelligence
+// platform — it has no place on the flagship school's own site.
+export const FooterSection = ({ hideSchoolCta = false }: { hideSchoolCta?: boolean }) => {
   const { resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const ctaRef = useRef(null);
@@ -59,6 +61,7 @@ export const FooterSection = () => {
   return (
     <>
       {/* ── Big CTA band ──────────────────────────────────────────── */}
+      {!hideSchoolCta && (
       <section
         ref={ctaRef}
         className="relative overflow-x-hidden border-y border-border bg-background py-24 sm:py-32 px-4"
@@ -138,6 +141,7 @@ export const FooterSection = () => {
           </motion.div>
         </div>
       </section>
+      )}
 
       {/* ── Footer grid ───────────────────────────────────────────── */}
       <footer ref={footerRef} className="bg-background" id="footer-grid">

@@ -19,7 +19,7 @@ import { Separator } from "@/components/ui/separator";
 import { ThemeToggle } from "../theme-toggle";
 
 type RouteItem = { href: string; label: string; cal?: boolean };
-const routeList: RouteItem[] = [
+const baseRouteList: RouteItem[] = [
   // { href: "", label: "Demo", cal: true },
   { href: "/program", label: "The Program" },
   { href: "/schools", label: "Explore Schools" },
@@ -33,7 +33,13 @@ const calAttrs = {
   "data-cal-config": '{"layout":"month_view","useSlotsViewOnSmallScreen":"true"}',
 };
 
-export const Navbar = () => {
+// "Start for free" pitches a school to join the Mirror Intelligence
+// platform — it has no place on the flagship school's own site.
+export const Navbar = ({ hideSchoolRegistration = false }: { hideSchoolRegistration?: boolean }) => {
+  const routeList = hideSchoolRegistration
+    ? baseRouteList.filter((route) => route.href !== "/schools/register")
+    : baseRouteList;
+
   const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
 

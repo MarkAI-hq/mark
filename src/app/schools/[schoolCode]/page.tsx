@@ -13,6 +13,7 @@ import {
 import { getPublicSchoolProfile } from '@/lib/actions/enrollment'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { FLAGSHIP_SCHOOL_CODE } from '@/config/site-domains'
 
 interface Props {
   params: Promise<{ schoolCode: string }>
@@ -27,8 +28,6 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     description: `Study for free at ${data.name}. AI-powered school on the Mark platform.`,
   }
 }
-
-const FLAGSHIP_SCHOOL_CODE = process.env.NEXT_PUBLIC_DEFAULT_SCHOOL_CODE || 'MCS-2026'
 
 const FIT_LABELS: Record<string, string> = {
   cambridge: 'Cambridge International',

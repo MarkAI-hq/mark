@@ -4,14 +4,13 @@ import { GraduationCap, MapPin, BadgeCheck } from 'lucide-react'
 import { listPublicSchools, getPublicSchoolProfile } from '@/lib/actions/enrollment'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { FLAGSHIP_SCHOOL_CODE } from '@/config/site-domains'
 
 export const metadata: Metadata = {
   title: 'Find your school — Mirror Intelligence',
   description:
     'Mirror Intelligence Online High School is our flagship, live and enrolling today. Private schools are onboarding to run their own school on the same intelligence.',
 }
-
-const FLAGSHIP_SCHOOL_CODE = process.env.NEXT_PUBLIC_DEFAULT_SCHOOL_CODE || 'MCS-2026'
 
 export default async function SchoolsPage() {
   const { data } = await listPublicSchools(1, 50)
