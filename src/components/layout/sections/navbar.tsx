@@ -17,6 +17,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { ThemeToggle } from "../theme-toggle";
+import { FLAGSHIP_SCHOOL_CODE } from "@/config/site-domains";
 
 type RouteItem = { href: string; label: string; cal?: boolean };
 const baseRouteList: RouteItem[] = [
@@ -33,11 +34,21 @@ const calAttrs = {
   "data-cal-config": '{"layout":"month_view","useSlotsViewOnSmallScreen":"true"}',
 };
 
-// "Start for free" pitches a school to join the Mirror Intelligence
-// platform — it has no place on the flagship school's own site.
-export const Navbar = ({ hideSchoolRegistration = false }: { hideSchoolRegistration?: boolean }) => {
-  const routeList = hideSchoolRegistration
-    ? baseRouteList.filter((route) => route.href !== "/schools/register")
+// On the flagship school's own site: "Start for free" pitches other schools to
+// join the Mirror Intelligence platform, "The Program" is redundant with the
+// homepage it already links to, and "Login" becomes "Apply" — the join wizard
+// it points to already has its own "Already have an account? Sign in" fallback
+// (src/app/student/join/_components/join-client.tsx), so a separate login link
+// in the nav would just duplicate that.
+export const Navbar = ({ isSchoolSite = false }: { isSchoolSite?: boolean }) => {
+  const routeList = isSchoolSite
+    ? baseRouteList
+        .filter((route) => route.href !== "/schools/register" && route.href !== "/program")
+        .map((route) =>
+          route.href === "/login"
+            ? { href: `/student/join?school=${FLAGSHIP_SCHOOL_CODE}`, label: "Apply" }
+            : route
+        )
     : baseRouteList;
 
   const [isOpen, setIsOpen] = useState(false);

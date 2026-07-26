@@ -3,12 +3,12 @@ import { FooterSection } from '@/components/nav/footer-landing'
 import { isSchoolDomain } from '@/lib/site-mode'
 
 export default async function LearningCompassLayout({ children }: { children: React.ReactNode }) {
-  const hideSchoolCta = await isSchoolDomain()
+  const isSchoolSite = await isSchoolDomain()
   return (
     <>
-      <Navbar hideSchoolRegistration={hideSchoolCta} />
+      <Navbar isSchoolSite={isSchoolSite} />
       {children}
-      <FooterSection hideSchoolCta={hideSchoolCta} />
+      <FooterSection hideSchoolCta={isSchoolSite} />
     </>
   )
 }

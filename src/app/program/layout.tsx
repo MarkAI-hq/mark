@@ -4,11 +4,12 @@ import { ExitIntentCompassModal } from '@/components/marketing/exit-intent-compa
 import { isSchoolDomain } from '@/lib/site-mode'
 
 export default async function ProgramLayout({ children }: { children: React.ReactNode }) {
-  const hideSchoolCta = await isSchoolDomain()
+  const isSchoolSite = await isSchoolDomain()
   return (
     <>
-      <Navbar hideSchoolRegistration={hideSchoolCta} />
+      <Navbar isSchoolSite={isSchoolSite} />
       {children}
+      <FooterSection hideSchoolCta={isSchoolSite} />
       <ExitIntentCompassModal />
     </>
   )

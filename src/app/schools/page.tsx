@@ -5,6 +5,7 @@ import { listPublicSchools, getPublicSchoolProfile } from '@/lib/actions/enrollm
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { FLAGSHIP_SCHOOL_CODE } from '@/config/site-domains'
+import { isSchoolDomain } from '@/lib/site-mode'
 
 export const metadata: Metadata = {
   title: 'Find your school — Mirror Intelligence',
@@ -21,6 +22,7 @@ export default async function SchoolsPage() {
 
   const flagshipProfile = flagship ? (await getPublicSchoolProfile(flagship.school_code)).data : null
   const certPrice = flagship?.partner_config?.cert_price_ea_usd ?? flagship?.partner_config?.cert_price_usd
+  const isSchoolSite = await isSchoolDomain()
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-surface-raised/20">
@@ -121,8 +123,10 @@ export default async function SchoolsPage() {
           </div>
         )}
 
-        {/* Onboarding banner / other schools */}
+        {/* Onboarding banner / other schools — the "run a school on Mirror" pitch
+            is platform acquisition, so it only shows on intel.mirror.education */}
         {otherSchools.length === 0 ? (
+          isSchoolSite ? null : (
           <div className="mb-10 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-dashed border-border/60 p-6">
             <div>
               <p className="text-xs font-bold uppercase tracking-wide text-[#C9A84C]">Coming soon</p>
@@ -135,6 +139,7 @@ export default async function SchoolsPage() {
               <Link href="/schools/register">Run a school on Mirror</Link>
             </Button>
           </div>
+          )
         ) : (
           <div className="mb-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {otherSchools.map((school) => (
