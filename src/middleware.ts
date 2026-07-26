@@ -14,10 +14,23 @@ function studentDestination(user: { onboarding_complete?: boolean; school_code?:
   return '/student/dashboard'
 }
 
+// mirror.education is the flagship school's own front door; intel.mirror.education
+// (and every other host — localhost, preview URLs) keeps serving the platform
+// pitch that already lives at "/". Rewrite (not redirect) so the URL bar stays clean.
+const FLAGSHIP_SCHOOL_CODE = process.env.NEXT_PUBLIC_DEFAULT_SCHOOL_CODE || 'MCS-2026'
+const SCHOOL_DOMAIN_HOSTS  = ['mirror.education', 'www.mirror.education']
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
   const token        = request.cookies.get('token')?.value
   const userCookie   = request.cookies.get('user')?.value
+
+  const host = request.headers.get('host') || ''
+  if (pathname === '/' && SCHOOL_DOMAIN_HOSTS.includes(host)) {
+    const url = request.nextUrl.clone()
+    url.pathname = `/schools/${FLAGSHIP_SCHOOL_CODE}`
+    return NextResponse.rewrite(url)
+  }
 
   const publicPaths = [
     '/',
