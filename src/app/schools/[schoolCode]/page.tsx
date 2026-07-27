@@ -124,7 +124,9 @@ export default async function SchoolProfilePage({ params }: Props) {
             Ready to join {school.name}?
           </h2>
           <p className="mx-auto mt-2 max-w-sm text-sm text-muted-foreground">
-            Apply in 5 minutes. Get a response within 24 hours. Study starts the same day you&apos;re approved.
+            {isFlagship
+              ? "Pay admission and hear back from our team within 3 hours. Study starts as soon as you're approved."
+              : "Apply in 5 minutes. Get a response within 24 hours. Study starts the same day you're approved."}
           </p>
           <div className="mt-6 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
             <Button asChild size="lg" className="gap-2 bg-[#C9A84C] text-white hover:bg-[#A07830]">
@@ -140,12 +142,19 @@ export default async function SchoolProfilePage({ params }: Props) {
         <div className="mt-8 rounded-2xl border border-border/50 bg-card p-6">
           <h3 className="mb-4 font-semibold text-foreground">How it works</h3>
           <ol className="space-y-3">
-            {[
-              ['Apply', 'Fill in a short form. No fees, no paperwork.'],
-              ['Get approved', 'The school reviews your application — usually within 24 hours.'],
-              ['Start studying', 'Access AI-powered lessons and assessments immediately.'],
-              ['Earn your certificate', "Pass assessments and get a verified certificate. Pay only when you're ready."],
-            ].map(([step, desc], i) => (
+            {(isFlagship
+              ? [
+                  ['Pay admission', 'Hear back from our team within 3 hours of payment.'],
+                  ['Get your Mirror Campus link', 'Your guide to how to study, the rules, and the routine — like starting at any school.'],
+                  ['Begin with your assistant', 'Start learning immediately, at the pace and program you chose.'],
+                ]
+              : [
+                  ['Apply', 'Fill in a short form. No fees, no paperwork.'],
+                  ['Get approved', 'The school reviews your application — usually within 24 hours.'],
+                  ['Start studying', 'Access AI-powered lessons and assessments immediately.'],
+                  ['Earn your certificate', "Pass assessments and get a verified certificate. Pay only when you're ready."],
+                ]
+            ).map(([step, desc], i) => (
               <li key={step} className="flex items-start gap-3">
                 <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#C9A84C]/15 text-xs font-bold text-[#C9A84C]">
                   {i + 1}

@@ -17,7 +17,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { ThemeToggle } from "../theme-toggle";
-import { FLAGSHIP_SCHOOL_CODE, WHATSAPP_GROUP_URL } from "@/config/site-domains";
+import { WHATSAPP_GROUP_URL } from "@/config/site-domains";
 
 type RouteItem = { href: string; label: string; cal?: boolean; external?: boolean };
 const baseRouteList: RouteItem[] = [
@@ -41,15 +41,14 @@ const calAttrs = {
 // (src/app/student/join/_components/join-client.tsx), so a separate login link
 // in the nav would just duplicate that.
 export const Navbar = ({ isSchoolSite = false }: { isSchoolSite?: boolean }) => {
+  // Apply goes to the school directory, not a hardcoded school code — mirror.education
+  // isn't just the Uganda flagship, it'll host Kenya, Rwanda, etc. too, and students
+  // need to pick their own country/school before applying to that one specifically.
   const routeList = isSchoolSite
     ? [
         ...baseRouteList
-          .filter((route) => route.href !== "/schools/register" && route.href !== "/program")
-          .map((route) =>
-            route.href === "/login"
-              ? { href: `/student/join?school=${FLAGSHIP_SCHOOL_CODE}`, label: "Apply" }
-              : route
-          ),
+          .filter((route) => !["/schools/register", "/program", "/schools"].includes(route.href))
+          .map((route) => (route.href === "/login" ? { href: "/schools", label: "Apply" } : route)),
         { href: WHATSAPP_GROUP_URL, label: "Contact Us", external: true },
       ]
     : baseRouteList;
