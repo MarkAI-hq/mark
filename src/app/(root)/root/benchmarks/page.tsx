@@ -47,6 +47,9 @@ function BenchmarkCard({ title, metric, description, extra }: BenchmarkCardProps
         {metric.sample_size != null && ` · ${metric.sample_size.toLocaleString()} samples`}
       </p>
       <p className="text-xs mt-2" style={{ color: 'rgba(255,255,255,0.3)' }}>{description}</p>
+      {metric.value !== null && metric.sample_size != null && metric.sample_size < 10 && (
+        <p className="text-xs mt-1" style={{ color: '#fbbf24' }}>Small sample — treat as directional.</p>
+      )}
       {extra}
     </div>
   )

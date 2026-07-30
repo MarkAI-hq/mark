@@ -10,6 +10,7 @@ import { Skeleton }             from '@/components/ui/skeleton'
 import { Separator }            from '@/components/ui/separator'
 import { Badge }                from '@/components/ui/badge'
 import { ReteachImpactCard }    from '@/components/reteach/reteach-impact-card'
+import { MetricEmptyState }     from '@/components/ui/metric-empty-state'
 import { getOrgImpact }         from '@/lib/actions/reteach-impact'
 import type { OrgImpactView }   from '@/lib/actions/reteach-impact'
 
@@ -38,7 +39,19 @@ export function ReteachOrgImpact() {
     </div>
   )
 
-  if (!view) return null
+  if (!view) return (
+    <MetricEmptyState
+      label="Couldn't load intervention impact"
+      reason="The API didn't return data for this section — try refreshing. If it persists, check API connectivity."
+    />
+  )
+
+  if (view.totals.total === 0) return (
+    <MetricEmptyState
+      label="No reteach sessions yet"
+      reason="Impact stats will appear here once your teachers run their first reteach session."
+    />
+  )
 
   const avgDelta  = view.impact.avg_improvement_delta
   const direction = view.impact.direction
@@ -73,18 +86,21 @@ export function ReteachOrgImpact() {
         <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">
           Overall intervention impact
         </p>
-        <div className={`flex items-center gap-2 ${deltaColor}`}>
-          <DeltaIcon className="h-6 w-6" />
-          <span className="text-3xl font-bold">
-            {avgDelta !== null
-              ? `${avgDelta > 0 ? '+' : ''}${avgDelta}%`
-              : '—'
-            }
-          </span>
-          <span className="text-sm text-muted-foreground ml-1">
-            avg score improvement across {view.impact.sessions_with_data} completed session(s)
-          </span>
-        </div>
+        {avgDelta !== null ? (
+          <div className={`flex items-center gap-2 ${deltaColor}`}>
+            <DeltaIcon className="h-6 w-6" />
+            <span className="text-3xl font-bold">
+              {avgDelta > 0 ? '+' : ''}{avgDelta}%
+            </span>
+            <span className="text-sm text-muted-foreground ml-1">
+              avg score improvement across {view.impact.sessions_with_data} completed session(s)
+            </span>
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground">
+            No completed sessions with before/after scores yet — impact will show here once one finishes.
+          </p>
+        )}
       </div>
 
       {/* ── Scope breakdown ──────────────────────────────────────────── */}

@@ -12,7 +12,11 @@ import {
 import Link                                              from 'next/link'
 import { toast }                                         from 'sonner'
 import type { StatsResponse }                            from '@/lib/actions/stats'
-import type { SchoolAnalytics }                          from '@/lib/actions/analytics'
+import type { SchoolAnalytics, LearningVelocity }        from '@/lib/actions/analytics'
+import {
+  hasEnoughDataForVelocity, LEARNING_VELOCITY_MIN_OUTCOMES, LEARNING_VELOCITY_MIN_SCHEMES,
+}                                                        from '@/lib/actions/analytics'
+import { MetricEmptyState }                              from '@/components/ui/metric-empty-state'
 import { publishAssessment }                             from '@/lib/actions/assessments'
 import { StatCard }                                      from './stat-card'
 import { OverviewChart }                                 from '@/components/charts/overview-chart'
@@ -113,12 +117,13 @@ function DraftBanner({ id, title, dueDate }: DraftBannerProps) {
 // ── DashboardClient ───────────────────────────────────────────────────────
 
 interface DashboardClientProps {
-  stats:     StatsResponse
-  analytics: SchoolAnalytics | null
+  stats:            StatsResponse
+  analytics:        SchoolAnalytics | null
+  learningVelocity?: LearningVelocity | null
   user:      { id: string; name?: string; role?: string; organizationName?: string } // ← ADDED organizationName
 }
 
-export function DashboardClient({ stats, analytics, user }: DashboardClientProps) {
+export function DashboardClient({ stats, analytics, learningVelocity, user }: DashboardClientProps) {
   const greeting  = getGreeting()
   const name      = user?.name?.split(' ')[0] ?? 'Teacher'
   const hasDrafts = stats.upcomingDeadlines.length > 0
@@ -285,6 +290,57 @@ export function DashboardClient({ stats, analytics, user }: DashboardClientProps
         </p>
         <ReteachOrgImpact />
       </div>
+
+      {/* ── Learning Velocity (Admin only) ──────────────────────────────── */}
+      {user.role === 'Admin' && learningVelocity && (
+        <>
+          <Separator />
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <TrendingUp className="h-5 w-5 text-emerald-500" />
+              <h2 className="text-xl font-semibold tracking-tight">Learning Velocity</h2>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              How your students&apos; time-to-mastery compares to the curriculum&apos;s own pace.
+            </p>
+            {!hasEnoughDataForVelocity(learningVelocity) ? (
+              <MetricEmptyState
+                label="Still collecting data"
+                reason={
+                  `${learningVelocity.actual_sample_size.toLocaleString()} of ${LEARNING_VELOCITY_MIN_OUTCOMES} mastered outcomes logged, ` +
+                  `${learningVelocity.baseline_scheme_sample_size.toLocaleString()} of ${LEARNING_VELOCITY_MIN_SCHEMES} active schemes of work in place. ` +
+                  `Check back once your students have more graded work — the multiplier isn't reliable below this.`
+                }
+              />
+            ) : (
+              <Card>
+                <CardContent className="flex flex-wrap items-center gap-x-8 gap-y-3 py-5">
+                  <div>
+                    <p className="text-3xl font-bold">
+                      {learningVelocity.speed_multiplier}x
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-0.5">speed vs. curriculum pace</p>
+                  </div>
+                  <div>
+                    <p className="text-lg font-semibold">
+                      {learningVelocity.actual_median_days_to_mastery} days
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      median actual time to mastery ({learningVelocity.actual_sample_size.toLocaleString()} outcomes)
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-lg font-semibold">
+                      {learningVelocity.curriculum_expected_days_per_outcome} days
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-0.5">curriculum-paced baseline per outcome</p>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        </>
+      )}
 
     </div>
   )
