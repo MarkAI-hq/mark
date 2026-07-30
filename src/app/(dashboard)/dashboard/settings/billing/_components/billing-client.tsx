@@ -81,6 +81,15 @@ type PlanKey = keyof typeof PLAN_META
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
+function fmt(usdAmount: number, currency: string, rates: Record<string, number>) {
+  const rate = rates[currency.toLowerCase()] ?? 1
+  return new Intl.NumberFormat(undefined, {
+    style: 'currency',
+    currency,
+    maximumFractionDigits: 0,
+  }).format(usdAmount * rate)
+}
+
 function StatusBadge({ status }: { status: string }) {
   const map: Record<string, { label: string; className: string }> = {
     active:    { label: 'Active',    className: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-900' },
@@ -484,18 +493,18 @@ export function BillingClient({ subscription, gradingQuota, error }: BillingClie
                     <>
                       <div className="flex items-baseline gap-1">
                         <span className="text-2xl font-bold text-foreground">
-                          ${interval === 'monthly' ? prices.monthly : prices.annualMonthly}
+                          {fmt(interval === 'monthly' ? prices.monthly : prices.annualMonthly, currency, rates)}
                         </span>
                         <span className="text-xs text-muted-foreground">/mo</span>
                         {interval === 'annual' && (
                           <span className="text-xs text-muted-foreground/60 line-through ml-1">
-                            ${prices.monthly}
+                            {fmt(prices.monthly, currency, rates)}
                           </span>
                         )}
                       </div>
                       {interval === 'annual' && (
                         <p className="text-xs text-muted-foreground mt-0.5">
-                          Billed ${prices.annual}/yr
+                          Billed {fmt(prices.annual, currency, rates)}/yr
                         </p>
                       )}
                     </>

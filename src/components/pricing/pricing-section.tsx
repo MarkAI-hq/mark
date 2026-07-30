@@ -9,6 +9,16 @@ import { cn } from '@/lib/utils'
 // NEW: Import the subscription logic and regional detection
 import { initializePayment } from '@/lib/actions/subscriptions'
 import { detectRegion, REGIONAL_PRICES, type BillingRegion } from '@/lib/billing-utils'
+import { getUsdRates, type RatesMap } from '@/lib/actions/exchange-rates'
+
+function fmt(usdAmount: number, currency: string, rates: RatesMap) {
+  const rate = rates[currency.toLowerCase()] ?? 1
+  return new Intl.NumberFormat(undefined, {
+    style: 'currency',
+    currency,
+    maximumFractionDigits: 0,
+  }).format(usdAmount * rate)
+}
 
 interface PricingPlan {
   id: 'free' | 'pro' | 'enterprise' // Match the backend types
@@ -22,13 +32,16 @@ interface PricingPlan {
 export function PricingSection() {
   const [loading, setLoading] = useState<string | null>(null)
   const [region, setRegion] = useState<BillingRegion>('global')
+  const [rates, setRates] = useState<RatesMap>({})
 
   // Automatically detect user region on mount
   useEffect(() => {
     setRegion(detectRegion())
+    getUsdRates().then(setRates)
   }, [])
 
   const prices = REGIONAL_PRICES[region]
+  const currency = region === 'east_africa' ? 'UGX' : 'USD'
 
   const plans: PricingPlan[] = [
     {
@@ -127,8 +140,7 @@ export function PricingSection() {
               <CardHeader>
                 <CardTitle className="text-2xl text-neutral-900 dark:text-white">{plan.name}</CardTitle>
                 <div className="mt-4 flex items-baseline text-neutral-900 dark:text-white">
-                  <span className="text-3xl font-semibold">$</span>
-                  <span className="text-6xl font-bold tracking-tight">{plan.price}</span>
+                  <span className="text-6xl font-bold tracking-tight">{fmt(plan.price, currency, rates)}</span>
                   <span className="ml-1 text-xl font-medium text-neutral-600 dark:text-neutral-400">/month</span>
                 </div>
                 <CardDescription className="mt-4 text-neutral-700 dark:text-neutral-400 min-h-[60px]">

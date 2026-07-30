@@ -86,48 +86,58 @@ export function TeacherClassDetailTabs({
 
   return (
     <Tabs defaultValue="overview" className="w-full">
-      <div className="overflow-x-auto">
-      <TabsList>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="overflow-x-auto">
+        <TabsList>
 
-        <TabsTrigger value="overview" className="flex items-center gap-1.5">
-          <LayoutDashboard className="h-3.5 w-3.5" />
-          Overview
-          {analytics && analytics.averagePercentage < 50 && analytics.averagePercentage > 0 && (
-            <span className="ml-1 h-2 w-2 rounded-full bg-red-500" />
-          )}
-        </TabsTrigger>
+          <TabsTrigger value="overview" className="flex items-center gap-1.5">
+            <LayoutDashboard className="h-3.5 w-3.5" />
+            Overview
+            {analytics && analytics.averagePercentage < 50 && analytics.averagePercentage > 0 && (
+              <span className="ml-1 h-2 w-2 rounded-full bg-red-500" />
+            )}
+          </TabsTrigger>
 
-        <TabsTrigger value="students" className="flex items-center gap-1.5">
-          <Users className="h-3.5 w-3.5" />
-          Students
-          {analytics?.totalStudents ? (
-            <Badge variant="secondary" className="ml-1 text-xs px-1.5 py-0">
-              {analytics.totalStudents}
-            </Badge>
-          ) : null}
-        </TabsTrigger>
+          <TabsTrigger value="students" className="flex items-center gap-1.5">
+            <Users className="h-3.5 w-3.5" />
+            Students
+            {analytics?.totalStudents ? (
+              <Badge variant="secondary" className="ml-1 text-xs px-1.5 py-0">
+                {analytics.totalStudents}
+              </Badge>
+            ) : null}
+          </TabsTrigger>
 
-        <TabsTrigger value="attendance" className="flex items-center gap-1.5">
-          <CalendarCheck className="h-3.5 w-3.5" />
-          Attendance
-        </TabsTrigger>
+          <TabsTrigger value="sow" className="flex items-center gap-1.5">
+            <Layers className="h-3.5 w-3.5" />
+            SoW
+          </TabsTrigger>
 
-        <TabsTrigger value="timetable" className="flex items-center gap-1.5">
-          <CalendarDays className="h-3.5 w-3.5" />
-          Timetable
-        </TabsTrigger>
+        </TabsList>
+        </div>
 
-        <TabsTrigger value="gaps" className="flex items-center gap-1.5">
-          <GitBranch className="h-3.5 w-3.5" />
-          Gap Report
-        </TabsTrigger>
-
-        <TabsTrigger value="sow" className="flex items-center gap-1.5">
-          <Layers className="h-3.5 w-3.5" />
-          SoW
-        </TabsTrigger>
-
-      </TabsList>
+        {/* Attendance, Timetable, and Gap Report are separate pages, not in-place
+            tab content — linked directly instead of hiding a redirect behind a tab. */}
+        <div className="flex items-center gap-1.5">
+          <Button variant="outline" size="sm" className="gap-1.5" asChild>
+            <Link href={`/dashboard/teacher/classes/${classId}/attendance`}>
+              <CalendarCheck className="h-3.5 w-3.5" />
+              Attendance
+            </Link>
+          </Button>
+          <Button variant="outline" size="sm" className="gap-1.5" asChild>
+            <Link href={`/dashboard/teacher/classes/${classId}/timetable`}>
+              <CalendarDays className="h-3.5 w-3.5" />
+              Timetable
+            </Link>
+          </Button>
+          <Button variant="outline" size="sm" className="gap-1.5" asChild>
+            <Link href={`/dashboard/teacher/classes/${classId}/gap-report`}>
+              <GitBranch className="h-3.5 w-3.5" />
+              Gap Report
+            </Link>
+          </Button>
+        </div>
       </div>
 
       {/* ── Overview (Analytics + Courses) ──────────────────────────────────── */}
@@ -335,69 +345,6 @@ export function TeacherClassDetailTabs({
           readOnly={true}
           studentBasePath="/dashboard/teacher/classes"
         />
-      </TabsContent>
-
-      {/* ── Gap Report — navigation panel ─────────────────────────────── */}
-      <TabsContent value="gaps" className="mt-6">
-        <div className="rounded-2xl border border-border/60 bg-surface-raised p-10 flex flex-col items-center gap-5 text-center animate-fade-up">
-          <div className="h-16 w-16 rounded-2xl bg-gold/10 flex items-center justify-center">
-            <GitBranch className="h-8 w-8 text-gold" aria-hidden="true" />
-          </div>
-          <div className="space-y-1.5">
-            <p className="text-base font-semibold">Exposure matrix &amp; gap attribution</p>
-            <p className="text-sm text-muted-foreground max-w-xs">
-              See which students were present for each SoW topic — and whether gaps are from missed lessons or poor understanding.
-            </p>
-          </div>
-          <Link href={`/dashboard/teacher/classes/${classId}/gap-report`}>
-            <Button variant="gold" className="gap-2 rounded-xl">
-              <GitBranch className="h-4 w-4" aria-hidden="true" />
-              View Gap Report
-            </Button>
-          </Link>
-        </div>
-      </TabsContent>
-
-      {/* ── Timetable — navigation panel ─────────────────────────────── */}
-      <TabsContent value="timetable" className="mt-6">
-        <div className="rounded-2xl border border-border/60 bg-surface-raised p-10 flex flex-col items-center gap-5 text-center animate-fade-up">
-          <div className="h-16 w-16 rounded-2xl bg-gold/10 flex items-center justify-center">
-            <CalendarDays className="h-8 w-8 text-gold" aria-hidden="true" />
-          </div>
-          <div className="space-y-1.5">
-            <p className="text-base font-semibold">Weekly schedule</p>
-            <p className="text-sm text-muted-foreground max-w-xs">
-              Define when each subject is taught — day, time, and room.
-            </p>
-          </div>
-          <Link href={`/dashboard/teacher/classes/${classId}/timetable`}>
-            <Button variant="gold" className="gap-2 rounded-xl">
-              <CalendarDays className="h-4 w-4" aria-hidden="true" />
-              Go to Timetable
-            </Button>
-          </Link>
-        </div>
-      </TabsContent>
-
-      {/* ── Attendance — navigation panel ────────────────────────────── */}
-      <TabsContent value="attendance" className="mt-6">
-        <div className="rounded-2xl border border-border/60 bg-surface-raised p-10 flex flex-col items-center gap-5 text-center animate-fade-up">
-          <div className="h-16 w-16 rounded-2xl bg-gold/10 flex items-center justify-center">
-            <CalendarCheck className="h-8 w-8 text-gold" aria-hidden="true" />
-          </div>
-          <div className="space-y-1.5">
-            <p className="text-base font-semibold">Class attendance</p>
-            <p className="text-sm text-muted-foreground max-w-xs">
-              Open sessions, mark students present or absent, and review history.
-            </p>
-          </div>
-          <Link href={`/dashboard/teacher/classes/${classId}/attendance`}>
-            <Button variant="gold" className="gap-2 rounded-xl">
-              <CalendarCheck className="h-4 w-4" aria-hidden="true" />
-              Go to Attendance
-            </Button>
-          </Link>
-        </div>
       </TabsContent>
 
       {/* ── Scheme of Work ──────────────────────────────────────────── */}
