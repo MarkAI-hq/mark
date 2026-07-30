@@ -290,6 +290,20 @@ export async function deleteAccount() {
   return fetcher<{ message: string }>('/auth/account', { method: 'DELETE' })
 }
 
+export async function changePassword(data: {
+  currentPassword: string
+  newPassword:     string
+}) {
+  return fetcher<{ message: string }>('/auth/change-password', {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body:    JSON.stringify({
+      current_password: data.currentPassword,
+      new_password:     data.newPassword,
+    }),
+  })
+}
+
 export async function registerInvited(payload: {
   token:       string
   firstName:   string

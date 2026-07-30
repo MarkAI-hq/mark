@@ -110,7 +110,7 @@ export function TeacherClassDetailTabs({
 
           <TabsTrigger value="sow" className="flex items-center gap-1.5">
             <Layers className="h-3.5 w-3.5" />
-            SoW
+            Scheme of Work
           </TabsTrigger>
 
         </TabsList>

@@ -7,7 +7,7 @@ export async function updateTeacherProfile(data: {
   phone?:    string
 }) {
   try {
-    const response = await fetcher('/users/me', {
+    const response = await fetcher('/auth/me', {
       method:  'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify({

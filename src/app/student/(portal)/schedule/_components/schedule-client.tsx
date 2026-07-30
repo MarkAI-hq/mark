@@ -12,6 +12,7 @@ import {
   Target, TrendingUp, Unlock, School, Upload, FileText, Check, Plus, Loader2, BookOpenCheck, Zap
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
@@ -441,26 +442,18 @@ export function ScheduleClient({
         </p>
       </div>
 
-      {/* Tab bar */}
-      <div className="flex gap-1 border-b">
+      <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)}>
+      <TabsList>
         {tabs.map(({ id, label, icon: Icon }) => (
-          <button
-            key={id}
-            onClick={() => setTab(id as any)}
-            className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium border-b-2 transition-colors ${
-              tab === id
-                ? 'border-gold text-gold'
-                : 'border-transparent text-muted-foreground hover:text-foreground'
-            }`}
-          >
+          <TabsTrigger key={id} value={id} className="flex items-center gap-1.5">
             <Icon className="h-3.5 w-3.5" />
             {label}
-          </button>
+          </TabsTrigger>
         ))}
-      </div>
+      </TabsList>
 
       {/* ── This Week tab ── */}
-      {tab === 'week' && (
+      <TabsContent value="week">
         <div className="space-y-3">
           {currentWeekEntries.length === 0 ? (
             <Card>
@@ -530,10 +523,10 @@ export function ScheduleClient({
             ))
           )}
         </div>
-      )}
+      </TabsContent>
 
       {/* ── Timetable tab ── */}
-      {tab === 'timetable' && (
+      <TabsContent value="timetable">
         <div className="space-y-4">
           {/* Mode toggle */}
           <div className="flex items-center gap-3 flex-wrap">
@@ -807,15 +800,15 @@ export function ScheduleClient({
             ))
           )}
         </div>
-      )}
+      </TabsContent>
 
       {/* ── Syllabus tab ── */}
-      {tab === 'syllabus' && (
+      <TabsContent value="syllabus">
         <SyllabusTab data={pacingData} />
-      )}
+      </TabsContent>
 
       {/* ── Attendance tab ── */}
-      {tab === 'attendance' && (
+      <TabsContent value="attendance">
         <div className="space-y-3">
           {attendancePct !== null && (
             <Card>
@@ -882,7 +875,8 @@ export function ScheduleClient({
             </div>
           )}
         </div>
-      )}
+      </TabsContent>
+      </Tabs>
     </div>
   )
 }

@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { Edit3, Wand2, History, BookOpen } from 'lucide-react'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { CurriculumEditor } from './curriculum-editor'
 import { AiFillPanel } from './ai-fill-panel'
 import { VersionHistoryPanel } from './version-history-panel'
@@ -69,20 +70,19 @@ export function CurriculumEditorShell({
   ]
 
   return (
-    <div className="space-y-5">
-      {/* Tab bar */}
-      <div
-        className="flex items-center gap-1 p-1 rounded-xl w-fit"
+    <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as Tab)} className="space-y-5">
+      <TabsList
+        className="w-fit"
         style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}
       >
         {tabs.map(t => {
           const active = activeTab === t.id
           const Icon = t.icon
           return (
-            <button
+            <TabsTrigger
               key={t.id}
-              onClick={() => setActiveTab(t.id)}
-              className="flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-sm font-medium transition-all"
+              value={t.id}
+              className="flex items-center gap-1.5 data-[state=active]:shadow-none"
               style={active
                 ? { background: 'rgba(255,255,255,0.08)', color: 'white' }
                 : { background: 'transparent', color: 'rgba(255,255,255,0.45)' }
@@ -102,28 +102,28 @@ export function CurriculumEditorShell({
                   {t.badge}
                 </span>
               )}
-            </button>
+            </TabsTrigger>
           )
         })}
-      </div>
+      </TabsList>
 
       {/* Tab panels */}
-      {activeTab === 'edit' && (
+      <TabsContent value="edit">
         <CurriculumEditor
           schemaId={schemaId}
           raw={raw}
           onRawChange={setRaw}
         />
-      )}
+      </TabsContent>
 
-      {activeTab === 'ai-fill' && (
+      <TabsContent value="ai-fill">
         <AiFillPanel
           schemaId={schemaId}
           onApplyPatch={handleApplyPatch}
         />
-      )}
+      </TabsContent>
 
-      {activeTab === 'ncdc' && (
+      <TabsContent value="ncdc">
         <NccdContentPanel
           schemaId={schemaId}
           onEnriched={() => {
@@ -131,14 +131,14 @@ export function CurriculumEditorShell({
             setActiveTab('edit')
           }}
         />
-      )}
+      </TabsContent>
 
-      {activeTab === 'versions' && (
+      <TabsContent value="versions">
         <VersionHistoryPanel
           schemaId={schemaId}
           versions={versions}
         />
-      )}
-    </div>
+      </TabsContent>
+    </Tabs>
   )
 }
