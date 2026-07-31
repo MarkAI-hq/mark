@@ -1,0 +1,5 @@
+# Normalize line endings to LF for all text files, regardless of the
+# committer's OS/editor settings. Prevents CRLF from silently creeping into
+# a file and later exploding into a wall of unrelated Prettier/ESLint
+# "Delete `␍`" errors the next time someone's pre-commit hook touches it.
+* text=auto eol=lf
