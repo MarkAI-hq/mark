@@ -1,11 +1,11 @@
 import { redirect }         from 'next/navigation'
 import { getSession }       from '@/lib/session'
+import { getLearningVelocity } from '@/lib/actions/analytics'
 import {
-  getLearningVelocity,
   hasEnoughDataForVelocity,
   LEARNING_VELOCITY_MIN_OUTCOMES,
   LEARNING_VELOCITY_MIN_SCHEMES,
-}                            from '@/lib/actions/analytics'
+}                            from '@/lib/learning-velocity'
 import { Zap, Sparkles } from 'lucide-react'
 
 function StatCard({ title, value, sub }: { title: string; value: string; sub: string }) {

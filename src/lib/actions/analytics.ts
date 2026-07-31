@@ -92,27 +92,11 @@ export async function getPlatformBenchmarks(): Promise<ServerActionResponse<Plat
 }
 
 // ── Learning Velocity (Root/Support platform-wide; Admin own-org) ────────────
+// Types/constants/helper live in '@/lib/learning-velocity' — this file may
+// only export async functions ("use server").
 
-export interface LearningVelocity {
-  actual_median_days_to_mastery:        number | null
-  actual_sample_size:                   number
-  curriculum_expected_days_per_outcome: number | null
-  baseline_scheme_sample_size:          number
-  speed_multiplier:                     number | null
-  definition:                           string
-}
-
-// Below these, the ratio is noise, not signal — UI should show progress
-// toward the threshold instead of a number that looks final.
-export const LEARNING_VELOCITY_MIN_OUTCOMES = 30
-export const LEARNING_VELOCITY_MIN_SCHEMES  = 3
-
-export function hasEnoughDataForVelocity(v: LearningVelocity): boolean {
-  return (
-    v.actual_sample_size >= LEARNING_VELOCITY_MIN_OUTCOMES &&
-    v.baseline_scheme_sample_size >= LEARNING_VELOCITY_MIN_SCHEMES
-  )
-}
+export type { LearningVelocity } from '@/lib/learning-velocity'
+import type { LearningVelocity } from '@/lib/learning-velocity'
 
 export async function getLearningVelocity(
   orgId?: string,

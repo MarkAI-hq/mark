@@ -12,10 +12,11 @@ import {
 import Link                                              from 'next/link'
 import { toast }                                         from 'sonner'
 import type { StatsResponse }                            from '@/lib/actions/stats'
-import type { SchoolAnalytics, LearningVelocity }        from '@/lib/actions/analytics'
+import type { SchoolAnalytics }                          from '@/lib/actions/analytics'
+import type { LearningVelocity }                          from '@/lib/learning-velocity'
 import {
   hasEnoughDataForVelocity, LEARNING_VELOCITY_MIN_OUTCOMES, LEARNING_VELOCITY_MIN_SCHEMES,
-}                                                        from '@/lib/actions/analytics'
+}                                                        from '@/lib/learning-velocity'
 import { MetricEmptyState }                              from '@/components/ui/metric-empty-state'
 import { publishAssessment }                             from '@/lib/actions/assessments'
 import { StatCard }                                      from './stat-card'
