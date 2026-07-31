@@ -25,14 +25,14 @@ interface Step {
 
 const STEPS_BY_ROLE: Record<'Admin' | 'Teacher', Step[]> = {
   Admin: [
-    { id: 'create_subject',    label: 'Create your first subject', subtitle: 'Subjects organise your entire curriculum in Mirror.',              href: '/dashboard/subjects'     },
+    { id: 'create_subject',    label: 'Create your first subject', subtitle: 'Subjects organise your entire curriculum in Mirror.',              href: '/dashboard/settings/subjects' },
     { id: 'create_course',     label: 'Create a course',           subtitle: 'Courses live inside subjects and hold your assessments.',          href: '/dashboard/courses'      },
     { id: 'create_class',      label: 'Create a class',            subtitle: 'Classes group students so Mirror builds school-wide insights.',    href: '/dashboard/classes'      },
     { id: 'upload_assessment', label: 'Create an assessment',      subtitle: 'Upload a marking scheme — Mirror grades every script against it.', href: '/dashboard/exams'        },
     { id: 'grade_scripts',     label: 'Grade with Mirror',         subtitle: 'Cognitive profiles and error patterns in 60 seconds.',             href: '/dashboard/exams'        },
   ],
   Teacher: [
-    { id: 'create_subject',    label: 'Explore your subjects',  subtitle: 'See how your curriculum is structured in Mirror.',                href: '/dashboard/subjects'        },
+    { id: 'create_subject',    label: 'Explore your subjects',  subtitle: 'See how your curriculum is structured in Mirror.',                href: '/dashboard/settings/subjects' },
     { id: 'create_course',     label: 'View your courses',      subtitle: 'Your assigned courses and their assessments live here.',          href: '/dashboard/courses'         },
     { id: 'create_class',      label: 'Meet your classes',      subtitle: 'See your students and their cognitive profiles.',                href: '/dashboard/teacher/classes' },
     { id: 'upload_assessment', label: 'Create an assessment',   subtitle: 'Upload a marking scheme — Mirror grades every script against it.',href: '/dashboard/exams'           },

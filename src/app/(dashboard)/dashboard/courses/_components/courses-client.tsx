@@ -113,7 +113,7 @@ export function CoursesClient({ initialCourses, subjects }: CoursesClientProps) 
             Courses belong to subjects. Add at least one subject before creating a course.
           </p>
         </div>
-        <Button variant="outline" onClick={() => router.push('/dashboard/subjects?new=true')}>
+        <Button variant="outline" onClick={() => router.push('/dashboard/settings/subjects?new=true')}>
           Go to Subjects
           <ArrowRight className="ml-2 h-4 w-4" />
         </Button>

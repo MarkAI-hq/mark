@@ -13,7 +13,7 @@ const sidebarNavItems = [
   { title: 'Organization',      href: '/dashboard/settings/organization',   icon: 'Building2'  },
   { title: 'Members',           href: '/dashboard/settings/members',        icon: 'Users'      },
   { title: 'Billing',           href: '/dashboard/settings/billing',        icon: 'CreditCard' },
-  { title: 'Subjects',          href: '/dashboard/subjects',                icon: 'BookMarked' },
+  { title: 'Subjects',          href: '/dashboard/settings/subjects',       icon: 'BookMarked' },
   { title: 'Welcome Pack',      href: '/dashboard/settings/welcome-pack',   icon: 'Gift'       },
   { title: 'Account & Privacy', href: '/dashboard/settings/account',        icon: 'Shield'     },
 ];

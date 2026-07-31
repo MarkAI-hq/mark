@@ -2,8 +2,10 @@
 
 import { Suspense }      from 'react'
 import { Metadata }      from 'next'
+import { getSession }    from '@/lib/session'
 import { getClasses }    from '@/lib/actions/classes'
 import { ClassesClient } from './_components/classes-client'
+import { CurriculumClassSync } from '@/components/curriculum/curriculum-class-sync'
 
 export const metadata: Metadata = {
   title: 'Classes - Mark',
@@ -11,6 +13,7 @@ export const metadata: Metadata = {
 }
 
 export default async function ClassesPage() {
+  const user = await getSession()
   const { data: classes, error } = await getClasses()
 
   if (error) {
@@ -34,6 +37,11 @@ export default async function ClassesPage() {
           </p>
         </div>
       </div>
+      {user?.role === 'Admin' && (
+        <Suspense fallback={null}>
+          <CurriculumClassSync />
+        </Suspense>
+      )}
       <Suspense fallback={null}>
         <ClassesClient initialClasses={classes ?? []} />
       </Suspense>

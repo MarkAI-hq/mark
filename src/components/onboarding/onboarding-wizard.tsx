@@ -13,7 +13,8 @@ import {
 
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
-import { getAvailableSubjects, type AvailableSubject } from '@/lib/actions/curricula'
+import { getAvailableSubjects, getAvailableClassLevels, type AvailableSubject } from '@/lib/actions/curricula'
+import { deriveCountry, deriveClassKeyPrefix } from '@/lib/curriculum-defaults'
 import { cn } from '@/lib/utils'
 import { createClass } from '@/lib/actions/classes'
 import { createSubjects } from '@/lib/actions/subjects'
@@ -123,16 +124,6 @@ const DEFAULT_SUBJECTS: Record<SchoolTypeKey, Record<EduSystemKey, string[]>> = 
   },
 }
 
-function deriveCountry(sys: string): string | null {
-  return sys === 'uneb' ? 'uganda' : null
-}
-
-function deriveClassKeyPrefix(type: string): string | undefined {
-  if (type === 'primary') return 'P'
-  if (type === 'o-level' || type === 'a-level') return 'S'
-  return undefined
-}
-
 const WIZARD_STEPS = [
   { id: 1, label: 'School'   },
   { id: 2, label: 'Students' },
@@ -171,6 +162,8 @@ export function OnboardingWizard({ adminName, schoolName }: OnboardingWizardProp
   const [apiSubjectsLoading, setApiSubjectsLoading] = useState(false)
   const [checkedSubjects,    setCheckedSubjects]    = useState<Record<string, boolean>>({})
 
+  const [apiClassLevels, setApiClassLevels] = useState<string[] | null>(null)
+
   // What was auto-created after Step 1
   const [createdClasses,  setCreatedClasses]  = useState<CreatedClass[]>([])
   const [createdSubjects, setCreatedSubjects] = useState<string[]>([])
@@ -183,16 +176,19 @@ export function OnboardingWizard({ adminName, schoolName }: OnboardingWizardProp
     if (!schoolType || !educationSystem) {
       setApiSubjects(null)
       setCheckedSubjects({})
+      setApiClassLevels(null)
       return
     }
     const country = deriveCountry(educationSystem)
     if (!country) {
       setApiSubjects([])
       setCheckedSubjects({})
+      setApiClassLevels([])
       return
     }
+    const classKeyPrefix = deriveClassKeyPrefix(schoolType)
     setApiSubjectsLoading(true)
-    getAvailableSubjects({ country, classKeyPrefix: deriveClassKeyPrefix(schoolType) }).then(({ data }) => {
+    getAvailableSubjects({ country, classKeyPrefix }).then(({ data }) => {
       setApiSubjectsLoading(false)
       if (!data?.length) {
         setApiSubjects([])
@@ -201,6 +197,12 @@ export function OnboardingWizard({ adminName, schoolName }: OnboardingWizardProp
       }
       setApiSubjects(data)
       setCheckedSubjects(Object.fromEntries(data.map(s => [s.subject_key, true])))
+    })
+    getAvailableClassLevels({ country }).then(({ data }) => {
+      const levels = (data ?? [])
+        .map(l => l.class_key)
+        .filter(key => !classKeyPrefix || key.startsWith(classKeyPrefix))
+      setApiClassLevels(levels)
     })
   }, [schoolType, educationSystem])
 
@@ -249,8 +251,10 @@ export function OnboardingWizard({ adminName, schoolName }: OnboardingWizardProp
         }
       }
 
-      // 3. Create classes
-      const classNames = DEFAULT_CLASSES[schoolType] ?? []
+      // 3. Create classes — use curriculum DB list if available, else hardcoded defaults
+      const classNames = (apiClassLevels && apiClassLevels.length > 0)
+        ? apiClassLevels
+        : (DEFAULT_CLASSES[schoolType] ?? [])
       const classResults = await Promise.allSettled(
         classNames.map(name =>
           createClass({ name, grade_level: name })
@@ -396,6 +400,7 @@ export function OnboardingWizard({ adminName, schoolName }: OnboardingWizardProp
                     setEducationSystem={setEducationSystem}
                     apiSubjects={apiSubjects}
                     apiSubjectsLoading={apiSubjectsLoading}
+                    apiClassLevels={apiClassLevels}
                     checkedSubjects={checkedSubjects}
                     onToggleSubject={key =>
                       setCheckedSubjects(prev => ({ ...prev, [key]: !prev[key] }))
@@ -443,7 +448,7 @@ function StepSchool({
   adminName, schoolName,
   schoolType, setSchoolType,
   educationSystem, setEducationSystem,
-  apiSubjects, apiSubjectsLoading, checkedSubjects,
+  apiSubjects, apiSubjectsLoading, apiClassLevels, checkedSubjects,
   onToggleSubject, onToggleAll,
   onContinue, isPending,
 }: {
@@ -455,13 +460,16 @@ function StepSchool({
   setEducationSystem:    (v: string) => void
   apiSubjects:           AvailableSubject[] | null
   apiSubjectsLoading:    boolean
+  apiClassLevels:        string[] | null
   checkedSubjects:       Record<string, boolean>
   onToggleSubject:       (key: string) => void
   onToggleAll:           (all: boolean) => void
   onContinue:            () => void
   isPending:             boolean
 }) {
-  const previewClasses  = schoolType ? (DEFAULT_CLASSES[schoolType] ?? []) : []
+  const previewClasses  = schoolType
+    ? ((apiClassLevels && apiClassLevels.length > 0) ? apiClassLevels : (DEFAULT_CLASSES[schoolType] ?? []))
+    : []
   const previewSubjects = (schoolType && educationSystem)
     ? (DEFAULT_SUBJECTS[schoolType as SchoolTypeKey]?.[educationSystem as EduSystemKey] ?? [])
     : []

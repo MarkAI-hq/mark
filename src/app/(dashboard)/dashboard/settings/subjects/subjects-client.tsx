@@ -1,6 +1,6 @@
 'use client';
 
-// src/components/subjects/subjects-client.tsx
+// src/app/(dashboard)/dashboard/settings/subjects/subjects-client.tsx
 
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useRouter, useSearchParams }                from 'next/navigation';
@@ -37,7 +37,7 @@ export function SubjectsClient({ subjects, isAdmin }: SubjectsClientProps) {
   useEffect(() => {
     if (isAdmin && searchParams.get('new') === 'true') {
       setIsCreatingSubject(true)
-      router.replace('/dashboard/subjects')
+      router.replace('/dashboard/settings/subjects')
     }
   }, [searchParams, router, isAdmin])
 

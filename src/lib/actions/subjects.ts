@@ -26,7 +26,7 @@ export async function createSubject(data: {
     });
 
     const createdSubject = handleMutationResponse(response);
-    revalidatePath('/dashboard/subjects');
+    revalidatePath('/dashboard/settings/subjects');
     revalidatePath('/dashboard/exams');
     return { data: createdSubject, error: null };
   } catch (err) {
@@ -49,7 +49,7 @@ export async function createSubjects(
     });
 
     const createdSubjects = handleMutationResponse(response);
-    revalidatePath('/dashboard/subjects');
+    revalidatePath('/dashboard/settings/subjects');
     revalidatePath('/dashboard/exams');
     return { data: createdSubjects, error: null };
   } catch (err) {
@@ -81,7 +81,7 @@ export async function updateSubject(
     });
 
     const updatedSubject = handleMutationResponse(response);
-    revalidatePath('/dashboard/subjects');
+    revalidatePath('/dashboard/settings/subjects');
     revalidatePath('/dashboard/exams');
     return { data: updatedSubject, error: null };
   } catch (err) {
@@ -100,7 +100,7 @@ export async function deleteSubject(id: string): Promise<ServerActionResponse<{ 
     );
 
     const deleteMessage = handleMutationResponse(response);
-    revalidatePath('/dashboard/subjects');
+    revalidatePath('/dashboard/settings/subjects');
     revalidatePath('/dashboard/exams');
     return { data: deleteMessage, error: null };
   } catch (err) {
