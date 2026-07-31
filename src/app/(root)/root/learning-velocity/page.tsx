@@ -3,8 +3,10 @@ import { getSession }       from '@/lib/session'
 import { getLearningVelocity } from '@/lib/actions/analytics'
 import {
   hasEnoughDataForVelocity,
+  formatMasteryDuration,
   LEARNING_VELOCITY_MIN_OUTCOMES,
   LEARNING_VELOCITY_MIN_SCHEMES,
+  LEARNING_VELOCITY_LARGE_MULTIPLIER,
 }                            from '@/lib/learning-velocity'
 import { Zap, Sparkles } from 'lucide-react'
 
@@ -77,16 +79,27 @@ export default async function LearningVelocityPage() {
               sub="Curriculum-paced days ÷ actual days to mastery"
             />
             <StatCard
-              title="Actual Median Days to Mastery"
-              value={String(v.actual_median_days_to_mastery)}
+              title="Actual Median Time to Mastery"
+              value={formatMasteryDuration(v.actual_median_days_to_mastery)}
               sub={`${v.actual_sample_size.toLocaleString()} mastered outcomes`}
             />
             <StatCard
               title="Curriculum-Paced Baseline"
-              value={String(v.curriculum_expected_days_per_outcome)}
-              sub={`days/outcome, ${v.baseline_scheme_sample_size.toLocaleString()} active schemes`}
+              value={formatMasteryDuration(v.curriculum_expected_days_per_outcome)}
+              sub={`per outcome, ${v.baseline_scheme_sample_size.toLocaleString()} active schemes`}
             />
           </div>
+
+          {v.speed_multiplier != null && v.speed_multiplier >= LEARNING_VELOCITY_LARGE_MULTIPLIER && (
+            <div
+              className="rounded-xl p-4 text-xs"
+              style={{ background: 'rgba(201,168,76,0.06)', border: '1px solid rgba(201,168,76,0.15)', color: 'rgba(255,255,255,0.5)' }}
+            >
+              This multiplier is large because a lot of mastery is happening within a single session, compared
+              against a week-scale curriculum baseline — the math is correct, but quote it with the underlying
+              times above, not the multiplier alone.
+            </div>
+          )}
 
           <div
             className="rounded-xl p-5 text-xs"

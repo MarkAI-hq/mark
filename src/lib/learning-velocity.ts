@@ -23,3 +23,22 @@ export function hasEnoughDataForVelocity(v: LearningVelocity): boolean {
     v.baseline_scheme_sample_size >= LEARNING_VELOCITY_MIN_SCHEMES
   )
 }
+
+// A mastery event can genuinely land inside a single session (minutes to a
+// few hours) — displaying that in days would round to "0" and look broken,
+// the exact failure mode the empty-state work was meant to avoid. Pick
+// whichever unit keeps the number honest at its actual scale.
+export function formatMasteryDuration(days: number | null): string {
+  if (days == null) return '—'
+  if (days < 1) {
+    const hours = Math.max(1, Math.round(days * 24))
+    return `${hours} hour${hours === 1 ? '' : 's'}`
+  }
+  const rounded = Math.round(days * 10) / 10
+  return `${rounded} day${rounded === 1 ? '' : 's'}`
+}
+
+// A multiplier this large is usually correct (fast same-session mastery vs.
+// a week-scale curriculum baseline) but reads as implausible without context
+// — flag it for a footnote rather than hiding or capping it.
+export const LEARNING_VELOCITY_LARGE_MULTIPLIER = 20

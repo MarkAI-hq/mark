@@ -15,7 +15,8 @@ import type { StatsResponse }                            from '@/lib/actions/sta
 import type { SchoolAnalytics }                          from '@/lib/actions/analytics'
 import type { LearningVelocity }                          from '@/lib/learning-velocity'
 import {
-  hasEnoughDataForVelocity, LEARNING_VELOCITY_MIN_OUTCOMES, LEARNING_VELOCITY_MIN_SCHEMES,
+  hasEnoughDataForVelocity, formatMasteryDuration,
+  LEARNING_VELOCITY_MIN_OUTCOMES, LEARNING_VELOCITY_MIN_SCHEMES, LEARNING_VELOCITY_LARGE_MULTIPLIER,
 }                                                        from '@/lib/learning-velocity'
 import { MetricEmptyState }                              from '@/components/ui/metric-empty-state'
 import { publishAssessment }                             from '@/lib/actions/assessments'
@@ -324,7 +325,7 @@ export function DashboardClient({ stats, analytics, learningVelocity, user }: Da
                   </div>
                   <div>
                     <p className="text-lg font-semibold">
-                      {learningVelocity.actual_median_days_to_mastery} days
+                      {formatMasteryDuration(learningVelocity.actual_median_days_to_mastery)}
                     </p>
                     <p className="text-xs text-muted-foreground mt-0.5">
                       median actual time to mastery ({learningVelocity.actual_sample_size.toLocaleString()} outcomes)
@@ -332,11 +333,19 @@ export function DashboardClient({ stats, analytics, learningVelocity, user }: Da
                   </div>
                   <div>
                     <p className="text-lg font-semibold">
-                      {learningVelocity.curriculum_expected_days_per_outcome} days
+                      {formatMasteryDuration(learningVelocity.curriculum_expected_days_per_outcome)}
                     </p>
                     <p className="text-xs text-muted-foreground mt-0.5">curriculum-paced baseline per outcome</p>
                   </div>
                 </CardContent>
+                {learningVelocity.speed_multiplier != null && learningVelocity.speed_multiplier >= LEARNING_VELOCITY_LARGE_MULTIPLIER && (
+                  <CardContent className="pt-0 pb-4">
+                    <p className="text-xs text-muted-foreground">
+                      This multiplier reflects a lot of same-session mastery vs. a week-scale curriculum baseline —
+                      correct, but quote it with the times above, not the multiplier alone.
+                    </p>
+                  </CardContent>
+                )}
               </Card>
             )}
           </div>
