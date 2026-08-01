@@ -91,6 +91,38 @@ export async function getPlatformBenchmarks(): Promise<ServerActionResponse<Plat
   return fetcher<PlatformBenchmarks>('/analytics/benchmarks', { cache: 'no-store' })
 }
 
+// ── Platform Health (Root/Support only) ───────────────────────────────────────
+
+export interface SeedTableCount {
+  table:      string
+  rowCount:   number
+  breakdown?: Record<string, number>
+}
+
+export interface ThinSchemeOfWork {
+  schemeId:     string
+  subject:      string
+  gradeLevel:   string
+  totalWeeks:   number
+  weeksDefined: number
+  pct:          number | null
+}
+
+export interface PlatformHealth {
+  generatedAt:     string
+  seedCounts:      SeedTableCount[]
+  schemeCoverage:  ThinSchemeOfWork[]
+  learningAnalyticsCoverage: {
+    activeEnrolledStudents:   number
+    studentsWithAnalyticsRow: number
+    pct: number | null
+  }
+}
+
+export async function getPlatformHealth(): Promise<ServerActionResponse<PlatformHealth>> {
+  return fetcher<PlatformHealth>('/analytics/platform-health', { cache: 'no-store' })
+}
+
 // ── Learning Velocity (Root/Support platform-wide; Admin own-org) ────────────
 // Types/constants/helper live in '@/lib/learning-velocity' — this file may
 // only export async functions ("use server").
