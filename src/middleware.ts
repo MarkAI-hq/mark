@@ -5,11 +5,19 @@ import type { NextRequest } from 'next/server'
 import { refreshAccessToken } from './lib/actions/auth'
 import { SCHOOL_DOMAIN_HOSTS } from './config/site-domains'
 
-// A Student who hasn't finished the /student/join wizard (no pledge signed /
-// no class picked yet) belongs back in that flow, not the dashboard — mirrors
-// the Admin `onboarding_complete` → /onboarding redirect below.
-function studentDestination(user: { onboarding_complete?: boolean; school_code?: string }): string {
+// A Student who hasn't finished onboarding belongs back in that flow, not the
+// dashboard — mirrors the Admin `onboarding_complete` → /onboarding redirect
+// below. Which flow depends on how they got here: a teacher/admin-added
+// ('direct') student already has a class and a vetted identity, so they get
+// the short /student/finish-setup (pledge + diagnostic only) instead of the
+// full public self-enrol wizard at /student/join.
+function studentDestination(user: {
+  onboarding_complete?: boolean
+  school_code?: string
+  enrollment_source?: string
+}): string {
   if (user.onboarding_complete === false) {
+    if (user.enrollment_source === 'direct') return '/student/finish-setup'
     return user.school_code ? `/student/join?school=${user.school_code}` : '/student/join'
   }
   return '/student/dashboard'
@@ -58,14 +66,14 @@ export async function middleware(request: NextRequest) {
     publicPaths.some(p => pathname === p || pathname.startsWith(p + '/') || pathname.startsWith(p + '?')) ||
     pathname.startsWith('/assets')
 
-  const getUser = (): { role: string; id: string; onboarding_complete?: boolean; school_code?: string } | null => {
+  const getUser = (): { role: string; id: string; onboarding_complete?: boolean; school_code?: string; enrollment_source?: string } | null => {
     if (!userCookie) return null
     try {
       const user   = JSON.parse(decodeURIComponent(userCookie))
       const roles: string[] = user?.roles ?? [user?.role].filter(Boolean)
       if (roles.includes('Root'))    return { role: 'Root',    id: user.id }
       if (roles.includes('Support')) return { role: 'Support', id: user.id }
-      if (roles.includes('Student')) return { role: 'Student', id: user.id, onboarding_complete: user.onboarding_complete ?? true, school_code: user.school_code }
+      if (roles.includes('Student')) return { role: 'Student', id: user.id, onboarding_complete: user.onboarding_complete ?? true, school_code: user.school_code, enrollment_source: user.enrollment_source }
       if (roles.includes('Admin'))   return { role: 'Admin',   id: user.id, onboarding_complete: user.onboarding_complete ?? true }
       if (roles.includes('Teacher')) return { role: 'Teacher', id: user.id }
       return null
@@ -130,10 +138,17 @@ export async function middleware(request: NextRequest) {
     if (pathname.startsWith('/dashboard') || pathname === '/student') {
       return NextResponse.redirect(new URL(studentDestination(user), request.url))
     }
-    // Mid-signup student (no pledge/class pick yet) hitting a portal route
-    // directly (e.g. a stale bookmark or the browser's back/forward cache) →
-    // back into the join wizard, which resumes from its own saved progress.
-    if (user.onboarding_complete === false && pathname.startsWith('/student') && !pathname.startsWith('/student/join')) {
+    // Mid-signup student (no pledge/class pick yet, or pledge/diagnostic not
+    // done for a staff-added student) hitting a portal route directly (e.g. a
+    // stale bookmark or the browser's back/forward cache) → back into
+    // whichever onboarding flow applies, which resumes from its own saved
+    // progress.
+    if (
+      user.onboarding_complete === false &&
+      pathname.startsWith('/student') &&
+      !pathname.startsWith('/student/join') &&
+      !pathname.startsWith('/student/finish-setup')
+    ) {
       return NextResponse.redirect(new URL(studentDestination(user), request.url))
     }
     return NextResponse.next()

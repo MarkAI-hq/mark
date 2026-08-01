@@ -51,8 +51,12 @@ export function StudentLoginForm() {
         title:       'Welcome back!',
         description: `Signed in as ${result.data.user.name}`,
       })
+      // Just router.push() — an immediate router.refresh() right after races
+      // the navigation's own RSC fetch, and if middleware redirects that fetch
+      // (e.g. an onboarding-incomplete student → /student/finish-setup), the
+      // client can't parse the redirect as an RSC payload and throws
+      // "An unexpected response was received from the server."
       router.push(returnUrl)
-      router.refresh()
       return
     }
 
