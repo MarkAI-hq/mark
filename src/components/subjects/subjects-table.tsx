@@ -133,27 +133,27 @@ export function SubjectsTable({ data, onEdit, onDelete, headerSlot, role = 'Admi
           </DialogHeader>
           <div className="grid grid-cols-2 gap-3 pt-2 pb-1">
             <button
-              className="flex flex-col items-start gap-3 rounded-xl border-2 border-slate-200 p-4 text-left transition-colors hover:border-amber-400 hover:bg-amber-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+              className="flex flex-col items-start gap-3 rounded-xl border-2 border-border p-4 text-left transition-colors hover:border-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
               onClick={() => setExamPath('document')}
             >
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-100">
-                <Upload className="h-4 w-4 text-slate-600" />
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-muted">
+                <Upload className="h-4 w-4 text-muted-foreground" />
               </div>
               <div>
-                <p className="text-sm font-semibold text-slate-800">From Document</p>
-                <p className="text-xs text-slate-500 mt-0.5">Upload a marking guide or past paper — Mirror detects the curriculum and generates questions from it.</p>
+                <p className="text-sm font-semibold text-foreground">From Document</p>
+                <p className="text-sm text-muted-foreground mt-0.5">Upload a marking guide or past paper — Mirror detects the curriculum and generates questions from it.</p>
               </div>
             </button>
             <button
-              className="flex flex-col items-start gap-3 rounded-xl border-2 border-slate-200 p-4 text-left transition-colors hover:border-amber-400 hover:bg-amber-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+              className="flex flex-col items-start gap-3 rounded-xl border-2 border-border p-4 text-left transition-colors hover:border-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
               onClick={() => setExamPath('curriculum')}
             >
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-amber-50">
-                <BookOpen className="h-4 w-4 text-amber-600" />
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-amber-50 dark:bg-amber-950/30">
+                <BookOpen className="h-4 w-4 text-amber-600 dark:text-amber-500" />
               </div>
               <div>
-                <p className="text-sm font-semibold text-slate-800">From Curriculum</p>
-                <p className="text-xs text-slate-500 mt-0.5">Generate directly from the uploaded curriculum schema — no file needed. Topics and Bloom&apos;s levels are inherited automatically.</p>
+                <p className="text-sm font-semibold text-foreground">From Curriculum</p>
+                <p className="text-sm text-muted-foreground mt-0.5">Generate directly from the uploaded curriculum schema — no file needed. Topics and Bloom&apos;s levels are inherited automatically.</p>
               </div>
             </button>
           </div>

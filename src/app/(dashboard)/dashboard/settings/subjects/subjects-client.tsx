@@ -26,6 +26,12 @@ export function SubjectsClient({ subjects, isAdmin }: SubjectsClientProps) {
   const searchParams = useSearchParams()
 
   const [subjectList,          setSubjectList]          = useState<Subject[]>(subjects);
+
+  // Resync local list when the server re-renders with fresh data (e.g. after
+  // curriculum-sync "Add" writes subjects outside this component's own handlers)
+  useEffect(() => {
+    setSubjectList(subjects)
+  }, [subjects]);
   const [selectedSubject,      setSelectedSubject]      = useState<Subject | undefined>(undefined);
   const [isCreatingSubject,    setIsCreatingSubject]    = useState(false);
   const [subjectToDelete,      setSubjectToDelete]      = useState<Subject | undefined>(undefined);

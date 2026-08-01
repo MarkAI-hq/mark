@@ -18,6 +18,8 @@ export async function reloadCurricula() {
 export interface AvailableSubject {
   subject_key:     string
   display_name:    string
+  subject_code?:   string
+  description?:    string
   class_levels:    string[]
   country:         string
   curriculum_body: string

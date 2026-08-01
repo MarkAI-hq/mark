@@ -37,6 +37,12 @@ export function ClassesClient({ initialClasses }: ClassesClientProps) {
     }
   }, [searchParams, router])
 
+  // Resync local list when the server re-renders with fresh data (e.g. after
+  // curriculum-sync "Add" writes classes outside this component's own handlers)
+  useEffect(() => {
+    setClasses(initialClasses)
+  }, [initialClasses])
+
   const handleCreate = (data: ClassData) => {
     startTransition(async () => {
       try {

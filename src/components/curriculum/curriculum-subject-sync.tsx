@@ -28,14 +28,50 @@ export async function CurriculumSubjectSync() {
   ])
   if (!available?.length) return null
 
-  const existingNames = new Set((existing ?? []).map(s => s.name.trim().toLowerCase()))
-  const missing = available.filter(s => !existingNames.has(s.display_name.trim().toLowerCase()))
-  if (missing.length === 0) return null
+  const byName = new Map(available.map(s => [s.display_name.trim().toLowerCase(), s]))
+
+  const missing = available.filter(
+    s => !(existing ?? []).some(e => e.name.trim().toLowerCase() === s.display_name.trim().toLowerCase()),
+  )
+
+  // Existing subjects that match a curriculum subject by name but are missing
+  // (or diverge from) the curriculum's code/description — backfill candidates.
+  const staleExisting = (existing ?? []).filter(e => {
+    const match = byName.get(e.name.trim().toLowerCase())
+    if (!match) return false
+    const codeStale = !!match.subject_code && e.code?.trim() !== match.subject_code
+    const descriptionStale = !!match.description && e.description?.trim() !== match.description
+    return codeStale || descriptionStale
+  })
 
   return (
-    <CurriculumSyncPanel
-      kind="subject"
-      items={missing.map(s => ({ key: s.subject_key, label: s.display_name }))}
-    />
+    <>
+      {missing.length > 0 && (
+        <CurriculumSyncPanel
+          kind="subject"
+          items={missing.map(s => ({
+            key: s.subject_key,
+            label: s.display_name,
+            code: s.subject_code,
+            description: s.description,
+          }))}
+        />
+      )}
+      {staleExisting.length > 0 && (
+        <CurriculumSyncPanel
+          kind="subject-update"
+          items={staleExisting.map(e => {
+            const match = byName.get(e.name.trim().toLowerCase())!
+            return {
+              key: e.id,
+              label: e.name,
+              code: match.subject_code,
+              description: match.description,
+              subjectId: e.id,
+            }
+          })}
+        />
+      )}
+    </>
   )
 }

@@ -95,7 +95,6 @@ export async function getPlatformBenchmarks(): Promise<ServerActionResponse<Plat
 // Types/constants/helper live in '@/lib/learning-velocity' — this file may
 // only export async functions ("use server").
 
-export type { LearningVelocity } from '@/lib/learning-velocity'
 import type { LearningVelocity } from '@/lib/learning-velocity'
 
 export async function getLearningVelocity(
