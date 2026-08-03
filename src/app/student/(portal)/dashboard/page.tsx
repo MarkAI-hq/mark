@@ -55,6 +55,7 @@ export default async function StudentDashboardPage() {
         currentWeekEntries={[]}
         nextAction={null}
         classId={sowData.classId}
+        classFetchFailed={sowData.fetchFailed}
       />
     )
   }

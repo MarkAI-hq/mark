@@ -9,7 +9,11 @@ export const metadata = {
   description: 'Your AI learning companion powered by Mirror Intelligence',
 }
 
-export default async function StudentTracyRoute() {
+interface Props {
+  searchParams: Promise<{ prompt?: string }>
+}
+
+export default async function StudentTracyRoute({ searchParams }: Props) {
   const cookieStore = await cookies()
   const userCookie  = cookieStore.get('user')?.value
   if (!userCookie) redirect('/student/login')
@@ -21,10 +25,11 @@ export default async function StudentTracyRoute() {
   const studentId = user?.user_id ?? user?.id
   if (!studentId) redirect('/student/login')
 
-  const [subjectProgress, sowData, notesRes] = await Promise.all([
+  const [subjectProgress, sowData, notesRes, { prompt }] = await Promise.all([
     getStudentSubjectProgress(studentId),
     getMyClassSoW(),
     getMyNotes(),
+    searchParams,
   ])
 
   const weakSubjects  = subjectProgress
@@ -41,6 +46,7 @@ export default async function StudentTracyRoute() {
       currentTopics={currentTopics}
       subjectProgress={subjectProgress}
       initialNotes={initialNotes}
+      initialPrompt={prompt}
     />
   )
 }

@@ -61,7 +61,7 @@ import {
 } from '@/lib/actions/student-onboarding'
 
 import { LessonPlayer } from '@/app/student/(portal)/study-plans/[planId]/studio/_components/lesson-player'
-import { useKeyboardBlocker, copyProtectionProps } from '@/lib/utils/validation'
+import { copyProtectionProps } from '@/lib/utils/validation'
 import { Badge } from '@/components/ui/badge'
 
 type Step =
@@ -161,9 +161,6 @@ function progressStorageKey(schoolCode: string) {
 export function JoinClient({ schoolCode, schoolName }: { schoolCode: string; schoolName?: string }) {
   const router = useRouter()
   const [step, setStep] = useState<Step>('details')
-
-  // Developer Tooling Security Blocks
-  useKeyboardBlocker()
 
   // ── Step 1: details ────────────────────────────────────────────────────────
   const [firstName, setFirstName] = useState('')

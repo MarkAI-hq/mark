@@ -2,10 +2,11 @@
 
 import { AlertCircle, CheckCircle2, Lightbulb } from 'lucide-react'
 import { LessonProse } from '@/components/lesson/lesson-prose'
+import { AskTracyChip } from '@/components/students/ask-tracy-chip'
 
-interface Props { scene: any }
+interface Props { scene: any; subject?: string; topic?: string }
 
-export function SceneMisconceptionRedirect({ scene }: Props) {
+export function SceneMisconceptionRedirect({ scene, subject, topic }: Props) {
   const { title, content } = scene
   const { misconception, why_it_makes_sense, correct_understanding, analogy } = content ?? {}
 
@@ -43,6 +44,13 @@ export function SceneMisconceptionRedirect({ scene }: Props) {
           <p className="text-blue-900 dark:text-blue-200 leading-relaxed"><LessonProse text={analogy} /></p>
         </div>
       )}
+
+      <div className="flex justify-end">
+        <AskTracyChip
+          label="Still confused? Ask Tracy"
+          prompt={`I got confused between "${misconception}" and the correct idea in ${topic ?? subject ?? 'this topic'}. Can you explain it a different way?`}
+        />
+      </div>
     </div>
   )
 }

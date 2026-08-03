@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
+import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { Users, Trophy, Flame, Star, BookOpen, Globe, TrendingUp, Target, Zap, Award, Medal, CalendarDays, ArrowRight } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
@@ -16,6 +17,7 @@ import type {
 import { getLeaderboard } from '@/lib/actions/student-dashboard'
 import type { SchoolNotice } from '@/lib/actions/school-notices'
 import { Pin, Megaphone } from 'lucide-react'
+import { StreakMascot, moodForStreak } from '@/components/students/streak-mascot'
 
 interface Props {
   user:               any
@@ -31,7 +33,11 @@ interface Props {
 }
 
 export function SchoolClient({ user, classmatesData, socialProof, extras, enrollments, isMarketplace, classInfo, orgName, initialLeaderboard, notices }: Props) {
-  const [tab, setTab] = useState<'class' | 'life' | 'leaderboard'>('class')
+  const searchParams = useSearchParams()
+  const initialTab = searchParams.get('tab')
+  const [tab, setTab] = useState<'class' | 'life' | 'leaderboard'>(
+    initialTab === 'life' || initialTab === 'leaderboard' ? initialTab : 'class',
+  )
 
   const { classmates } = classmatesData
   const displayName = orgName ?? (isMarketplace ? 'Mirror Intelligence' : 'My School')
@@ -75,6 +81,25 @@ export function SchoolClient({ user, classmatesData, socialProof, extras, enroll
             </p>
           </CardContent>
         </Card>
+
+        {/* Independent learners don't get a classmate leaderboard (no shared
+            cohort to compare against) — but momentum against your own past
+            is still real motivation, not a consolation prize. */}
+        {(user?.study_streak ?? 0) > 0 && (
+          <Card className="border-orange-200 bg-orange-50/60 dark:bg-orange-950/20 dark:border-orange-900">
+            <CardContent className="py-4 px-4 flex items-center gap-3">
+              <StreakMascot mood={moodForStreak(user.study_streak)} size={40} className="shrink-0" />
+              <div>
+                <p className="text-sm font-semibold">
+                  {user.study_streak} day{user.study_streak === 1 ? '' : 's'} study streak
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Independent learners build momentum differently — this is yours. Keep it going.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Clear next places to go — never a dead end */}
         <div className="grid sm:grid-cols-2 gap-3">

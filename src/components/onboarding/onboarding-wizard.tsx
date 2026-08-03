@@ -324,7 +324,7 @@ export function OnboardingWizard({ adminName, schoolName }: OnboardingWizardProp
               <h1 className="text-4xl font-bold leading-tight">
                 Mirror Intelligence for schools.
               </h1>
-              <p className="text-slate-400 text-lg leading-relaxed max-w-sm">
+              <p className="text-muted-foreground text-lg leading-relaxed max-w-sm">
                 Join hundreds of teachers saving hours every week while giving students deeper actionable feedback.
               </p>
             </div>
@@ -337,20 +337,20 @@ export function OnboardingWizard({ adminName, schoolName }: OnboardingWizardProp
                   </div>
                   <div>
                     <p className="text-sm font-semibold">{f.title}</p>
-                    <p className="text-xs text-slate-400 mt-0.5 leading-relaxed">{f.sub}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{f.sub}</p>
                   </div>
                 </div>
               ))}
             </div>
           </div>
 
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-muted-foreground">
             © {new Date().getFullYear()} Mark. All rights reserved.
           </p>
         </div>
 
         {/* Right panel */}
-        <div className="flex-1 bg-slate-50 flex flex-col">
+        <div className="flex-1 bg-muted flex flex-col">
 
           {/* Mobile logo */}
           <div className="flex lg:!hidden items-center gap-2.5 p-6 border-b bg-white">
@@ -371,21 +371,21 @@ export function OnboardingWizard({ adminName, schoolName }: OnboardingWizardProp
                   <div className={cn(
                     'h-1.5 rounded-full transition-all duration-500',
                     step > s.id   ? 'bg-amber-400' :
-                    step === s.id ? 'bg-amber-400/40' : 'bg-slate-200',
+                    step === s.id ? 'bg-amber-400/40' : 'bg-muted',
                   )} />
                 </div>
               ))}
             </div>
-            <p className="text-xs text-slate-400 font-medium">
+            <p className="text-xs text-muted-foreground font-medium">
               Step {step} of {WIZARD_STEPS.length} —{' '}
-              <span className="text-slate-600">{WIZARD_STEPS[step - 1].label}</span>
+              <span className="text-muted-foreground">{WIZARD_STEPS[step - 1].label}</span>
             </p>
           </div>
 
           {/* Step content */}
           <div className="flex-1 flex items-start justify-center px-6 py-8 overflow-hidden">
             <div
-              className="w-full max-w-lg bg-white rounded-2xl border border-slate-200 shadow-sm p-8"
+              className="w-full max-w-lg bg-white rounded-2xl border border-border shadow-sm p-8"
               key={animKey}
             >
               <div className={animClass}>
@@ -478,17 +478,17 @@ function StepSchool({
   return (
     <div className="space-y-7">
       <div>
-        <h2 className="text-2xl font-bold text-slate-900">Welcome, {adminName}.</h2>
-        <p className="text-slate-500 mt-1.5 text-sm leading-relaxed">
+        <h2 className="text-2xl font-bold text-foreground">Welcome, {adminName}.</h2>
+        <p className="text-muted-foreground mt-1.5 text-sm leading-relaxed">
           Let&apos;s set up{' '}
-          <span className="text-slate-800 font-medium">{schoolName}</span>.
+          <span className="text-foreground font-medium">{schoolName}</span>.
           This takes about a minute.
         </p>
       </div>
 
       {/* School type */}
       <div>
-        <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
           School type
         </p>
         <div className="grid grid-cols-2 gap-2">
@@ -501,16 +501,16 @@ function StepSchool({
                 'flex flex-col items-start px-4 py-3 rounded-xl border text-left transition-all duration-150 cursor-pointer',
                 schoolType === t.value
                   ? 'border-amber-400 bg-amber-50 shadow-sm'
-                  : 'border-slate-200 bg-white hover:border-slate-300',
+                  : 'border-border bg-white hover:border-border',
               )}
             >
               <span className={cn(
                 'font-semibold text-sm',
-                schoolType === t.value ? 'text-amber-700' : 'text-slate-800',
+                schoolType === t.value ? 'text-amber-700 dark:text-amber-300' : 'text-foreground',
               )}>
                 {t.label}
               </span>
-              <span className="text-xs mt-0.5 text-slate-400">{t.sub}</span>
+              <span className="text-xs mt-0.5 text-muted-foreground">{t.sub}</span>
             </button>
           ))}
         </div>
@@ -518,7 +518,7 @@ function StepSchool({
 
       {/* Education system */}
       <div>
-        <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
           Education system
         </p>
         <div className="grid grid-cols-2 gap-2">
@@ -530,8 +530,8 @@ function StepSchool({
               className={cn(
                 'px-4 py-3 rounded-xl border text-left text-sm font-medium transition-all duration-150 cursor-pointer',
                 educationSystem === e.value
-                  ? 'border-amber-400 bg-amber-50 text-amber-700 shadow-sm'
-                  : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300',
+                  ? 'border-amber-400 bg-amber-50 text-amber-700 dark:text-amber-300 shadow-sm'
+                  : 'border-border bg-white text-foreground hover:border-border',
               )}
             >
               {e.label}
@@ -542,20 +542,20 @@ function StepSchool({
 
       {/* Subject selection — curriculum-driven checklist or fallback preview */}
       {apiSubjectsLoading && (
-        <div className="rounded-xl border border-slate-100 bg-slate-50 p-4">
-          <p className="text-xs text-slate-400">Loading available subjects…</p>
+        <div className="rounded-xl border border-border bg-muted p-4">
+          <p className="text-xs text-muted-foreground">Loading available subjects…</p>
         </div>
       )}
 
       {!apiSubjectsLoading && apiSubjects && apiSubjects.length > 0 && (
-        <div className="rounded-xl border border-slate-100 bg-slate-50 p-4 space-y-3">
+        <div className="rounded-xl border border-border bg-muted p-4 space-y-3">
           <div className="flex items-center justify-between">
-            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
               {checkedCount} of {apiSubjects.length} subjects selected
             </p>
             <button
               type="button"
-              className="text-xs text-amber-700 underline"
+              className="text-xs text-amber-700 dark:text-amber-300 underline"
               onClick={() => onToggleAll(checkedCount !== apiSubjects.length)}
             >
               {checkedCount === apiSubjects.length ? 'Deselect all' : 'Select all'}
@@ -565,19 +565,19 @@ function StepSchool({
             {apiSubjects.map(s => (
               <label
                 key={s.subject_key}
-                className="flex items-center gap-2.5 px-2 py-1.5 rounded-lg hover:bg-white cursor-pointer"
+                className="flex items-center gap-2.5 px-2 py-1.5 rounded-lg hover:bg-muted cursor-pointer"
               >
                 <Checkbox
                   checked={!!checkedSubjects[s.subject_key]}
                   onCheckedChange={() => onToggleSubject(s.subject_key)}
                 />
-                <span className="text-sm text-slate-700">{s.display_name}</span>
-                <span className="text-xs text-slate-400 ml-auto">{s.class_levels.join(', ')}</span>
+                <span className="text-sm text-foreground">{s.display_name}</span>
+                <span className="text-xs text-muted-foreground ml-auto">{s.class_levels.join(', ')}</span>
               </label>
             ))}
           </div>
           {previewClasses.length > 0 && (
-            <p className="text-xs text-slate-400 pt-1">
+            <p className="text-xs text-muted-foreground pt-1">
               {previewClasses.length} classes will also be created ({previewClasses.join(', ')}).
             </p>
           )}
@@ -586,18 +586,18 @@ function StepSchool({
 
       {!apiSubjectsLoading && !(apiSubjects && apiSubjects.length > 0) &&
         (previewClasses.length > 0 || previewSubjects.length > 0) && (
-        <div className="rounded-xl border border-slate-100 bg-slate-50 p-4 space-y-3">
-          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+        <div className="rounded-xl border border-border bg-muted p-4 space-y-3">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
             We&apos;ll set up for you
           </p>
           {previewClasses.length > 0 && (
             <div className="flex items-start gap-2.5">
               <GraduationCap className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
               <div>
-                <p className="text-xs font-medium text-slate-700">
+                <p className="text-xs font-medium text-foreground">
                   {previewClasses.length} classes
                 </p>
-                <p className="text-xs text-slate-400 mt-0.5">
+                <p className="text-xs text-muted-foreground mt-0.5">
                   {previewClasses.join(', ')}
                 </p>
               </div>
@@ -607,16 +607,16 @@ function StepSchool({
             <div className="flex items-start gap-2.5">
               <BookOpen className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
               <div>
-                <p className="text-xs font-medium text-slate-700">
+                <p className="text-xs font-medium text-foreground">
                   {previewSubjects.length} subjects
                 </p>
-                <p className="text-xs text-slate-400 mt-0.5 leading-relaxed">
+                <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
                   {previewSubjects.join(', ')}
                 </p>
               </div>
             </div>
           )}
-          <p className="text-xs text-slate-400 pt-1">
+          <p className="text-xs text-muted-foreground pt-1">
             You can edit or add to these anytime from your dashboard.
           </p>
         </div>
@@ -663,8 +663,8 @@ function StepStudents({
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold text-slate-900">Your school is ready.</h2>
-        <p className="text-slate-500 mt-1.5 text-sm leading-relaxed">
+        <h2 className="text-2xl font-bold text-foreground">Your school is ready.</h2>
+        <p className="text-muted-foreground mt-1.5 text-sm leading-relaxed">
           We&apos;ve created your classes and subjects. Now add students — or skip and do it later.
         </p>
       </div>
@@ -673,9 +673,9 @@ function StepStudents({
       <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 space-y-2">
         <div className="flex items-center gap-2">
           <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
-          <p className="text-sm font-semibold text-emerald-800">Default configuration created</p>
+          <p className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">Default configuration created</p>
         </div>
-        <ul className="text-xs text-emerald-700 space-y-0.5 pl-6 list-disc">
+        <ul className="text-xs text-emerald-700 dark:text-emerald-300 space-y-0.5 pl-6 list-disc">
           {createdClasses.length > 0 && (
             <li>{createdClasses.length} classes: {createdClasses.map(c => c.name).join(', ')}</li>
           )}
@@ -691,22 +691,22 @@ function StepStudents({
       {/* Class list for import */}
       {createdClasses.length > 0 ? (
         <div className="space-y-2">
-          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
             Add students by class
           </p>
           <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
             {createdClasses.map(cls => (
               <div
                 key={cls.class_id}
-                className="flex items-center justify-between px-4 py-3 rounded-xl border border-slate-200 bg-white"
+                className="flex items-center justify-between px-4 py-3 rounded-xl border border-border bg-white"
               >
                 <div className="flex items-center gap-2.5">
                   {imported[cls.class_id] ? (
                     <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
                   ) : (
-                    <div className="h-4 w-4 rounded-full border-2 border-slate-200 shrink-0" />
+                    <div className="h-4 w-4 rounded-full border-2 border-border shrink-0" />
                   )}
-                  <span className="text-sm font-medium text-slate-800">{cls.name}</span>
+                  <span className="text-sm font-medium text-foreground">{cls.name}</span>
                   {imported[cls.class_id] && (
                     <span className="text-xs text-emerald-600">Students added</span>
                   )}
@@ -717,8 +717,8 @@ function StepStudents({
                   className={cn(
                     'text-xs font-medium px-3 py-1.5 rounded-lg transition-colors',
                     imported[cls.class_id]
-                      ? 'text-slate-400 hover:text-slate-600'
-                      : 'text-amber-700 bg-amber-50 hover:bg-amber-100',
+                      ? 'text-muted-foreground hover:text-muted-foreground'
+                      : 'text-amber-700 dark:text-amber-300 bg-amber-50 hover:bg-amber-100',
                   )}
                 >
                   {imported[cls.class_id] ? 'Re-import' : 'Import CSV'}
@@ -734,15 +734,15 @@ function StepStudents({
             ))}
           </div>
           {totalImported > 0 && (
-            <p className="text-xs text-slate-400 pt-1">
+            <p className="text-xs text-muted-foreground pt-1">
               {totalImported} of {createdClasses.length} classes have students.
             </p>
           )}
         </div>
       ) : (
-        <div className="flex items-center gap-3 p-4 rounded-xl border border-slate-100 bg-slate-50">
-          <Users className="h-5 w-5 text-slate-400 shrink-0" />
-          <p className="text-sm text-slate-500">
+        <div className="flex items-center gap-3 p-4 rounded-xl border border-border bg-muted">
+          <Users className="h-5 w-5 text-muted-foreground shrink-0" />
+          <p className="text-sm text-muted-foreground">
             You can add students and classes from your dashboard after setup.
           </p>
         </div>

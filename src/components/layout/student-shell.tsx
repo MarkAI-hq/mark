@@ -4,8 +4,11 @@ import { useState } from 'react'
 import { usePathname } from 'next/navigation'
 import { StudentSidebarNav, StudentUser } from '@/components/nav/student-sidebar-nav'
 import { NotificationBell } from '@/components/notifications/notification-bell'
+import { StreakBadge } from '@/components/students/streak-badge'
 import { ThemeToggle } from '@/components/layout/theme-toggle'
 import { Footer } from '@/components/nav/footer'
+import { WelcomeCheckIn } from '@/components/check-in/welcome-checkin'
+import { CheckInIndicator } from '@/components/check-in/checkin-indicator'
 
 interface StudentShellProps {
   children:          React.ReactNode
@@ -23,6 +26,8 @@ export function StudentShell({ children, user, organizationName }: StudentShellP
   return (
     <div className="h-screen flex bg-background overflow-hidden">
 
+      <WelcomeCheckIn userId={user.id} firstName={user.name?.split(' ')[0]} />
+
       <StudentSidebarNav
         user={user}
         organizationName={organizationName}
@@ -37,7 +42,9 @@ export function StudentShell({ children, user, organizationName }: StudentShellP
       >
         {/* Top bar — hidden on fullscreen pages (Tracy/Studio handle their own chrome) */}
         {!isFullscreen && (
-          <header className="flex-shrink-0 sticky top-0 z-30 flex h-14 items-center justify-end gap-1 border-b border-border/30 glass px-6">
+          <header className="flex-shrink-0 sticky top-0 z-30 flex h-14 items-center justify-end gap-2 border-b border-border/30 glass px-6">
+            <CheckInIndicator userId={user.id} />
+            <StreakBadge streak={user.study_streak} />
             <ThemeToggle />
             <NotificationBell />
           </header>

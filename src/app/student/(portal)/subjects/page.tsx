@@ -36,6 +36,7 @@ export default async function SubjectsPage() {
       currentWeekEntries={sowData.currentWeekEntries}
       predictions={predictions}
       classId={sowData.classId} // <-- Pass classId as a prop
+      classFetchFailed={sowData.fetchFailed}
     />
   )
 }

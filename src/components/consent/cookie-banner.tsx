@@ -49,17 +49,17 @@ export function CookieBanner() {
   }
 
   return (
-    <div className="fixed bottom-0 inset-x-0 z-50 border-t border-slate-200 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80">
+    <div className="fixed bottom-0 inset-x-0 z-50 border-t border-border bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80">
       <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
-        <p className="text-sm text-slate-600 leading-relaxed">
+        <p className="text-sm text-muted-foreground leading-relaxed">
           We use analytics cookies to understand how teachers use this platform and improve it.
           Your data is never sold.{' '}
-          <Link href="/privacy" className="underline underline-offset-2 text-slate-800 hover:text-slate-900">
+          <Link href="/privacy" className="underline underline-offset-2 text-foreground hover:text-foreground">
             Privacy policy
           </Link>
         </p>
         <div className="flex shrink-0 gap-2">
-          <Button variant="outline" size="sm" onClick={decline} className="text-slate-600">
+          <Button variant="outline" size="sm" onClick={decline} className="text-muted-foreground">
             Essential only
           </Button>
           <Button size="sm" onClick={accept} className="bg-amber-500 hover:bg-amber-600 text-white border-0">

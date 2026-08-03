@@ -1,7 +1,8 @@
 'use client'
 
-import { useMemo, useState, useTransition } from 'react'
-import { Search, BookOpenCheck, Target } from 'lucide-react'
+import { useMemo, useRef, useState, useTransition } from 'react'
+import Link from 'next/link'
+import { Search, BookOpenCheck, Target, Sparkles } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
@@ -18,11 +19,13 @@ export function LearningHistoryClient({
   const [query, setQuery] = useState('')
   const [subject, setSubject] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const subjects = useMemo(() => {
     const set = new Set<string>()
     initial.submissions.forEach((s) => set.add(s.subject))
     initial.mastery.forEach((m) => set.add(m.subject))
+    initial.lessons.forEach((l) => set.add(l.subject))
     return [...set].filter(Boolean).sort()
   }, [initial])
 
@@ -34,6 +37,13 @@ export function LearningHistoryClient({
       })
       if (data) setResult(data)
     })
+  }
+
+  // Subject-badge clicks fire immediately; free-text typing debounces so we
+  // don't re-fetch on every keystroke on a slow connection.
+  function runSearchDebounced(nextQuery: string, nextSubject: string | null) {
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(() => runSearch(nextQuery, nextSubject), 300)
   }
 
   return (
@@ -54,7 +64,7 @@ export function LearningHistoryClient({
             value={query}
             onChange={(e) => {
               setQuery(e.target.value)
-              runSearch(e.target.value, subject)
+              runSearchDebounced(e.target.value, subject)
             }}
           />
         </div>
@@ -120,6 +130,45 @@ export function LearningHistoryClient({
                   </div>
                 </CardContent>
               </Card>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="space-y-3">
+        <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+          Lessons {isPending && <span className="normal-case">(updating…)</span>}
+        </h2>
+        {result.lessons.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No completed lessons yet.</p>
+        ) : (
+          <div className="space-y-2">
+            {result.lessons.map((l) => (
+              <Link key={l.id} href={`/student/study-plans/${l.id}/studio?from=history`}>
+                <Card className="hover:border-gold/40 transition-colors">
+                  <CardContent className="p-4 flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <Sparkles className="h-4 w-4 text-gold shrink-0" />
+                      <div className="min-w-0">
+                        <p className="font-medium truncate">{l.topic}</p>
+                        <p className="text-xs text-muted-foreground capitalize">
+                          {l.subject} · {l.lesson_type.replace(/_/g, ' ')}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right shrink-0">
+                      {l.score_after != null && (
+                        <p className="text-sm font-semibold">{l.score_after}%</p>
+                      )}
+                      {l.completed_at && (
+                        <p className="text-xs text-muted-foreground">
+                          {new Date(l.completed_at).toLocaleDateString()}
+                        </p>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              </Link>
             ))}
           </div>
         )}

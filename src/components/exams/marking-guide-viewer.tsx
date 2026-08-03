@@ -153,30 +153,30 @@ export function MarkingGuideViewer({ guide: initialGuide, examId }: { guide: any
             ) : (
               <h1 className="text-3xl font-bold whitespace-pre-wrap">{safeString(metadata.exam_title || metadata.title || "Untitled Assessment")}</h1>
             )}
-            <div className="flex gap-4 text-slate-400 text-sm">
+            <div className="flex gap-4 text-muted-foreground text-sm">
                <span>{safeString(metadata.subject) || "No Subject"}</span>
                <span>•</span>
                <span>{safeString(metadata.grade_level) || "No Grade"}</span>
             </div>
           </div>
           <div className="text-right ml-8">
-             <p className="text-xs text-slate-400 uppercase tracking-widest">Total Marks</p>
+             <p className="text-xs text-muted-foreground uppercase tracking-widest">Total Marks</p>
              <p className="text-4xl font-black">{getTotalMarks()}</p>
           </div>
         </div>
 
         <div className="mt-6 pt-6 border-t border-slate-700">
-           <p className="text-xs font-bold text-slate-300 uppercase mb-2 flex items-center gap-2">
+           <p className="text-xs font-bold text-muted-foreground/60 uppercase mb-2 flex items-center gap-2">
              <Info size={14} /> General Instructions to Markers
            </p>
            {isEditing ? (
              <Textarea
                value={safeString(metadata.general_instructions_to_markers)}
-               className="bg-slate-800 border-slate-700 text-slate-300 text-sm min-h-[80px]"
+               className="bg-slate-800 border-slate-700 text-muted-foreground/60 text-sm min-h-[80px]"
                onChange={(e) => handleUpdate(['metadata', 'general_instructions_to_markers'], e.target.value)}
              />
            ) : (
-             <p className="text-sm text-slate-400 italic leading-relaxed whitespace-pre-wrap">
+             <p className="text-sm text-muted-foreground italic leading-relaxed whitespace-pre-wrap">
                {safeString(metadata.general_instructions_to_markers) || "Standard marking rules apply."}
              </p>
            )}
@@ -291,7 +291,7 @@ export function MarkingGuideViewer({ guide: initialGuide, examId }: { guide: any
                       onChange={(e) => handleUpdate(['sections', sIdx, 'questions', qIdx, 'examiner_notes'], e.target.value)}
                     />
                   ) : (
-                    <p className="text-xs text-amber-700 dark:text-amber-400 leading-relaxed italic whitespace-pre-wrap">
+                    <p className="text-xs text-amber-700 dark:text-amber-300 dark:text-amber-400 leading-relaxed italic whitespace-pre-wrap">
                       {safeString(q.examiner_notes) || "No specific examiner notes provided."}
                     </p>
                   )}

@@ -7,7 +7,7 @@
 // fills by hand (comments, fees, term dates) are rendered as blank ruled rows.
 
 import type {
-  GradebookResponse, SubjectGradebook, GradingScale,
+  GradebookResponse, GradingScale,
 } from '@/lib/actions/study-plans'
 
 // ── Derivations ─────────────────────────────────────────────────────────────
@@ -35,26 +35,10 @@ function gradeForPct(pct: number, scale: GradingScale): string {
   return band?.label ?? scale.grades[scale.grades.length - 1]?.label ?? '—'
 }
 
-// Projected UCE aggregate: best-8 subjects, lower = better. Position in the
-// scale → points (best band 1, then 3, 5, 7, 9…), matching the outlook bands.
-function uceOutlook(subjects: SubjectGradebook[], scale: GradingScale) {
-  const graded = subjects.filter(s => s.grade_band)
-  const pts = graded
-    .map(s => {
-      const idx = scale.grades.findIndex(g => g.label === s.grade_band!.label)
-      return idx < 0 ? 9 : 1 + idx * 2
-    })
-    .sort((a, b) => a - b)
-    .slice(0, 8)
-  const aggregate = pts.reduce((a, b) => a + b, 0)
-  let division = '—'
-  if (graded.length >= 4) {
-    division = aggregate <= 24 ? 'I'
-      : aggregate <= 32 ? 'II'
-      : aggregate <= 45 ? 'III'
-      : aggregate <= 52 ? 'IV' : 'U'
-  }
-  return { aggregate, division, projected: graded.length < 8 }
+function resultColor(result: 1 | 2 | 3 | undefined): string {
+  if (result === 1) return '#1a7f37'
+  if (result === 3) return '#b91c1c'
+  return '#b45309'
 }
 
 // ── Component ───────────────────────────────────────────────────────────────
@@ -66,7 +50,7 @@ export interface ReportCardProps {
 }
 
 export function ReportCard({ gradebook, student, school }: ReportCardProps) {
-  const { scale, term, subjects } = gradebook
+  const { scale, term, subjects, uce_result } = gradebook
 
   const scored = subjects.filter(s => s.mastery_pct != null)
   const avgPct = scored.length
@@ -84,7 +68,6 @@ export function ReportCard({ gradebook, student, school }: ReportCardProps) {
     : '—'
   const totalPoints = subjects.reduce((s, x) => s + (x.grade_points ?? 0), 0)
   const overallGrade = avgPct != null ? gradeForPct(avgPct, scale) : '—'
-  const { aggregate, division, projected } = uceOutlook(subjects, scale)
   const printedOn = new Date().toLocaleDateString('en-GB')
   const termLabel = term?.label ?? 'Term'
   const year = term?.academic_year ?? new Date().getFullYear()
@@ -192,8 +175,9 @@ export function ReportCard({ gradebook, student, school }: ReportCardProps) {
           { k: 'Overall Grade', v: overallGrade, color: gradeTextColor(overallGrade) },
           { k: 'Average', v: avgPct != null ? `${avgPct}%` : '—' },
           { k: 'Total Points', v: String(totalPoints) },
-          { k: `Aggregate${projected ? ' (proj.)' : ''}`, v: String(aggregate) },
-          { k: 'Division', v: division },
+          ...(uce_result
+            ? [{ k: 'UCE Result', v: `Result ${uce_result.result}`, color: resultColor(uce_result.result) }]
+            : []),
         ].map(b => (
           <div key={b.k} className="flex-1 text-center py-2 px-1 rounded" style={{ border: '1px solid #999' }}>
             <div className="text-[10px] uppercase text-gray-500" style={{ letterSpacing: '.5px' }}>{b.k}</div>
@@ -201,6 +185,15 @@ export function ReportCard({ gradebook, student, school }: ReportCardProps) {
           </div>
         ))}
       </div>
+
+      {/* No Division I-IV under the new curriculum — UCE Result category is a
+          whole-student outcome across all subjects, shown as a caption since it
+          isn't a per-subject grade like the tiles above. */}
+      {uce_result && (
+        <p className="text-[10px] mb-3" style={{ color: '#555' }}>
+          {uce_result.detail} {uce_result.actionable}
+        </p>
+      )}
 
       {/* ── Scale + Key ── */}
       <div className="flex gap-3.5 mb-3">

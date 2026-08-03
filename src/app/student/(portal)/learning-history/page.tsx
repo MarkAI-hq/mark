@@ -10,5 +10,5 @@ export default async function LearningHistoryPage() {
 
   const { data, error } = await getLearningHistory({})
 
-  return <LearningHistoryClient initial={data ?? { submissions: [], mastery: [] }} error={error?.message ?? null} />
+  return <LearningHistoryClient initial={data ?? { submissions: [], mastery: [], lessons: [] }} error={error?.message ?? null} />
 }

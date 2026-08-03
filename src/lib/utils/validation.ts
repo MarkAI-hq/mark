@@ -1,7 +1,5 @@
 // src/lib/utils/validation.ts
 
-import { useEffect } from 'react'
-
 /**
  * Heuristic pre-check: Validates student text inputs to prevent copy-paste abuse, 
  * prompt copying, and repetitive word spam before hitting the AI server.
@@ -91,29 +89,3 @@ export const copyProtectionProps = {
   onDragStart: (e: React.DragEvent) => e.preventDefault(), // Disable text dragging
 }
 
-/**
- * Hook to block Inspector, View Source, and direct DevTools keyboard shortcuts.
- */
-export function useKeyboardBlocker() {
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Disable F12
-      if (e.key === 'F12') {
-        e.preventDefault()
-        return
-      }
-
-      // Disable Ctrl+Shift+I, Ctrl+Shift+C, Ctrl+Shift+J, Ctrl+U (and Cmd equivalents on macOS)
-      if (
-        (e.ctrlKey || e.metaKey) &&
-        (e.key === 'u' || e.key === 'U' || e.key === 'i' || e.key === 'I' || e.key === 'c' || e.key === 'C' || e.key === 'j' || e.key === 'J')
-      ) {
-        e.preventDefault()
-        return
-      }
-    }
-
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [])
-}

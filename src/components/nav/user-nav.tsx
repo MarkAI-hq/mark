@@ -20,6 +20,9 @@ import { ThemeToggle } from '@/components/layout/theme-toggle'
 import { NotificationBell } from '@/components/notifications/notification-bell'
 import { logout } from '@/lib/actions/auth'
 import { User } from '@/lib/types'
+import { WelcomeCheckIn } from '@/components/check-in/welcome-checkin'
+import { CheckInIndicator } from '@/components/check-in/checkin-indicator'
+import { recordCheckOut } from '@/lib/checkin'
 
 function getSettingsHref(role?: string): string {
   switch (role) {
@@ -35,6 +38,7 @@ export function UserNav() {
 
   const handleLogout = async () => {
     try {
+      if (user) recordCheckOut(user.id)
       const result = await logout()
       if (!result.success) throw new Error(result.error as string)
       router.push('/')
@@ -67,6 +71,8 @@ export function UserNav() {
 
   return (
     <div className="flex items-center gap-1">
+      <WelcomeCheckIn userId={user.id} firstName={user.name?.split(' ')[0]} />
+      <CheckInIndicator userId={user.id} />
       <ThemeToggle />
       <NotificationBell />
 

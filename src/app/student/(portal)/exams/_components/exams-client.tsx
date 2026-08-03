@@ -18,7 +18,30 @@ import {
 import { registerForExam, type ExamRegistration } from '@/lib/actions/exam-registrations'
 
 const EXAM_BODIES = ['UNEB', 'Cambridge IGCSE', 'Cambridge A-Level', 'WAEC', 'NECO', 'IB', 'Edexcel', 'AQA', 'Other']
-const EXAM_SESSIONS = ['May/June 2025', 'October/November 2025', 'January 2026', 'May/June 2026', 'October/November 2026']
+
+// Exam boards run on a handful of recurring windows each year (Jan, May/June,
+// Oct/Nov). Generating this from "now" instead of hardcoding years keeps the
+// list from silently going stale — it previously offered sessions already in
+// the past.
+function upcomingExamSessions(referenceDate = new Date(), count = 6): string[] {
+  const year = referenceDate.getFullYear()
+  const windows: { label: string; monthEnd: number }[] = [
+    { label: 'January', monthEnd: 0 },
+    { label: 'May/June', monthEnd: 5 },
+    { label: 'October/November', monthEnd: 10 },
+  ]
+
+  const sessions: string[] = []
+  for (let y = year; sessions.length < count; y++) {
+    for (const w of windows) {
+      const periodEnd = new Date(y, w.monthEnd + 1, 0) // last day of that window's final month
+      if (periodEnd >= referenceDate) sessions.push(`${w.label} ${y}`)
+    }
+  }
+  return sessions.slice(0, count)
+}
+
+const EXAM_SESSIONS = upcomingExamSessions()
 
 const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
   pending:    { label: 'Pending Payment', className: 'bg-amber-100 text-amber-700' },
@@ -145,6 +168,7 @@ export function ExamsClient({ registrations }: Props) {
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="fee">Registration Fee (USD) *</Label>
+                <p className="text-[11px] text-muted-foreground">Most exam boards bill schools in USD, even for UNEB-linked registrations.</p>
                 <Input
                   id="fee"
                   type="number"

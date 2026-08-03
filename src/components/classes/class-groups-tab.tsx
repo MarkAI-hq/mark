@@ -41,24 +41,24 @@ const COLOR_MAP: Record<string, {
   },
   amber: {
     card:   'border-amber-200 bg-amber-50',
-    badge:  'bg-amber-100 text-amber-700 border-amber-200',
+    badge:  'bg-amber-100 text-amber-700 dark:text-amber-300 border-amber-200',
     icon:   'text-amber-600',
     border: 'border-amber-300',
-    btn:    'border-amber-200 text-amber-700 hover:bg-amber-100',
+    btn:    'border-amber-200 text-amber-700 dark:text-amber-300 hover:bg-amber-100',
   },
   blue: {
     card:   'border-blue-200 bg-blue-50',
-    badge:  'bg-blue-100 text-blue-700 border-blue-200',
+    badge:  'bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 border-blue-200',
     icon:   'text-blue-600',
     border: 'border-blue-300',
     btn:    'border-blue-200 text-blue-700 hover:bg-blue-100',
   },
   slate: {
-    card:   'border-slate-200 bg-slate-50',
-    badge:  'bg-slate-100 text-slate-600 border-slate-200',
-    icon:   'text-slate-500',
-    border: 'border-slate-300',
-    btn:    'border-slate-200 text-slate-600 hover:bg-slate-100',
+    card:   'border-border bg-muted',
+    badge:  'bg-muted text-muted-foreground border-border',
+    icon:   'text-muted-foreground',
+    border: 'border-border',
+    btn:    'border-border text-muted-foreground hover:bg-muted',
   },
 }
 
@@ -141,7 +141,7 @@ function GroupCard({
                 className="flex items-center justify-between py-2 first:pt-0 last:pb-0"
               >
                 <div className="flex items-center gap-2 min-w-0">
-                  <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white/80 text-xs font-bold text-slate-600">
+                  <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white/80 text-xs font-bold text-muted-foreground">
                     {student.studentName.charAt(0)}
                   </div>
                   <Link
@@ -155,7 +155,7 @@ function GroupCard({
                   {student.avgPct < 50 && (
                     <TrendingDown className="h-3.5 w-3.5 text-red-500" />
                   )}
-                  <span className="text-xs font-semibold text-slate-700">
+                  <span className="text-xs font-semibold text-foreground">
                     {student.avgPct}%
                   </span>
                 </div>
@@ -203,14 +203,14 @@ function GroupCard({
 function UngroupedCard({ students, classId }: { students: StudentGroupMember[]; classId: string }) {
   if (!students.length) return null
   return (
-    <Card className="border-dashed border-slate-200">
+    <Card className="border-dashed border-border">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-sm flex items-center gap-2 text-slate-500">
+          <CardTitle className="text-sm flex items-center gap-2 text-muted-foreground">
             <Users className="h-4 w-4" />
             No submissions yet
           </CardTitle>
-          <Badge variant="outline" className="text-xs text-slate-500">{students.length}</Badge>
+          <Badge variant="outline" className="text-xs text-muted-foreground">{students.length}</Badge>
         </div>
         <CardDescription className="text-xs">
           These students haven&apos;t been graded yet and can&apos;t be grouped.
@@ -222,7 +222,7 @@ function UngroupedCard({ students, classId }: { students: StudentGroupMember[]; 
             <Link
               key={s.studentId}
               href={`/dashboard/classes/${classId}/students/${s.studentId}`}
-              className="text-xs text-slate-500 hover:text-slate-700 hover:underline"
+              className="text-xs text-muted-foreground hover:text-foreground hover:underline"
             >
               {s.studentName}
             </Link>

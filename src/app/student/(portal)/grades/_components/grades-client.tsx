@@ -5,13 +5,26 @@ import {
   GraduationCap, Eye, Package, MessageCircle,
   ChevronDown, ChevronRight, Printer,
   TrendingUp, TrendingDown, Minus, BookOpen, AlertTriangle,
-  CheckCircle2, Circle, ArrowUpRight,
+  CheckCircle2, Circle, ArrowUpRight, ClipboardCheck, Info,
 } from 'lucide-react'
 import { selfInitiateFromEntry } from '@/lib/actions/study-plans'
 import { ReportCard } from '@/components/report-card/report-card'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import type {
   GradebookResponse, SubjectGradebook, NcdcLevel, GradeBand, GradingScale,
+  TriangulationCategory, GradebookTopic,
 } from '@/lib/actions/study-plans'
+
+// icon_hint (from the curriculum's assessment_model) → lucide icon. Unknown
+// hints fall back to a generic icon so a new curriculum's categories still render.
+const CATEGORY_ICONS: Record<string, React.ReactNode> = {
+  eye: <Eye className="h-4 w-4" />,
+  package: <Package className="h-4 w-4" />,
+  'message-circle': <MessageCircle className="h-4 w-4" />,
+}
+function categoryIcon(hint: string | null): React.ReactNode {
+  return (hint && CATEGORY_ICONS[hint]) ?? <ClipboardCheck className="h-4 w-4" />
+}
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -145,7 +158,9 @@ function GradeRing({
 
   return (
     <div className="relative h-16 w-16 shrink-0">
-      <svg viewBox="0 0 64 64" className="h-16 w-16 -rotate-90">
+      <svg viewBox="0 0 64 64" className="h-16 w-16 -rotate-90" role="img" aria-label={
+        no_data ? 'No grade data yet' : `Grade ${band?.label ?? '—'}, ${pct ?? 0}%${is_passing ? ', passing' : ', not yet passing'}`
+      }>
         <circle cx="32" cy="32" r={r} fill="none" stroke="currentColor"
           className="text-muted/20" strokeWidth="6" />
         <circle cx="32" cy="32" r={r} fill="none" stroke={stroke} strokeWidth="6"
@@ -170,41 +185,29 @@ function GradeRing({
 
 function TriangulationPanel({
   triangulation,
+  sourceLabel,
 }: {
-  triangulation: SubjectGradebook['triangulation']
+  triangulation: TriangulationCategory[]
+  sourceLabel: string | null
 }) {
-  const cells: { icon: React.ReactNode; label: string; desc: string; level: NcdcLevel | null }[] = [
-    {
-      icon: <Eye className="h-4 w-4" />,
-      label: 'Observation',
-      desc: 'Watching work, lab, classwork',
-      level: triangulation.observation,
-    },
-    {
-      icon: <Package className="h-4 w-4" />,
-      label: 'Product',
-      desc: 'Written & made evidence',
-      level: triangulation.product,
-    },
-    {
-      icon: <MessageCircle className="h-4 w-4" />,
-      label: 'Conversation',
-      desc: 'Oral & quiz performance',
-      level: triangulation.conversation,
-    },
-  ]
+  if (!triangulation.length) return null
+
+  const gridCols = triangulation.length >= 3 ? 'sm:grid-cols-3'
+    : triangulation.length === 2 ? 'sm:grid-cols-2' : 'sm:grid-cols-1'
 
   return (
     <div className="space-y-1">
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-        {cells.map((c) => (
-          <div key={c.label}
+      <div className={`grid grid-cols-1 ${gridCols} gap-2`}>
+        {triangulation.map((c) => (
+          <div key={c.key}
             className="flex items-start gap-2 rounded-lg border border-[#e8e8e6] dark:border-[#2a2a2a] p-2.5 bg-[#fafaf9] dark:bg-[#141414]"
           >
-            <span className="mt-0.5 text-muted-foreground shrink-0">{c.icon}</span>
+            <span className="mt-0.5 text-muted-foreground shrink-0">{categoryIcon(c.icon_hint)}</span>
             <div className="min-w-0">
               <p className="text-xs font-semibold text-foreground">{c.label}</p>
-              <p className="text-[10px] text-muted-foreground leading-snug mb-1">{c.desc}</p>
+              {c.description && (
+                <p className="text-[10px] text-muted-foreground leading-snug mb-1">{c.description}</p>
+              )}
               <span className={`inline-block text-[10px] font-medium px-1.5 py-0.5 rounded-full ${ncdcColor(c.level)}`}>
                 {ncdcLabel(c.level)}
               </span>
@@ -212,10 +215,44 @@ function TriangulationPanel({
           </div>
         ))}
       </div>
-      <p className="text-[10px] text-muted-foreground px-1 leading-snug">
-        Attitudes and generic skills are embedded in Learning Outcomes and are not assessed separately — NCDC
-      </p>
+      {sourceLabel && (
+        <p className="text-[10px] text-muted-foreground px-1 leading-snug">
+          Attitudes and generic skills are embedded in Learning Outcomes and are not assessed separately — {sourceLabel}
+        </p>
+      )}
     </div>
+  )
+}
+
+// ── TopicRequirementInfo ─────────────────────────────────────────────────
+// Click-to-expand icon showing what a topic requires and its share of the
+// national exam, sourced from the curriculum's own topic weights — not
+// specific to any one subject or country's syllabus.
+
+function TopicRequirementInfo({ topic }: { topic: GradebookTopic }) {
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          onClick={(e) => e.stopPropagation()}
+          className="shrink-0 text-muted-foreground/50 hover:text-muted-foreground transition-colors"
+          aria-label="What this topic requires"
+        >
+          <Info className="h-3 w-3" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="w-72 text-xs space-y-2" align="start">
+        {topic.exam_weight_pct != null && (
+          <p>
+            <span className="font-semibold">{topic.exam_weight_pct}%</span>{' '}
+            <span className="text-muted-foreground">of the national exam for this subject.</span>
+          </p>
+        )}
+        {topic.requirement_statement && (
+          <p className="text-muted-foreground leading-snug">{topic.requirement_statement}</p>
+        )}
+      </PopoverContent>
+    </Popover>
   )
 }
 
@@ -247,6 +284,9 @@ function TopicList({ topics }: { topics: SubjectGradebook['topics'] }) {
               <Circle className="h-3.5 w-3.5 text-muted-foreground/40 shrink-0" />
             )}
             <span className="text-sm truncate">{t.topic}</span>
+            {(t.requirement_statement || t.exam_weight_pct != null) && (
+              <TopicRequirementInfo topic={t} />
+            )}
           </div>
           <div className="flex items-center gap-2 shrink-0">
             <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${ncdcColor(t.achievement)}`}>
@@ -459,7 +499,7 @@ function SubjectCard({
         </button>
         {openTriang && (
           <div className="px-4 pb-4">
-            <TriangulationPanel triangulation={sub.triangulation} />
+            <TriangulationPanel triangulation={sub.triangulation} sourceLabel={sub.assessment_model_source} />
           </div>
         )}
       </div>
@@ -656,7 +696,7 @@ export function GradesClient({ user, gradebook, error }: Props) {
     )
   }
 
-  const { scale, term, subjects } = gradebook
+  const { scale, term, subjects, uce_result } = gradebook
   const userName: string = user?.name ?? user?.email ?? 'Student'
   const currentWeek = term?.current_week ?? 1
 
@@ -776,35 +816,28 @@ export function GradesClient({ user, gradebook, error }: Props) {
           />
         )}
 
-        {/* UCE outlook footer (country-agnostic: shown when scale has 5 bands and points 1–5) */}
-        {scale.grades.length === 5 && scale.grades[0].points === 5 && subjects.some(s => s.grade_points) && (
+        {/* UCE outlook footer — Uganda's new curriculum has no Division I-IV
+            aggregate; certificate qualification is a Result 1/2/3 category
+            computed across all subjects instead. See getUceResultCategory()
+            in mark-api/src/config/grading-scales.ts. */}
+        {uce_result && (
           <div className="rounded-2xl border bg-white dark:bg-[#141414] p-4 space-y-2">
-            <h3 className="font-semibold text-sm">UCE Grade Point Outlook</h3>
-            <p className="text-xs text-muted-foreground">
-              Current aggregate (all subjects): <span className="font-bold text-foreground">{totalGradePoints} pts</span>
-            </p>
-            <div className="grid grid-cols-4 gap-1 text-[10px]">
-              {[
-                { div: 'Div I',   range: '≤ 24', good: totalGradePoints <= 24 },
-                { div: 'Div II',  range: '25–32', good: totalGradePoints <= 32 && totalGradePoints > 24 },
-                { div: 'Div III', range: '33–45', good: totalGradePoints <= 45 && totalGradePoints > 32 },
-                { div: 'Div IV',  range: '46–52', good: totalGradePoints <= 52 && totalGradePoints > 45 },
-              ].map(d => (
-                <div
-                  key={d.div}
-                  className={`rounded-lg border p-1.5 text-center transition-colors ${
-                    d.good
-                      ? 'border-amber-300 bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400'
-                      : 'border-border'
-                  }`}
-                >
-                  <p className="font-semibold">{d.div}</p>
-                  <p className="text-muted-foreground">{d.range} pts</p>
-                </div>
-              ))}
+            <div className="flex items-center justify-between gap-2">
+              <h3 className="font-semibold text-sm">UCE Outlook</h3>
+              <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                uce_result.result === 1
+                  ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300'
+                  : uce_result.result === 3
+                  ? 'bg-rose-100 dark:bg-rose-900/40 text-rose-700 dark:text-rose-300'
+                  : 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300'
+              }`}>
+                {uce_result.label}
+              </span>
             </div>
-            <p className="text-[10px] text-muted-foreground">
-              Lower total = better (sum of grade points for best 8 subjects)
+            <p className="text-xs text-muted-foreground">{uce_result.detail}</p>
+            <p className="text-xs text-foreground font-medium">{uce_result.actionable}</p>
+            <p className="text-[10px] text-muted-foreground pt-1">
+              Grading is per-subject only under the new curriculum — no Division I–IV aggregate.
             </p>
           </div>
         )}

@@ -213,8 +213,7 @@ function SubjectSection({
 }) {
   const tri = subject.triangulation
   const weakMode =
-    tri.observation === 'none' || tri.product === 'none' || tri.conversation === 'none' ||
-    !tri.observation || !tri.product || !tri.conversation
+    tri.length === 0 || tri.some((c) => !c.level || c.level === 'none')
   const belowPass = !subject.is_passing
   const showGap = belowPass || weakMode
 

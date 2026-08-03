@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { NotebookText, CheckCircle2 } from 'lucide-react'
+import { NotebookText, CheckCircle2, Languages } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { submitStudentNote, validateSceneNotes } from '@/lib/actions/student-notes'
@@ -9,6 +9,7 @@ import { validateStudentInput, copyProtectionProps } from '@/lib/utils/validatio
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import { LessonProse } from '@/components/lesson/lesson-prose'
+import { WordOriginCard } from '@/components/reteach/word-origin-card'
 
 interface Props {
   scene:    any
@@ -20,7 +21,7 @@ interface Props {
 
 export function SceneCornell({ scene, planId, subject, topic, onReady }: Props) {
   const { title, content, bloom_level } = scene
-  const { notes_column, cue_questions, summary: summaryPrompt } = content ?? {}
+  const { notes_column, cue_questions, summary: summaryPrompt, key_terms } = content ?? {}
 
   const [studentNotes, setStudentNotes] = useState('')
   const [summary, setSummary]           = useState('')
@@ -138,6 +139,16 @@ export function SceneCornell({ scene, planId, subject, topic, onReady }: Props) 
           />
         </div>
       </div>
+
+      {key_terms && key_terms.length > 0 && (
+        <div className="flex items-center gap-2 flex-wrap">
+          <Languages className="h-3.5 w-3.5 text-amber-500 shrink-0" />
+          <span className="text-xs text-muted-foreground">Tricky word{key_terms.length > 1 ? 's' : ''}:</span>
+          {key_terms.map((t: any, i: number) => (
+            <WordOriginCard key={i} note={t} variant="inline" />
+          ))}
+        </div>
+      )}
 
       {/* Summary zone */}
       <div className="rounded-xl border bg-card p-3">

@@ -34,6 +34,7 @@ import {
   Lock,
   UserCircle,
   Sparkles,
+  Megaphone,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -92,6 +93,8 @@ const ICON_MAP: Record<string, IconEntry> = {
   // Attendance & gaps
   ATTENDANCE_RECORDED:         { icon: <CalendarCheck className="h-4 w-4" />, bg: 'bg-primary/10 text-primary' },
   GAP_ANALYSIS_COMPLETE:       { icon: <TrendingDown  className="h-4 w-4" />, bg: 'bg-amber-500/10 text-amber-600 dark:text-amber-400' },
+  // School-wide
+  SCHOOL_NOTICE:               { icon: <Megaphone     className="h-4 w-4" />, bg: 'bg-gold/10 text-gold' },
   // Account / system
   WELCOME:                     { icon: <Sparkles      className="h-4 w-4" />, bg: 'bg-gold/10 text-gold' },
   EMAIL_VERIFIED:              { icon: <MailCheck     className="h-4 w-4" />, bg: 'bg-green-500/10 text-green-600 dark:text-green-400' },

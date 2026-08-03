@@ -21,17 +21,17 @@ import type { ReteachSessionRecord } from '@/lib/actions/reteach-history'
 // ── Scope meta ─────────────────────────────────────────────────────────────
 
 const SCOPE_META = {
-  individual:   { Icon: Zap,   label: 'Individual',  bg: 'bg-amber-50',  text: 'text-amber-700',  border: 'border-amber-200'  },
+  individual:   { Icon: Zap,   label: 'Individual',  bg: 'bg-amber-50',  text: 'text-amber-700 dark:text-amber-300',  border: 'border-amber-200'  },
   class:        { Icon: Users, label: 'Whole class', bg: 'bg-blue-50',   text: 'text-blue-700',   border: 'border-blue-200'   },
   longitudinal: { Icon: Brain, label: 'Coaching',    bg: 'bg-purple-50', text: 'text-purple-700', border: 'border-purple-200' },
   group:        { Icon: Users, label: 'Group',       bg: 'bg-teal-50',   text: 'text-teal-700',   border: 'border-teal-200'   },
 }
 
 const STATUS_META = {
-  generated: { label: 'Not yet delivered', bg: 'bg-amber-50',   text: 'text-amber-700',   border: 'border-amber-200'   },
+  generated: { label: 'Not yet delivered', bg: 'bg-amber-50',   text: 'text-amber-700 dark:text-amber-300',   border: 'border-amber-200'   },
   delivered: { label: 'Delivered',         bg: 'bg-green-50',   text: 'text-green-700',   border: 'border-green-200'   },
-  completed: { label: 'Completed',         bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200' },
-  archived:  { label: 'Archived',          bg: 'bg-slate-50',   text: 'text-slate-500',   border: 'border-slate-200'   },
+  completed: { label: 'Completed',         bg: 'bg-emerald-50', text: 'text-emerald-700 dark:text-emerald-300', border: 'border-emerald-200' },
+  archived:  { label: 'Archived',          bg: 'bg-muted',   text: 'text-muted-foreground',   border: 'border-border'   },
 }
 
 // ── Impact badge ───────────────────────────────────────────────────────────
@@ -144,7 +144,7 @@ function ReteachHistoryRow({
                 <Button
                   size="sm"
                   variant="ghost"
-                  className="h-7 w-7 p-0 text-slate-400 hover:text-slate-600"
+                  className="h-7 w-7 p-0 text-muted-foreground hover:text-muted-foreground"
                   title="Regenerate session"
                   disabled={isRegenerating}
                   onClick={(e) => {
@@ -177,14 +177,14 @@ function ReteachHistoryRow({
               <div className="flex items-center justify-between gap-3 px-4 py-3 bg-amber-50 dark:bg-amber-950/30 border-b border-amber-100 dark:border-amber-900/50">
                 <div className="flex items-center gap-2">
                   <Clock className="h-4 w-4 text-amber-600 shrink-0" />
-                  <p className="text-xs text-amber-700 dark:text-amber-400">
+                  <p className="text-xs text-amber-700 dark:text-amber-300 dark:text-amber-400">
                     Have you run this session with your students?
                   </p>
                 </div>
                 <Button
                   size="sm"
                   variant="outline"
-                  className="h-7 gap-1.5 text-xs border-amber-200 text-amber-700 hover:bg-amber-100 dark:border-amber-800 dark:text-amber-300 shrink-0"
+                  className="h-7 gap-1.5 text-xs border-amber-200 text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:border-amber-800 dark:text-amber-300 shrink-0"
                   onClick={(e) => { e.stopPropagation(); setDeliverOpen(true) }}
                 >
                   <CheckCircle2 className="h-3 w-3" />
@@ -237,7 +237,7 @@ function ReteachHistoryRow({
                   </p>
                 )}
                 {record.quick_score_pct != null && (
-                  <p className="text-xs text-amber-700 font-medium">
+                  <p className="text-xs text-amber-700 dark:text-amber-300 font-medium">
                     Exit ticket: {record.quick_score_pct}% understood
                   </p>
                 )}
@@ -257,7 +257,7 @@ function ReteachHistoryRow({
                   <Button
                     size="sm"
                     variant="outline"
-                    className="h-6 px-2 text-[10px] border-amber-200 text-amber-700 hover:bg-amber-50 ml-auto"
+                    className="h-6 px-2 text-[10px] border-amber-200 text-amber-700 dark:text-amber-300 hover:bg-amber-50 ml-auto"
                     onClick={(e) => { e.stopPropagation(); setShowExitTicket(v => !v) }}
                   >
                     Log exit ticket
@@ -269,7 +269,7 @@ function ReteachHistoryRow({
             {/* G4: Inline exit ticket form */}
             {showExitTicket && (
               <div className="px-4 py-3 bg-amber-50 border-b border-amber-100 space-y-3" onClick={e => e.stopPropagation()}>
-                <p className="text-xs font-medium text-amber-800">Exit ticket result</p>
+                <p className="text-xs font-medium text-amber-800 dark:text-amber-300">Exit ticket result</p>
                 <div className="flex items-center gap-2">
                   <Input
                     type="number" min={0} placeholder="Understood"
@@ -283,7 +283,7 @@ function ReteachHistoryRow({
                     className="h-7 w-24 text-xs"
                   />
                   {understood && totalPresent && parseInt(totalPresent) > 0 && (
-                    <span className="text-xs font-medium text-amber-700">
+                    <span className="text-xs font-medium text-amber-700 dark:text-amber-300">
                       = {Math.round((parseInt(understood) / parseInt(totalPresent)) * 100)}%
                     </span>
                   )}

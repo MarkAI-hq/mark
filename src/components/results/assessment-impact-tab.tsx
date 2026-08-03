@@ -78,8 +78,8 @@ export function AssessmentImpactTab({ assessmentId }: AssessmentImpactTabProps) 
 
       {/* Header */}
       {view.assessment_title && (
-        <p className="text-sm text-slate-500">
-          Showing intervention impact for <span className="font-medium text-slate-700">{view.assessment_title}</span>
+        <p className="text-sm text-muted-foreground">
+          Showing intervention impact for <span className="font-medium text-foreground">{view.assessment_title}</span>
         </p>
       )}
 
@@ -89,7 +89,7 @@ export function AssessmentImpactTab({ assessmentId }: AssessmentImpactTabProps) 
       {/* Completed */}
       {completed.length > 0 && (
         <div className="space-y-3">
-          <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
             Completed · {completed.length}
           </p>
           {completed.map(s => (
@@ -101,7 +101,7 @@ export function AssessmentImpactTab({ assessmentId }: AssessmentImpactTabProps) 
       {/* Awaiting follow-up */}
       {awaitingFU.length > 0 && (
         <div className="space-y-3">
-          <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
             Awaiting follow-up · {awaitingFU.length}
           </p>
           {awaitingFU.map(s => (
@@ -110,7 +110,7 @@ export function AssessmentImpactTab({ assessmentId }: AssessmentImpactTabProps) 
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-7 text-xs text-slate-500 gap-1.5"
+                className="h-7 text-xs text-muted-foreground gap-1.5"
                 disabled={recalcId === s.session_id}
                 onClick={() => handleRecalculate(s.session_id)}
               >
@@ -128,7 +128,7 @@ export function AssessmentImpactTab({ assessmentId }: AssessmentImpactTabProps) 
       {/* Not yet delivered */}
       {awaitingDel.length > 0 && (
         <div className="space-y-3">
-          <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
             Not yet delivered · {awaitingDel.length}
           </p>
           {awaitingDel.map(s => (

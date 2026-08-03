@@ -28,7 +28,7 @@ export function ReteachQrCode({
         height={size}
         className="rounded"
       />
-      <p className="text-[8pt] text-slate-500 text-center">
+      <p className="text-[8pt] text-muted-foreground text-center">
         Scan to open session
       </p>
     </div>

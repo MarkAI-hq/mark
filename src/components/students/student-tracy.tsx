@@ -27,6 +27,8 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Button } from '@/components/ui/button'
 import type { StudentNote } from '@/lib/actions/student-notes'
 import { submitStudentNote, uploadStudentNote } from '@/lib/actions/student-notes'
 import {
@@ -36,6 +38,7 @@ import {
   createArtifactNotification,
 } from '@/lib/actions/student-dashboard'
 import type { SubjectProgress } from '@/lib/actions/student-dashboard'
+import { getStudentPaceSettings, setMyAssistantName } from '@/lib/actions/study-plans'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -679,12 +682,16 @@ function MessageBubble({ message, activeIds, onGenerateChip, toolStatuses }: {
 
 // ── Main: StudentTracyPage ────────────────────────────────────────────────────
 
-export function StudentTracyPage({ user, weakSubjects, currentTopics, initialNotes }: {
+export function StudentTracyPage({ user, weakSubjects, currentTopics, initialNotes, initialPrompt }: {
   user:            any
   weakSubjects:    string[]
   currentTopics:   string[]
   subjectProgress: SubjectProgress[]
   initialNotes:    StudentNote[]
+  /** Pre-fills the composer when a student arrives via a contextual "Ask Tracy"
+   *  deep link (e.g. from an at-risk subject badge or a misconception-redirect
+   *  scene) instead of landing on a blank chat. */
+  initialPrompt?:  string
 }) {
   const router = useRouter()
 
@@ -715,6 +722,16 @@ export function StudentTracyPage({ user, weakSubjects, currentTopics, initialNot
 
   const userId    = user?.user_id ?? user?.id ?? 'anon'
   const STORE_KEY = `tracy_artifacts_${userId}`
+  const SUGGESTIONS_CACHE_KEY = `tracy_suggestions_${userId}`
+  const SUGGESTIONS_TTL = 30 * 60 * 1000 // 30 minutes
+
+  const [personalizedSuggestions, setPersonalizedSuggestions] = useState<string[] | null>(null)
+
+  // Personalised assistant name (item 17) — click the header title to rename.
+  const [assistantName, setAssistantName] = useState('Tracy')
+  const [renameOpen,    setRenameOpen]    = useState(false)
+  const [renameDraft,   setRenameDraft]   = useState('')
+  const [savingName,    setSavingName]    = useState(false)
 
   useEffect(() => {
     try {
@@ -725,8 +742,63 @@ export function StudentTracyPage({ user, weakSubjects, currentTopics, initialNot
   }, [])
 
   useEffect(() => {
+    if (userId === 'anon') return
+    getStudentPaceSettings(userId).then(({ data }) => {
+      if (data?.assistant_name) setAssistantName(data.assistant_name)
+    })
+  }, [userId])
+
+  function handleSaveName() {
+    if (savingName) return
+    const trimmed = renameDraft.trim()
+    setSavingName(true)
+    setMyAssistantName(trimmed || null).then(({ data, error }) => {
+      setSavingName(false)
+      if (error) { toast.error(error.message ?? 'Could not rename assistant'); return }
+      setAssistantName(data?.assistant_name || 'Tracy')
+      setRenameOpen(false)
+      toast.success(trimmed ? `Now called ${trimmed}` : 'Reset to Tracy')
+    })
+  }
+
+  // Personalized suggestions — the same /api/tracy/suggest endpoint the
+  // teacher Tracy page already uses; it already branches on role === 'student'
+  // server-side (recent submissions + analytics), it just wasn't called here.
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(SUGGESTIONS_CACHE_KEY)
+      if (raw) {
+        const { data, cachedAt } = JSON.parse(raw)
+        if (Date.now() - cachedAt < SUGGESTIONS_TTL && Array.isArray(data) && data.length) {
+          setPersonalizedSuggestions(data)
+          return
+        }
+      }
+    } catch {}
+
+    fetch('/api/tracy/suggest', { method: 'POST' })
+      .then((r) => r.json())
+      .then(({ suggestions: fresh }) => {
+        if (Array.isArray(fresh) && fresh.length) {
+          const labels = fresh.map((s: any) => (typeof s === 'string' ? s : s.label)).filter(Boolean)
+          if (labels.length) {
+            setPersonalizedSuggestions(labels)
+            localStorage.setItem(SUGGESTIONS_CACHE_KEY, JSON.stringify({ data: labels, cachedAt: Date.now() }))
+          }
+        }
+      })
+      .catch(() => { /* fail silently — static/topic-based suggestions stay */ })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
+
+  useEffect(() => {
+    if (initialPrompt) setInput(initialPrompt)
+   
+  }, [initialPrompt])
 
   useEffect(() => {
     const el = audioRef.current
@@ -927,10 +999,27 @@ export function StudentTracyPage({ user, weakSubjects, currentTopics, initialNot
                     || parsed?.summary
                     || `Here's what I found — see the details below.`
                 } else if (nextMatch) {
-                  display = reply.slice(0, reply.search(NEXT_RE)).trim() || reply
+                  display = reply.slice(0, reply.search(NEXT_RE)).trim()
+                  // Tracy sometimes emits __NEXT__: as the entire reply with no lead-in
+                  // text — fall back to its own "message" field rather than dumping the
+                  // raw "NEXT:{...}" JSON into the chat bubble.
+                  if (!display) {
+                    const json = extractJson(nextMatch[1])
+                    const parsed = json ? (() => { try { return JSON.parse(json) } catch { return null } })() : null
+                    display = parsed?.message || ''
+                  }
                 }
 
-                setMessages(p => p.map(m => m.isLoading ? { ...m, content: display || reply, isLoading: false } : m))
+                // Tracy occasionally emits only a bare marker (e.g. "__NEXT__:" with no
+                // payload and nothing before it) — that shape doesn't match any regex
+                // above (they all require a `{` payload), so `display` falls through to
+                // the raw marker text. Strip any leftover bare marker and fall back to a
+                // friendly line rather than a blank bubble or a leaked marker fragment.
+                const BARE_MARKER_RE = /(?:^|\n)\s*(?:__)?(?:NEXT|CONFIRM|ARTIFACT)(?:__)?\s*:\s*$/
+                const cleaned = (display || reply).replace(BARE_MARKER_RE, '').trim()
+                const finalContent = cleaned || "I don't have anything more to add there — what would you like to do next?"
+
+                setMessages(p => p.map(m => m.isLoading ? { ...m, content: finalContent, isLoading: false } : m))
                 setToolStatuses([])
                 accumulated = ''
                 break
@@ -959,11 +1048,11 @@ export function StudentTracyPage({ user, weakSubjects, currentTopics, initialNot
   }
 
   const showSuggestions = messages.length === 0
-  const suggestions = activeNotes.length > 0
+  const suggestions = personalizedSuggestions ?? (activeNotes.length > 0
     ? [`Summarize the key points of ${activeTopic}`, `Explain ${activeTopic} in simple terms`, `Quiz me on ${activeTopic}`, `What are common misconceptions about ${activeTopic}?`]
     : currentTopics.length > 0
     ? [`Help me understand ${currentTopics[0]}`, `What should I focus on for ${weakSubjects[0] ?? 'my next exam'}?`, `How do I revise effectively?`, `Explain active recall`]
-    : [`How do I revise effectively?`, `What is spaced repetition?`, `Help me make a study plan`, `Explain active recall`]
+    : [`How do I revise effectively?`, `What is spaced repetition?`, `Help me make a study plan`, `Explain active recall`])
 
   return (
     <div className="h-full bg-[#f2f2f1] dark:bg-[#111111] p-3 lg:p-4">
@@ -1008,10 +1097,33 @@ export function StudentTracyPage({ user, weakSubjects, currentTopics, initialNot
                 <Sparkles className="h-[18px] w-[18px]" strokeWidth={1.8} />
               </div>
               <div className="min-w-0">
-                <h3 className="m-0 text-[17px] font-semibold tracking-[-0.01em] text-[#2a2722] dark:text-[#f4ead8] leading-tight"
-                  style={{ fontFamily: "'Fraunces', Georgia, serif" }}>
-                  Tracy
-                </h3>
+                <Popover open={renameOpen} onOpenChange={(open) => { setRenameOpen(open); if (open) setRenameDraft(assistantName === 'Tracy' ? '' : assistantName) }}>
+                  <PopoverTrigger asChild>
+                    <button className="m-0 text-[17px] font-semibold tracking-[-0.01em] text-[#2a2722] dark:text-[#f4ead8] leading-tight hover:opacity-70 transition-opacity"
+                      style={{ fontFamily: "'Fraunces', Georgia, serif" }}>
+                      {assistantName}
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-64 space-y-2" align="start">
+                    <Label htmlFor="assistant-name-input" className="text-xs text-muted-foreground">
+                      Name your assistant
+                    </Label>
+                    <Input
+                      id="assistant-name-input"
+                      value={renameDraft}
+                      onChange={(e) => setRenameDraft(e.target.value)}
+                      placeholder="Tracy"
+                      maxLength={30}
+                      className="text-sm"
+                    />
+                    <div className="flex justify-end gap-2">
+                      <Button size="sm" variant="ghost" onClick={() => setRenameOpen(false)}>Cancel</Button>
+                      <Button size="sm" onClick={handleSaveName} disabled={savingName} className="bg-gold hover:bg-gold/90 text-gold-foreground">
+                        {savingName ? 'Saving…' : 'Save'}
+                      </Button>
+                    </div>
+                  </PopoverContent>
+                </Popover>
                 <div className="flex items-center gap-[5px] text-[11.5px] text-[#938b7c] mt-[1px]">
                   <PulseDot color={activeIds.size > 0 ? 'bg-[#4f7d3f]' : 'bg-[#c4b8a8]'} />
                   {activeIds.size > 0
@@ -1032,7 +1144,12 @@ export function StudentTracyPage({ user, weakSubjects, currentTopics, initialNot
           </div>
 
           {/* Message stream */}
-          <div className="flex-1 overflow-y-auto px-[22px] pt-[26px] pb-2 flex flex-col gap-5">
+          <div
+            className="flex-1 overflow-y-auto px-[22px] pt-[26px] pb-2 flex flex-col gap-5"
+            role="log"
+            aria-live="polite"
+            aria-label="Conversation with Tracy"
+          >
             {showSuggestions ? (
               <div className="flex flex-col items-center justify-center h-full gap-5 pb-6">
                 <div className="text-center space-y-1.5">

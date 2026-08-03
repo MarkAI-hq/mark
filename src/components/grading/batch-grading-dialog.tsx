@@ -336,7 +336,7 @@ export function BatchGradingDialog({
                     <div className="border-2 border-dashed border-amber-200 bg-amber-50 rounded-lg p-6 h-[200px] flex flex-col items-center justify-center gap-3 text-center">
                       <div className="flex h-12 w-12 items-center justify-center rounded-full bg-amber-100"><Users className="h-6 w-6 text-amber-600" /></div>
                       <div><p className="text-sm font-semibold text-amber-900">No students in this class</p></div>
-                      <Button size="sm" variant="outline" className="mt-1 border-amber-300 text-amber-800 hover:bg-amber-100 gap-1.5" onClick={() => setEnrollOpen(true)}><UserPlus className="h-3.5 w-3.5" /> Enroll students</Button>
+                      <Button size="sm" variant="outline" className="mt-1 border-amber-300 text-amber-800 dark:text-amber-300 hover:bg-amber-100 gap-1.5" onClick={() => setEnrollOpen(true)}><UserPlus className="h-3.5 w-3.5" /> Enroll students</Button>
                     </div>
                   ) : (
                     <div {...getRootProps()} className={cn('border-2 border-dashed rounded-lg p-6 transition-colors cursor-pointer flex flex-col items-center justify-center text-center h-[200px]', 'hover:border-primary/50 hover:bg-muted/50', isDragActive && 'border-primary bg-primary/5')}>
@@ -399,7 +399,7 @@ export function BatchGradingDialog({
                   <ShieldAlert className="h-8 w-8 text-amber-600" />
                 </div>
                 <div className="max-w-md">
-                  <p className="text-sm font-medium text-slate-900">Audit Score: {auditResult?.overall_score ?? '...'}/100</p>
+                  <p className="text-sm font-medium text-foreground">Audit Score: {auditResult?.overall_score ?? '...'}/100</p>
                   <p className="text-xs text-muted-foreground mt-2 leading-relaxed">
                     To ensure grading accuracy, please review the audit findings and update your assessment. 
                     You can find the detailed blueprint on the assessment page.
@@ -407,7 +407,7 @@ export function BatchGradingDialog({
                 </div>
               </div>
 
-              <div className="px-6 py-4 border-t bg-slate-50/50 shrink-0">
+              <div className="px-6 py-4 border-t bg-muted/50 shrink-0">
                 {showOverrideInput ? (
                   <div className="animate-in fade-in slide-in-from-bottom-2 duration-200">
                     <div className="flex items-center gap-2 text-destructive mb-2"><ShieldAlert className="w-4 h-4 shrink-0" /><span className="text-sm font-semibold">Liability Override</span></div>

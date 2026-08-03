@@ -186,11 +186,40 @@ export async function getPledgeStatus(): Promise<ServerActionResponse<PledgeStat
 export async function acceptPledge(
   fullNameTyped: string,
 ): Promise<ServerActionResponse<{ signed: true; accepted_at: string }>> {
-  return fetcher('/students/me/pledge', {
-    method: 'POST',
-    body: JSON.stringify({ full_name_typed: fullNameTyped }),
-    cache: 'no-store',
-  })
+  const result = await fetcher<{ signed: true; accepted_at: string }>(
+    '/students/me/pledge',
+    {
+      method: 'POST',
+      body: JSON.stringify({ full_name_typed: fullNameTyped }),
+      cache: 'no-store',
+    },
+  )
+
+  // The pledge is the only remaining onboarding requirement for a 'direct'
+  // (admin-added) student — mirrors Admin's completeOnboarding() cookie patch
+  // in onboarding.ts. Without this, the 'user' cookie keeps the stale
+  // onboarding_complete:false from login and middleware.ts redirects the
+  // student back into /student/finish-setup forever, even though the backend
+  // now considers them done.
+  if (!result.error) {
+    const cookieStore = await cookies()
+    const existing = cookieStore.get('user')?.value
+    if (existing) {
+      const parsed = JSON.parse(decodeURIComponent(existing))
+      cookieStore.set(
+        'user',
+        encodeURIComponent(JSON.stringify({ ...parsed, onboarding_complete: true })),
+        {
+          secure:   process.env.NODE_ENV === 'production',
+          sameSite: 'lax',
+          path:     '/',
+          maxAge:   60 * 60 * 24 * 7,
+        },
+      )
+    }
+  }
+
+  return result
 }
 
 export async function submitEnrollmentRequest(payload: {

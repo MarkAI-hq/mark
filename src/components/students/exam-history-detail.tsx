@@ -15,10 +15,10 @@ const perfColor = (p: number) =>
   p >= 80 ? 'text-emerald-600' : p >= 65 ? 'text-amber-600' : p >= 50 ? 'text-orange-600' : 'text-rose-600'
 
 const perfBg = (p: number) =>
-  p >= 80 ? 'bg-emerald-50 border-emerald-200'
-  : p >= 65 ? 'bg-amber-50 border-amber-200'
+  p >= 80 ? 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800'
+  : p >= 65 ? 'bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800'
   : p >= 50 ? 'bg-orange-50 border-orange-200'
-  : 'bg-rose-50 border-rose-200'
+  : 'bg-rose-50 dark:bg-rose-950/30 border-rose-200 dark:border-rose-800'
 
 function QuestionFeedbackRow({ response, index }: { response: StudentResponse; index: number }) {
   const [open, setOpen] = useState(false)
@@ -33,7 +33,7 @@ function QuestionFeedbackRow({ response, index }: { response: StudentResponse; i
     : pct >= 70 ? CheckCircle2
     : XCircle
 
-  const iconClass = pct === null ? 'text-slate-400'
+  const iconClass = pct === null ? 'text-muted-foreground'
     : pct >= 70   ? 'text-emerald-500'
     : 'text-rose-500'
 
@@ -42,7 +42,7 @@ function QuestionFeedbackRow({ response, index }: { response: StudentResponse; i
       {/* Row header — always visible */}
       <button
         onClick={() => setOpen((o) => !o)}
-        className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-slate-50 transition-colors"
+        className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-muted transition-colors"
         aria-expanded={open}
       >
         <ScoreIcon className={`h-4 w-4 shrink-0 ${iconClass}`} />
@@ -66,7 +66,7 @@ function QuestionFeedbackRow({ response, index }: { response: StudentResponse; i
 
       {/* Expanded feedback */}
       {open && (
-        <div className="px-4 pb-4 space-y-3 border-t bg-slate-50/60">
+        <div className="px-4 pb-4 space-y-3 border-t bg-muted/60">
 
           {/* Score bar */}
           {hasPts && (
@@ -85,7 +85,7 @@ function QuestionFeedbackRow({ response, index }: { response: StudentResponse; i
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                 Your Answer
               </p>
-              <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">
+              <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">
                 {response.student_answer}
               </p>
             </div>
@@ -97,7 +97,7 @@ function QuestionFeedbackRow({ response, index }: { response: StudentResponse; i
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                 Feedback
               </p>
-              <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">
+              <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">
                 {feedback}
               </p>
             </div>
@@ -107,7 +107,7 @@ function QuestionFeedbackRow({ response, index }: { response: StudentResponse; i
           {response.blooms_level_achieved && (
             <div className="flex items-center gap-2">
               <p className="text-xs text-muted-foreground">Cognitive level:</p>
-              <Badge variant="outline" className="text-xs text-amber-700 border-amber-300 bg-amber-50">
+              <Badge variant="outline" className="text-xs text-amber-700 dark:text-amber-300 border-amber-300 bg-amber-50">
                 {response.blooms_level_achieved}
               </Badge>
             </div>
@@ -139,7 +139,7 @@ function ExamCard({ item }: { item: ExamHistoryItem }) {
       <button
         onClick={() => setOpen((o) => !o)}
         className={`w-full flex items-center gap-4 px-4 py-4 text-left transition-colors
-          ${open ? 'bg-amber-50/60' : 'hover:bg-slate-50'}`}
+          ${open ? 'bg-amber-50/60' : 'hover:bg-muted'}`}
         aria-expanded={open}
       >
         {/* Score circle */}
@@ -188,7 +188,7 @@ function ExamCard({ item }: { item: ExamHistoryItem }) {
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg
-                    border border-slate-200 hover:bg-slate-50 transition-colors"
+                    border border-border hover:bg-muted transition-colors"
                 >
                   <FileText className="h-3.5 w-3.5" />
                   Your script
@@ -201,7 +201,7 @@ function ExamCard({ item }: { item: ExamHistoryItem }) {
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg
-                    border border-amber-200 bg-amber-50 hover:bg-amber-100 text-amber-800 transition-colors"
+                    border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 dark:hover:bg-amber-950/60 text-amber-800 dark:text-amber-300 transition-colors"
                 >
                   <FileText className="h-3.5 w-3.5" />
                   Marked script

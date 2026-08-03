@@ -325,6 +325,11 @@ export async function getMyClassSoW(): Promise<{
   sow: any | null
   currentWeekEntries: any[]
   classId: string | null
+  /** True when the request itself failed (network/server error) rather than
+   *  the student genuinely having no class yet — every page gating on
+   *  `classId === null` needs this to avoid telling a student their account
+   *  is "pending approval" when the real problem is a service outage. */
+  fetchFailed?: boolean
 }> {
   try {
     const headers = await authHeaders()
@@ -332,11 +337,11 @@ export async function getMyClassSoW(): Promise<{
       headers,
       cache: 'no-store',
     })
-    if (!res.ok) return { sow: null, currentWeekEntries: [], classId: null }
+    if (!res.ok) return { sow: null, currentWeekEntries: [], classId: null, fetchFailed: true }
     return res.json()
   } catch (err) {
     console.error('[getMyClassSoW]', err)
-    return { sow: null, currentWeekEntries: [], classId: null }
+    return { sow: null, currentWeekEntries: [], classId: null, fetchFailed: true }
   }
 }
 

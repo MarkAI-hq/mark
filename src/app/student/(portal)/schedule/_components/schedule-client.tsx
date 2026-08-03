@@ -2,28 +2,25 @@
 
 // src/app/student/(portal)/schedule/_components/schedule-client.tsx
 
-import { useState, useTransition, useRef, useEffect } from 'react'
+import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { format } from 'date-fns'
 import {
   CalendarDays, CheckCircle2, AlertCircle, Clock,
   BookOpen, UserCheck, XCircle, MinusCircle, Sparkles,
-  Target, TrendingUp, Unlock, School, Upload, FileText, Check, Plus, Loader2, BookOpenCheck, Zap
+  Target, TrendingUp, Unlock, School, BookOpenCheck, Zap
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from '@/components/ui/select'
 import { toast } from 'sonner'
-import { 
-  selfInitiateStudyPlan, 
+import {
+  selfInitiateStudyPlan,
   initiateFreeStudyPlan, // <-- Import for pre-class free initiations
-  type PacingResponse 
+  type PacingResponse
 } from '@/lib/actions/student-dashboard'
 import {
   updateStudentPaceSettings,
@@ -33,7 +30,9 @@ import {
   type PaceSettings,
   type PacingSubjectSummary,
 } from '@/lib/actions/study-plans'
-import { uploadStudentDocument } from '@/lib/actions/student-onboarding'
+import { AskTracyChip } from '@/components/students/ask-tracy-chip'
+import { ClassConfirmationUploadWidget } from '@/components/students/class-confirmation-upload-widget'
+import { WeekCalendar } from './week-calendar'
 import { SyllabusTab } from './syllabus-tab'
 
 const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday']
@@ -62,38 +61,25 @@ interface Props {
   paceSettings:       PaceSettings
   activeTab:          string
   classId?:           string | null // <-- Add classId prop for absolute portal gating coherence
+  classFetchFailed?:  boolean
 }
 
 export function ScheduleClient({
-  user, sow, currentWeekEntries, timetable, attendance, pacingData, studySchedule, paceSettings, activeTab: initialTab, classId,
+  user, sow, currentWeekEntries, timetable, attendance, pacingData, studySchedule, paceSettings, activeTab: initialTab, classId, classFetchFailed,
 }: Props) {
   const router = useRouter()
-  const fileInputRef = useRef<HTMLInputElement>(null)
   const [tab, setTab] = useState<'week' | 'timetable' | 'attendance' | 'syllabus'>(
     initialTab as any ?? 'week',
   )
   const [initiating, startInitiate] = useTransition()
   const [initiatingEntry, setInitiatingEntry] = useState<string | null>(null)
-
-  // ── Document Upload State (Gating Coherence) ──────────────────────────────
-  const [selectedFile, setSelectedFile] = useState<File | null>(null)
-  const [docType, setDocType] = useState<string>('term_report')
-  const [uploadSuccess, setUploadSuccess] = useState(false)
-  const [uploading, setUploading] = useState(false)
   const studentId = user?.user_id ?? user?.id
-  const [hasUploadedBefore, setHasUploadedBefore] = useState(false)
-
-  useEffect(() => {
-    if (studentId) {
-      const isUploaded = localStorage.getItem(`proof_uploaded_${studentId}`) === 'true'
-      setHasUploadedBefore(isUploaded)
-    }
-  }, [studentId])
 
   // Open vs Guided Pace — same curriculum-required content, the difference is
   // only whether times are fixed. Persisted to pace settings.
   const mode: StudyMode = studySchedule.mode ?? paceSettings.study_mode ?? 'open'
   const [savingMode, startSaveMode] = useTransition()
+  const [settingsOpen, setSettingsOpen] = useState(false)
 
   function handleSetMode(next: StudyMode) {
     if (next === mode || savingMode) return
@@ -134,6 +120,33 @@ export function ScheduleClient({
       })
       if (error) {
         toast.error(error.message ?? 'Could not update acceleration target')
+        return
+      }
+      router.refresh()
+    })
+  }
+
+  // Weekly study-hours target — applies regardless of mode, drives the rolling
+  // daily-plan target_minutes. Blank = no target set.
+  const [weeklyTarget, setWeeklyTarget] = useState<string>(
+    paceSettings.weekly_target_hours != null ? String(paceSettings.weekly_target_hours) : '',
+  )
+  const [savingWeeklyTarget, startSaveWeeklyTarget] = useTransition()
+
+  function handleSaveWeeklyTarget() {
+    if (savingWeeklyTarget) return
+    const trimmed = weeklyTarget.trim()
+    const parsed = trimmed === '' ? undefined : Math.max(1, Math.min(168, parseInt(trimmed, 10)))
+    if (trimmed !== '' && Number.isNaN(parsed)) return
+    startSaveWeeklyTarget(async () => {
+      const { error } = await updateStudentPaceSettings(studentId, {
+        lessons_per_day: paceSettings.lessons_per_day,
+        preferred_reminder_time: paceSettings.preferred_reminder_time,
+        reminder_enabled: paceSettings.reminder_enabled,
+        weekly_target_hours: parsed,
+      })
+      if (error) {
+        toast.error(error.message ?? 'Could not update weekly target')
         return
       }
       router.refresh()
@@ -199,42 +212,6 @@ export function ScheduleClient({
     })
   }
 
-  // ── Document Upload Submission Handler ──────────────────────────────────────
-  function handleDocumentSubmit() {
-    if (!selectedFile) {
-      toast.error('Please select a file to upload.')
-      return
-    }
-
-    setUploading(true)
-    const fd = new FormData()
-    fd.append('file', selectedFile)
-    fd.append('doc_type', docType)
-
-    uploadStudentDocument(fd)
-      .then(({ error }) => {
-        setUploading(false)
-        if (error) {
-          toast.error(error.message)
-          return
-        }
-        toast.success('Document uploaded successfully!')
-        
-        if (studentId) {
-          localStorage.setItem(`proof_uploaded_${studentId}`, 'true')
-        }
-        
-        setUploadSuccess(true)
-        setHasUploadedBefore(true)
-        setSelectedFile(null)
-        if (fileInputRef.current) fileInputRef.current.value = ''
-      })
-      .catch(() => {
-        setUploading(false)
-        toast.error('Upload failed. Please try again.')
-      })
-  }
-
   const tabs = [
     { id: 'week',       label: 'This Week',  icon: BookOpen },
     { id: 'timetable',  label: 'Timetable',  icon: CalendarDays },
@@ -294,6 +271,24 @@ export function ScheduleClient({
 
   // ── Coherent Gating: Pending Admin Approval State ──────────────────────────
   const hasClass = !!classId
+  if (!hasClass && classFetchFailed) {
+    return (
+      <div className="space-y-4">
+        <div>
+          <h1 className="text-xl font-semibold tracking-tight">My Schedule</h1>
+        </div>
+        <Card className="border-rose-200">
+          <CardContent className="flex flex-col items-center justify-center py-12 text-center max-w-lg mx-auto">
+            <AlertCircle className="h-10 w-10 text-rose-400 mb-3" />
+            <h3 className="font-semibold text-lg text-foreground">Couldn&apos;t load your schedule</h3>
+            <p className="text-sm text-muted-foreground mt-2 px-3">
+              Something went wrong on our end — this isn&apos;t about your class registration. Please refresh, or try again shortly.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
   if (!hasClass) {
     return (
       <div className="space-y-4">
@@ -318,106 +313,7 @@ export function ScheduleClient({
               will configure as soon as your request is accepted.
             </p>
 
-            {/* ── Proof of Class Document Upload Section (Gated on Timetable) ── */}
-            <div className="w-full mt-6 border border-border/70 rounded-xl p-4 bg-muted/20 text-left space-y-4">
-              <div className="flex items-start gap-2.5">
-                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#C9A84C]/10 text-[#C9A84C]">
-                  <Upload className="h-4 w-4" />
-                </div>
-                <div>
-                  <p className="text-xs font-semibold text-foreground">Upload class confirmation</p>
-                  <p className="text-[11px] text-muted-foreground mt-0.5 leading-normal">
-                    To help us set up your timetable faster, optionally upload a photo of your registration form, index card, or report card.
-                  </p>
-                </div>
-              </div>
-
-              {hasUploadedBefore || uploadSuccess ? (
-                <div className="flex items-start gap-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 p-3 text-emerald-800 dark:text-emerald-300 text-xs font-medium w-full">
-                  <Check className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" />
-                  <div>
-                    <p className="font-semibold">Provisional proof uploaded!</p>
-                    <p className="text-[11px] text-muted-foreground/80 mt-0.5 leading-normal font-normal">
-                      Your document has been submitted. Your school administrator is currently reviewing it to set up your subjects.
-                    </p>
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-3 pt-1">
-                  <div className="grid grid-cols-2 gap-2.5">
-                    <div className="space-y-1">
-                      <Label className="text-[10px] uppercase font-semibold text-muted-foreground tracking-wider">Document Type</Label>
-                      <Select value={docType} onValueChange={setDocType}>
-                        <SelectTrigger className="h-8 text-xs">
-                          <SelectValue placeholder="Select type" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="term_report">Term Report Card</SelectItem>
-                          <SelectItem value="prior_results">Prior Exam Results</SelectItem>
-                          <SelectItem value="other">Other Document</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-1">
-                      <Label className="text-[10px] uppercase font-semibold text-muted-foreground tracking-wider">Choose File</Label>
-                      <div className="relative">
-                        <input
-                          ref={fileInputRef}
-                          type="file"
-                          accept="image/*,application/pdf"
-                          onChange={(e) => {
-                            setSelectedFile(e.target.files?.[0] ?? null)
-                            setUploadSuccess(false)
-                          }}
-                          className="hidden"
-                          id="schedule-plans-doc-file"
-                        />
-                        <label
-                          htmlFor="schedule-plans-doc-file"
-                          className="flex h-8 w-full items-center justify-center gap-1 px-3 border border-input rounded-lg bg-background hover:bg-muted text-xs cursor-pointer truncate font-medium transition-colors"
-                        >
-                          <FileText className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                          <span className="truncate">{selectedFile ? selectedFile.name : 'Select PDF or Photo'}</span>
-                        </label>
-                      </div>
-                    </div>
-                  </div>
-
-                  {selectedFile && (
-                    <div className="flex gap-2">
-                      <Button
-                        size="sm"
-                        onClick={handleDocumentSubmit}
-                        disabled={uploading}
-                        className="h-8 text-xs font-bold flex-1"
-                      >
-                        {uploading ? (
-                          <>
-                            <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
-                            Uploading…
-                          </>
-                        ) : (
-                          <>
-                            <Plus className="h-3.5 w-3.5 mr-1" />
-                            Upload File to Teacher
-                          </>
-                        )}
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => setSelectedFile(null)}
-                        disabled={uploading}
-                        className="h-8 text-xs text-muted-foreground"
-                      >
-                        Cancel
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
+            <ClassConfirmationUploadWidget studentId={studentId} />
 
             <div className="mt-4 rounded-xl bg-amber-500/5 border border-amber-500/10 p-4 text-xs text-amber-700 dark:text-amber-300 text-left w-full">
               <p className="font-semibold mb-1">What happens next?</p>
@@ -528,80 +424,127 @@ export function ScheduleClient({
       {/* ── Timetable tab ── */}
       <TabsContent value="timetable">
         <div className="space-y-4">
-          {/* Mode toggle */}
-          <div className="flex items-center gap-3 flex-wrap">
-            <div className="inline-flex rounded-lg border p-0.5 bg-muted/40">
-              {(['open', 'guided', 'accelerated'] as StudyMode[]).map((m) => (
-                <button
-                  key={m}
-                  onClick={() => handleSetMode(m)}
-                  disabled={savingMode}
-                  className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors disabled:opacity-60 ${
-                    mode === m
-                      ? 'bg-background shadow-sm text-foreground'
-                      : 'text-muted-foreground hover:text-foreground'
-                  }`}
-                >
-                  {m === 'open' && <Unlock className="h-3 w-3" />}
-                  {m === 'guided' && <Clock className="h-3 w-3" />}
-                  {m === 'accelerated' && <Zap className="h-3 w-3" />}
-                  {m === 'open' ? 'Open' : m === 'guided' ? 'Guided Pace' : 'Accelerated'}
-                </button>
-              ))}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {mode === 'open'
-                ? "Today's required lessons — study them anytime"
-                : mode === 'guided'
-                  ? 'A timed timetable, paced to your goal'
-                  : 'Move faster than the term schedule — finish topics early'}
-            </p>
+          {/* Pacing settings — collapsed by default so the actual schedule
+              leads, not the controls for configuring it. */}
+          <div className="rounded-lg border bg-muted/20">
+            <button
+              onClick={() => setSettingsOpen((v) => !v)}
+              className="w-full flex items-center justify-between gap-3 px-3 py-2 text-left"
+            >
+              <span className="flex items-center gap-2 text-xs">
+                {mode === 'open' && <Unlock className="h-3.5 w-3.5 text-muted-foreground" />}
+                {mode === 'guided' && <Clock className="h-3.5 w-3.5 text-muted-foreground" />}
+                {mode === 'accelerated' && <Zap className="h-3.5 w-3.5 text-muted-foreground" />}
+                <span className="font-medium">
+                  {mode === 'open' ? 'Open pace' : mode === 'guided' ? 'Guided pace' : 'Accelerated pace'}
+                </span>
+                <span className="text-muted-foreground hidden sm:inline">
+                  {mode === 'open'
+                    ? '— study today\'s required lessons anytime'
+                    : mode === 'guided'
+                      ? '— a timed timetable, paced to your goal'
+                      : '— finishing ahead of the term schedule'}
+                </span>
+              </span>
+              <span className="text-[11px] text-gold font-medium shrink-0">
+                {settingsOpen ? 'Done' : 'Change'}
+              </span>
+            </button>
+
+            {settingsOpen && (
+              <div className="px-3 pb-3 pt-1 space-y-3 border-t">
+                <div className="inline-flex rounded-lg border p-0.5 bg-background">
+                  {(['open', 'guided', 'accelerated'] as StudyMode[]).map((m) => (
+                    <button
+                      key={m}
+                      onClick={() => handleSetMode(m)}
+                      disabled={savingMode}
+                      aria-pressed={mode === m}
+                      className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors disabled:opacity-60 ${
+                        mode === m
+                          ? 'bg-muted shadow-sm text-foreground'
+                          : 'text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      {m === 'open' && <Unlock className="h-3 w-3" />}
+                      {m === 'guided' && <Clock className="h-3 w-3" />}
+                      {m === 'accelerated' && <Zap className="h-3 w-3" />}
+                      {m === 'open' ? 'Open' : m === 'guided' ? 'Guided Pace' : 'Accelerated'}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Label htmlFor="weekly-target" className="text-xs text-muted-foreground">
+                    Weekly target
+                  </Label>
+                  <input
+                    id="weekly-target"
+                    type="number"
+                    min={1}
+                    max={168}
+                    value={weeklyTarget}
+                    onChange={(e) => setWeeklyTarget(e.target.value)}
+                    onBlur={handleSaveWeeklyTarget}
+                    placeholder="e.g. 8"
+                    className="w-16 rounded-md border bg-background px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-gold/30"
+                    disabled={savingWeeklyTarget}
+                  />
+                  <span className="text-xs text-muted-foreground">hour(s) a week (blank = no target)</span>
+                </div>
+
+                {mode === 'accelerated' && (
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Label htmlFor="accel-weeks" className="text-xs text-muted-foreground">
+                      Aim to finish
+                    </Label>
+                    <input
+                      id="accel-weeks"
+                      type="number"
+                      min={1}
+                      max={20}
+                      value={accelWeeks}
+                      onChange={(e) => setAccelWeeks(e.target.value)}
+                      onBlur={handleSaveAccelWeeks}
+                      placeholder="3"
+                      className="w-16 rounded-md border bg-background px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-gold/30"
+                      disabled={savingAccel}
+                    />
+                    <span className="text-xs text-muted-foreground">week(s) early (blank = recommended)</span>
+                  </div>
+                )}
+
+                {mode === 'guided' && (
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-xs text-muted-foreground">Nudge me on:</span>
+                      {ALL_CHANNELS.map((c) => {
+                        const on = channels.includes(c.id)
+                        return (
+                          <button
+                            key={c.id}
+                            onClick={() => toggleChannel(c.id)}
+                            aria-pressed={on}
+                            className={`rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors ${
+                              on
+                                ? 'border-gold bg-gold/15 text-gold'
+                                : 'border-border text-muted-foreground hover:text-foreground'
+                            }`}
+                          >
+                            {c.label}
+                          </button>
+                        )
+                      })}
+                    </div>
+                    <p className="text-[11px] text-muted-foreground">
+                      These are study-reminder channels. Account-wide email/in-app notifications are in{' '}
+                      <Link href="/student/settings" className="text-gold hover:underline">Settings</Link>.
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
-
-          {/* Accelerated target */}
-          {mode === 'accelerated' && (
-            <div className="flex items-center gap-2 flex-wrap">
-              <Label htmlFor="accel-weeks" className="text-xs text-muted-foreground">
-                Aim to finish
-              </Label>
-              <input
-                id="accel-weeks"
-                type="number"
-                min={1}
-                max={20}
-                value={accelWeeks}
-                onChange={(e) => setAccelWeeks(e.target.value)}
-                onBlur={handleSaveAccelWeeks}
-                placeholder="3"
-                className="w-16 rounded-md border bg-background px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-gold/30"
-                disabled={savingAccel}
-              />
-              <span className="text-xs text-muted-foreground">week(s) early (blank = recommended)</span>
-            </div>
-          )}
-
-          {/* Nudge channels */}
-          {mode === 'guided' && (
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-xs text-muted-foreground">Nudge me on:</span>
-              {ALL_CHANNELS.map((c) => {
-                const on = channels.includes(c.id)
-                return (
-                  <button
-                    key={c.id}
-                    onClick={() => toggleChannel(c.id)}
-                    className={`rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors ${
-                      on
-                        ? 'border-gold bg-gold/15 text-gold'
-                        : 'border-border text-muted-foreground hover:text-foreground'
-                    }`}
-                  >
-                    {c.label}
-                  </button>
-                )
-              })}
-            </div>
-          )}
 
           {/* Pacing banner */}
           {hasPacing && (
@@ -634,9 +577,37 @@ export function ScheduleClient({
                     </div>
                   ))}
                 </div>
+                {behindCount > 0 && (
+                  <div className="flex justify-end pt-1">
+                    <AskTracyChip
+                      label="Falling behind? Ask Tracy"
+                      prompt={`I'm behind pace in ${pacingSummary.filter((s) => s.status === 'behind').map((s) => s.subject).join(', ')}. Can you help me make a realistic catch-up plan?`}
+                    />
+                  </div>
+                )}
               </CardContent>
             </Card>
           )}
+
+          {/* Calendar overview — a real day/3-day/week grid, click an event to
+              view its details read-only (like Google Calendar's view popup,
+              minus any editing). The actionable list below still has the
+              "Study" buttons; this is purely a visual "where am I" layer. */}
+          {(() => {
+            const calendarBlocksByDay: Record<string, any[]> = hasPacing
+              ? (mode === 'guided' ? guidedByDay : studyBlocksByDay)
+              : slotsByDay
+            const hasAnyEvents = DAYS.some((d) => (calendarBlocksByDay[d] ?? []).length > 0)
+            if (!hasAnyEvents) return null
+            const normalized = DAYS.reduce<Record<string, any[]>>((acc, day) => {
+              acc[day] = (calendarBlocksByDay[day] ?? []).map((b: any) => ({
+                ...b,
+                kind: b.kind ?? (b.type === 'study' || b.source === 'sow' ? 'study' : 'class'),
+              }))
+              return acc
+            }, {})
+            return <WeekCalendar days={DAYS} blocksByDay={normalized} />
+          })()}
 
           {/* Schedule body */}
           {hasPacing ? (

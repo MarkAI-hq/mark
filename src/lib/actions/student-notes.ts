@@ -79,6 +79,17 @@ export async function getMyNotes() {
   return fetcher<StudentNote[]>('/student-notes/my')
 }
 
+export async function updateStudentNote(noteId: string, content: string) {
+  const res = await fetcher<StudentNote>(`/student-notes/${noteId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ content }),
+  })
+  if (!res.error) {
+    revalidatePath('/student/knowledge-base')
+  }
+  return res
+}
+
 export async function getMyNoteStats() {
   return fetcher<StudentNoteStats>('/student-notes/stats')
 }

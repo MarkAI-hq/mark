@@ -20,8 +20,7 @@ import { ScenePhenomenon }              from './scene-phenomenon'
 import { SceneRetrievalFlash }          from './scene-retrieval-flash'
 import { SceneOutcomesIntro }           from './scene-outcomes-intro'
 import { SceneOutcomesCheck }           from './scene-outcomes-check'
-
-import { useKeyboardBlocker } from '@/lib/utils/validation'
+import { LessonSidebar }                from './lesson-sidebar'
 
 // ── 5E Stage config ───────────────────────────────────────────────────────────
 
@@ -57,7 +56,50 @@ function requiresGate(scene: any): boolean {
   return GATED_TYPES.has(scene?.type)
 }
 
-export interface SceneResponse { type: string; correct?: boolean }
+// Click-to-zoom lightbox for the scene preview image — mirrors the pattern
+// already used in scene-slide.tsx so both image spots behave consistently.
+function ZoomableImage({ src, alt }: { src: string; alt: string }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <>
+      {open && (
+        <div
+          className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4"
+          onClick={() => setOpen(false)}
+        >
+          <button
+            className="absolute top-4 right-4 text-white/80 hover:text-white"
+            onClick={() => setOpen(false)}
+            aria-label="Close"
+          >
+            <X className="h-6 w-6" />
+          </button>
+          <img
+            src={src}
+            alt={alt}
+            className="max-w-full max-h-full object-contain rounded-xl"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
+      <button
+        onClick={() => setOpen(true)}
+        className="rounded-2xl overflow-hidden focus:outline-none focus:ring-2 focus:ring-gold/40 cursor-zoom-in"
+        aria-label="Enlarge image"
+      >
+        <img
+          src={src}
+          alt={alt}
+          className="rounded-2xl object-contain max-h-52 max-w-full"
+          loading="lazy"
+          onError={(e) => { (e.currentTarget.parentElement as HTMLElement).style.display = 'none' }}
+        />
+      </button>
+    </>
+  )
+}
+
+export interface SceneResponse { type: string; correct?: boolean; sceneIndex?: number }
 
 interface LessonPlayerProps {
   scenes: any[]
@@ -92,10 +134,27 @@ export function LessonPlayer({
   const [initialMisconception, setInitialMisconception] = useState<string | null>(null)
   const [achievedRefs, setAchievedRefs] = useState<string[]>([])
   const [sceneResponses, setSceneResponses] = useState<SceneResponse[]>([])
+  // Furthest scene index the student has legitimately unlocked by completing
+  // every gate along the way — the progress dots must never let a jump past
+  // this, or a student can click straight past a required quiz/notes scene.
+  const [maxReached, setMaxReached] = useState(0)
+  const [sidebarOpen, setSidebarOpen] = useState(true)
   const audioRef = useRef<HTMLAudioElement | null>(null)
 
-  // Keyboard locks [4]
-  useKeyboardBlocker()
+  // One-line usage hint (item 11) — shown once, only when this lesson
+  // actually has an image to zoom, dismissible like the audio control above.
+  const hasImages = scenes.some((s) => !!s?.image_url)
+  const [showZoomHint, setShowZoomHint] = useState(false)
+  useEffect(() => {
+    if (!hasImages) return
+    try {
+      if (!localStorage.getItem('seen_zoom_hint')) setShowZoomHint(true)
+    } catch {}
+  }, [hasImages])
+  function dismissZoomHint() {
+    setShowZoomHint(false)
+    try { localStorage.setItem('seen_zoom_hint', '1') } catch {}
+  }
 
   function isSkipped(idx: number): boolean {
     if (!scenes[idx]?.skip_if_probe_correct) return false
@@ -121,6 +180,9 @@ export function LessonPlayer({
 
   function navigate(to: number) {
     if (to < 0 || to >= total) return
+    // A jump ahead may only land on a scene already unlocked by prior progress —
+    // it must never skip past a gate the student hasn't cleared yet.
+    if (to > maxReached) return
     if (isSkipped(to)) {
       navigate(to + 1)
       return
@@ -130,13 +192,34 @@ export function LessonPlayer({
     setSceneReady(!requiresGate(scenes[to]))
   }
 
+  function advance(to: number) {
+    if (to < 0 || to >= total) return
+    if (isSkipped(to)) {
+      advance(to + 1)
+      return
+    }
+    setCurrentIndex(to)
+    setAnimKey((k) => k + 1)
+    setSceneReady(!requiresGate(scenes[to]))
+    setMaxReached((m) => Math.max(m, to))
+  }
+
   function handleProbeAnswer(correct: boolean, selectedText: string) {
     if (correct) {
       setProbeCorrectAt((prev) => new Set(prev).add(currentIndex))
     } else if (!initialMisconception) {
       setInitialMisconception(selectedText)
     }
-    setSceneResponses((prev) => [...prev, { type: 'probe', correct }])
+    setSceneResponses((prev) => [...prev, { type: 'probe', correct, sceneIndex: currentIndex }])
+  }
+
+  // Generic capture path for every other scored/engagement scene — without this,
+  // a scene's response is shown to the student then thrown away and never
+  // reaches the mastery/prediction pipeline server-side. sceneIndex is stamped
+  // here (not by each scene component) so a later read-only review can zip a
+  // response back to its exact scene in plan.content.scenes.
+  function handleSceneResponse(response: SceneResponse) {
+    setSceneResponses((prev) => [...prev, { ...response, sceneIndex: currentIndex }])
   }
 
   function stopAudio() {
@@ -213,7 +296,18 @@ export function LessonPlayer({
   if (scenes.length === 0) return null
 
   return (
-    <div className="flex flex-col h-full bg-background overflow-hidden">
+    <div className="flex h-full bg-background overflow-hidden">
+      <LessonSidebar
+        scenes={scenes}
+        currentIndex={currentIndex}
+        maxReached={maxReached}
+        onNavigate={navigate}
+        subject={subject}
+        topic={topic}
+        open={sidebarOpen}
+        onToggle={() => setSidebarOpen((v) => !v)}
+      />
+      <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
       {/* ── Thin progress bar ───────────────────────────────────────────── */}
       <div className="h-0.5 bg-border shrink-0">
         <div
@@ -276,32 +370,25 @@ export function LessonPlayer({
           <div className="mx-auto w-full max-w-2xl px-4 py-6">
             {scene?.image_url && scene.type !== 'slide' && (
               <div className="flex justify-center mb-5">
-                <img
-                  src={scene.image_url}
-                  alt={scene.title ?? 'Scene image'}
-                  className="rounded-2xl object-contain max-h-52 max-w-full"
-                  loading="lazy"
-                  onError={(e) => { (e.currentTarget.parentElement as HTMLElement).style.display = 'none' }}
-                />
+                <ZoomableImage src={scene.image_url} alt={scene.title ?? 'Scene image'} />
               </div>
             )}
 
             {scene && (
               <>
                 {scene.type === 'slide'                   && <SceneSlide                 scene={scene} imageUrl={scene.image_url} />}
-                {scene.type === 'quiz'                    && <SceneQuiz                  scene={scene} onReady={() => setSceneReady(true)} />}
+                {scene.type === 'quiz'                    && <SceneQuiz                  scene={scene} onReady={() => setSceneReady(true)} onResponse={handleSceneResponse} />}
                 {scene.type === 'simulation'              && <SceneSimulation            scene={scene} />}
                 {scene.type === 'whiteboard'              && <SceneWhiteboard            scene={scene} planId={planId} subject={subject} topic={topic} onReady={() => setSceneReady(true)} />}
-                {/* Passed onReady handler directly to ScenePbl */}
-                {scene.type === 'pbl_stage'               && <ScenePbl                   scene={scene} onReady={() => setSceneReady(true)} />}
+                {scene.type === 'pbl_stage'               && <ScenePbl                   scene={scene} onReady={() => setSceneReady(true)} onResponse={handleSceneResponse} />}
                 {scene.type === 'cornell_notes'           && <SceneCornell               scene={scene} planId={planId} subject={subject} topic={topic} onReady={() => setSceneReady(true)} />}
-                {scene.type === 'hint_quiz'               && <SceneHintQuiz              scene={scene} onReady={() => setSceneReady(true)} />}
+                {scene.type === 'hint_quiz'               && <SceneHintQuiz              scene={scene} onReady={() => setSceneReady(true)} onResponse={handleSceneResponse} />}
                 {scene.type === 'probe'                   && <SceneProbe                 scene={scene} onAnswer={handleProbeAnswer} onReady={() => setSceneReady(true)} />}
-                {scene.type === 'misconception_redirect'  && <SceneMisconceptionRedirect scene={scene} />}
-                {scene.type === 'peer_teach'              && <ScenePeerTeach             scene={scene} onReady={() => setSceneReady(true)} />}
+                {scene.type === 'misconception_redirect'  && <SceneMisconceptionRedirect scene={scene} subject={subject} topic={topic} />}
+                {scene.type === 'peer_teach'              && <ScenePeerTeach             scene={scene} onReady={() => setSceneReady(true)} onResponse={handleSceneResponse} />}
                 {scene.type === 'mastery_moment'          && <SceneMasteryMoment         scene={scene} initialMisconception={initialMisconception ?? undefined} />}
-                {scene.type === 'phenomenon_story'        && <ScenePhenomenon            scene={scene} onReady={() => setSceneReady(true)} />}
-                {scene.type === 'retrieval_flash'         && <SceneRetrievalFlash        scene={scene} onReady={() => setSceneReady(true)} />}
+                {scene.type === 'phenomenon_story'        && <ScenePhenomenon            scene={scene} onReady={() => setSceneReady(true)} onResponse={handleSceneResponse} />}
+                {scene.type === 'retrieval_flash'         && <SceneRetrievalFlash        scene={scene} onReady={() => setSceneReady(true)} onResponse={handleSceneResponse} />}
                 {scene.type === 'outcomes_intro'          && <SceneOutcomesIntro         scene={scene} />}
                 {scene.type === 'outcomes_check'          && <SceneOutcomesCheck         scene={scene} onReady={() => setSceneReady(true)} onOutcomesAchieved={setAchievedRefs} />}
               </>
@@ -317,6 +404,16 @@ export function LessonPlayer({
           </div>
         </div>
       </div>
+
+      {/* ── Usage hint (one line, dismissible) ──────────────────────────── */}
+      {showZoomHint && (
+        <div className="flex items-center justify-between gap-2 px-4 py-1.5 text-[11px] text-muted-foreground bg-muted/30 border-t shrink-0">
+          <span>💡 Tap any photo to zoom in for a closer look.</span>
+          <button onClick={dismissZoomHint} aria-label="Dismiss tip" className="shrink-0 hover:text-foreground">
+            <X className="h-3 w-3" />
+          </button>
+        </div>
+      )}
 
       {/* ── Bottom nav ───────────────────────────────────────────────────── */}
       <div className="flex items-center h-16 px-4 border-t gap-4 shrink-0">
@@ -335,7 +432,12 @@ export function LessonPlayer({
             <button
               key={i}
               onClick={() => navigate(i)}
+              disabled={i > maxReached}
+              aria-label={`Go to step ${i + 1} of ${total}${scenes[i]?.title ? `: ${scenes[i].title}` : ''}`}
+              aria-current={i === currentIndex ? 'step' : undefined}
               className={`rounded-full transition-all duration-200 ${
+                i > maxReached ? 'cursor-not-allowed' : ''
+              } ${
                 i === currentIndex
                   ? 'h-2 w-4 bg-gold'
                   : i < currentIndex
@@ -361,7 +463,7 @@ export function LessonPlayer({
           <Button
             size="sm"
             className="gap-1"
-            onClick={() => navigate(currentIndex + 1)}
+            onClick={() => advance(currentIndex + 1)}
             disabled={!sceneReady}
             title={!sceneReady ? 'Complete this activity first' : undefined}
           >
@@ -371,6 +473,7 @@ export function LessonPlayer({
             }
           </Button>
         )}
+      </div>
       </div>
     </div>
   )

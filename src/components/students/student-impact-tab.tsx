@@ -126,7 +126,7 @@ function Section({ title, count, sessions, recalcId, onRecalculate }: {
 }) {
   return (
     <div className="space-y-3">
-      <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">
+      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
         {title} · {count}
       </p>
       {sessions.map(s => (
@@ -137,7 +137,7 @@ function Section({ title, count, sessions, recalcId, onRecalculate }: {
             <Button
               variant="ghost"
               size="sm"
-              className="h-7 text-xs text-slate-500 gap-1.5"
+              className="h-7 text-xs text-muted-foreground gap-1.5"
               disabled={recalcId === s.session_id}
               onClick={() => onRecalculate(s.session_id)}
             >

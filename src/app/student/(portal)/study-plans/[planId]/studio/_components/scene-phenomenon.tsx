@@ -6,9 +6,13 @@ import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { LessonProse } from '@/components/lesson/lesson-prose'
 
-interface Props { scene: any; onReady?: () => void }
+interface Props {
+  scene: any
+  onReady?: () => void
+  onResponse?: (response: { type: string; correct: boolean }) => void
+}
 
-export function ScenePhenomenon({ scene, onReady }: Props) {
+export function ScenePhenomenon({ scene, onReady, onResponse }: Props) {
   const { title, content } = scene
   const { story, character_viewpoints, correct_character, discussion_prompt, resolution } = content ?? {}
   const [chosen, setChosen]       = useState<number | null>(null)
@@ -58,7 +62,11 @@ export function ScenePhenomenon({ scene, onReady }: Props) {
                 className="min-h-24 resize-none text-base"
               />
               <div className="flex justify-end">
-                <Button size="sm" disabled={!canSubmit} onClick={() => { setSubmitted(true); onReady?.() }}>
+                <Button size="sm" disabled={!canSubmit} onClick={() => {
+                  setSubmitted(true)
+                  onReady?.()
+                  onResponse?.({ type: 'phenomenon_story', correct: chosen === correct_character })
+                }}>
                   Submit my view
                 </Button>
               </div>

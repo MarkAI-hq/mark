@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/tooltip'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { studentLogout } from '@/lib/actions/student-auth'
+import { recordCheckOut } from '@/lib/checkin'
 
 export interface StudentUser {
   id:                 string
@@ -24,6 +25,7 @@ export interface StudentUser {
   roles?:             string[]
   organization_id?:   string
   organization_name?: string
+  study_streak?:      number
 }
 
 interface StudentSidebarNavProps {
@@ -124,6 +126,7 @@ function NavContent({
 
   async function handleLogout() {
     setLoggingOut(true)
+    recordCheckOut(user.id)
     await studentLogout()
     router.push('/student/login')
     router.refresh()

@@ -7,6 +7,7 @@ import { ArrowRight, Sparkles, Target, Trophy, Clock, CheckCircle2 } from 'lucid
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
 import { selfInitiateStudyPlan, type NextAction } from '@/lib/actions/student-dashboard'
+import { AskTracyChip } from '@/components/students/ask-tracy-chip'
 
 /**
  * The Next-Best-Action hero — "total mental clarity".
@@ -115,6 +116,12 @@ export function NextStep({ nextAction }: { nextAction: NextAction | null }) {
                 {outcome_if_done}
               </p>
             )}
+          </div>
+          <div className="mt-3 flex justify-end">
+            <AskTracyChip
+              label="Not sure where to start? Ask Tracy"
+              prompt={`Before I start "${action.topic}" in ${action.subject}, can you give me a quick heads-up on what to focus on?`}
+            />
           </div>
         </>
       ) : (

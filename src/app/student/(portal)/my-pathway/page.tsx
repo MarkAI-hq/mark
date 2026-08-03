@@ -58,6 +58,7 @@ export default async function MyPathwayPage({
       predictions={predictions}
       prediction={prediction}
       curriculumId={curriculumId}
+      classFetchFailed={sowData.fetchFailed}
     />
   )
 }

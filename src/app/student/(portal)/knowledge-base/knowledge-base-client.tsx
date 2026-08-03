@@ -20,7 +20,7 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog'
-import { submitStudentNote, uploadStudentNote } from '@/lib/actions/student-notes'
+import { submitStudentNote, uploadStudentNote, updateStudentNote } from '@/lib/actions/student-notes'
 import { getAvailableSubjects } from '@/lib/actions/curricula'
 import type { StudentNote, StudentNoteStats } from '@/lib/actions/student-notes'
 
@@ -208,43 +208,105 @@ function AddNoteDialog({
   )
 }
 
+// ── Edit Note Dialog ──────────────────────────────────────────────────────────
+
+function EditNoteDialog({
+  note, open, onOpenChange, onSaved,
+}: {
+  note: StudentNote
+  open: boolean
+  onOpenChange: (v: boolean) => void
+  onSaved: (note: StudentNote) => void
+}) {
+  const [content, setContent] = useState(note.content)
+  const [isPending, startTransition] = useTransition()
+
+  useEffect(() => { if (open) setContent(note.content) }, [open, note.content])
+
+  function handleSave() {
+    if (content.trim().length < 20) {
+      toast.error('Notes need at least 20 characters.')
+      return
+    }
+    startTransition(async () => {
+      const res = await updateStudentNote(note.id, content.trim())
+      if (res.error) { toast.error(res.error.message); return }
+      toast.success('Note updated — back in review.')
+      if (res.data) onSaved(res.data)
+      onOpenChange(false)
+    })
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{note.topic}</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-1.5">
+          <p className="text-xs text-muted-foreground">{note.subject}</p>
+          <Textarea
+            value={content}
+            onChange={(e) => setContent(e.target.value)}
+            rows={8}
+            className="text-sm"
+          />
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isPending}>Cancel</Button>
+          <Button onClick={handleSave} disabled={isPending || content.trim() === note.content.trim()}>
+            {isPending ? 'Saving…' : 'Save changes'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 // ── Note card ──────────────────────────────────────────────────────────────────
 
-function NoteCard({ note }: { note: StudentNote }) {
+function NoteCard({ note, onUpdated }: { note: StudentNote; onUpdated: (note: StudentNote) => void }) {
   const cfg = STATUS_CONFIG[note.status]
   const StatusIcon = cfg.icon
   const SourceIcon = note.source_type === 'pdf' ? FileText
     : note.source_type === 'image' ? ImageIcon
     : PenLine
+  const [editOpen, setEditOpen] = useState(false)
 
   return (
-    <Card className="group">
-      <CardContent className="p-4 space-y-3">
-        <div className="flex items-start justify-between gap-3">
-          <div className="space-y-0.5 min-w-0 flex-1">
-            <div className="flex items-center gap-1.5">
-              <SourceIcon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-              <p className="text-sm font-semibold text-foreground truncate">{note.topic}</p>
+    <>
+      <Card
+        className="group cursor-pointer hover:border-gold/40 transition-colors"
+        onClick={() => setEditOpen(true)}
+      >
+        <CardContent className="p-4 space-y-3">
+          <div className="flex items-start justify-between gap-3">
+            <div className="space-y-0.5 min-w-0 flex-1">
+              <div className="flex items-center gap-1.5">
+                <SourceIcon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                <p className="text-sm font-semibold text-foreground truncate">{note.topic}</p>
+              </div>
+              <p className="text-xs text-muted-foreground">{note.subject}</p>
             </div>
-            <p className="text-xs text-muted-foreground">{note.subject}</p>
+            <Badge variant="outline" className={`text-[10px] shrink-0 ${cfg.bg}`}>
+              <StatusIcon className="h-3 w-3 mr-1" />
+              {cfg.label}
+            </Badge>
           </div>
-          <Badge variant="outline" className={`text-[10px] shrink-0 ${cfg.bg}`}>
-            <StatusIcon className="h-3 w-3 mr-1" />
-            {cfg.label}
-          </Badge>
-        </div>
 
-        <p className="text-xs text-foreground/80 leading-relaxed line-clamp-3">{note.content}</p>
+          <p className="text-xs text-foreground/80 leading-relaxed line-clamp-3">{note.content}</p>
 
-        <div className="flex items-center justify-between text-[10px] text-muted-foreground">
-          <span>{new Date(note.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
-          <span className="flex items-center gap-1 text-gold font-medium">
-            <Star className="h-3 w-3" />
-            {note.reward_points} pts
-          </span>
-        </div>
-      </CardContent>
-    </Card>
+          <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+            <span>{new Date(note.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+            <span className="flex items-center gap-1 text-gold font-medium">
+              <Star className="h-3 w-3" />
+              {note.reward_points} pts
+            </span>
+          </div>
+        </CardContent>
+      </Card>
+      <EditNoteDialog note={note} open={editOpen} onOpenChange={setEditOpen} onSaved={onUpdated} />
+    </>
   )
 }
 
@@ -261,6 +323,10 @@ export function KnowledgeBaseClient({ initialNotes, initialStats }: Props) {
   const [stats, setStats]     = useState(initialStats)
   const [dialogOpen, setDialog] = useState(false)
   const [filter, setFilter]   = useState<'all' | 'pending' | 'approved' | 'rejected'>('all')
+
+  function handleNoteUpdated(note: StudentNote) {
+    setNotes((prev) => prev.map((n) => (n.id === note.id ? note : n)))
+  }
 
   function handleNoteAdded(note: StudentNote) {
     setNotes((prev) => [note, ...prev])
@@ -374,7 +440,7 @@ export function KnowledgeBaseClient({ initialNotes, initialStats }: Props) {
         ) : (
           <div className="grid gap-3 sm:grid-cols-2">
             {filtered.map((note) => (
-              <NoteCard key={note.id} note={note} />
+              <NoteCard key={note.id} note={note} onUpdated={handleNoteUpdated} />
             ))}
           </div>
         )}

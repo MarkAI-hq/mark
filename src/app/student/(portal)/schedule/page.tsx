@@ -92,6 +92,8 @@ export default async function SchedulePage({ searchParams }: Props) {
         studySchedule={studySchedule}
         paceSettings={paceSettings}
         activeTab={tab ?? 'week'}
+        classId={sowData.classId}
+        classFetchFailed={sowData.fetchFailed}
       />
     </div>
   )

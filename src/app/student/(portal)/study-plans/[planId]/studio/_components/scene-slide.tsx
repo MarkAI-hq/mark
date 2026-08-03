@@ -1,8 +1,23 @@
 'use client'
 
 import { useState } from 'react'
-import { BookOpen, X } from 'lucide-react'
+import { BookOpen, X, Languages } from 'lucide-react'
 import { LessonProse } from '@/components/lesson/lesson-prose'
+import { WordOriginCard } from '@/components/reteach/word-origin-card'
+import type { ReteachEtymologyNote } from '@/lib/actions/reteach'
+
+function KeyTerms({ terms }: { terms?: ReteachEtymologyNote[] }) {
+  if (!terms || terms.length === 0) return null
+  return (
+    <div className="flex items-center gap-2 flex-wrap pt-1">
+      <Languages className="h-3.5 w-3.5 text-amber-500 shrink-0" />
+      <span className="text-xs text-muted-foreground">Tricky word{terms.length > 1 ? 's' : ''}:</span>
+      {terms.map((t, i) => (
+        <WordOriginCard key={i} note={t} variant="inline" />
+      ))}
+    </div>
+  )
+}
 
 interface Props {
   scene: any
@@ -11,7 +26,7 @@ interface Props {
 
 export function SceneSlide({ scene, imageUrl }: Props) {
   const { title, content } = scene
-  const { text, bullets } = content ?? {}
+  const { text, bullets, key_terms } = content ?? {}
   const [lightboxOpen, setLightboxOpen] = useState(false)
   const [imgFailed, setImgFailed]       = useState(false)
 
@@ -81,6 +96,7 @@ export function SceneSlide({ scene, imageUrl }: Props) {
             ))}
           </ul>
         )}
+        <KeyTerms terms={key_terms} />
       </div>
     )
   }
@@ -106,6 +122,7 @@ export function SceneSlide({ scene, imageUrl }: Props) {
           ))}
         </ul>
       )}
+      <KeyTerms terms={key_terms} />
     </div>
   )
 }

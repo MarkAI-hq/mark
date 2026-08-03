@@ -14,7 +14,7 @@ export function ReteachImpactSummary({ summary }: ReteachImpactSummaryProps) {
   const deltaColor =
     summary.overall_direction === 'improved'  ? 'text-green-700' :
     summary.overall_direction === 'regressed' ? 'text-red-600'   :
-    'text-slate-500'
+    'text-muted-foreground'
 
   const DeltaIcon =
     summary.overall_direction === 'improved'  ? TrendingUp   :
@@ -26,31 +26,31 @@ export function ReteachImpactSummary({ summary }: ReteachImpactSummaryProps) {
 
       {/* Total */}
       <div className="rounded-lg border bg-white p-3 space-y-1">
-        <p className="text-xs text-slate-500">Total sessions</p>
-        <p className="text-2xl font-semibold text-slate-900">{summary.total}</p>
+        <p className="text-xs text-muted-foreground">Total sessions</p>
+        <p className="text-2xl font-semibold text-foreground">{summary.total}</p>
       </div>
 
       {/* Completed */}
       <div className="rounded-lg border bg-white p-3 space-y-1">
-        <p className="text-xs text-slate-500">Completed</p>
+        <p className="text-xs text-muted-foreground">Completed</p>
         <div className="flex items-center gap-1.5">
           <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
-          <p className="text-2xl font-semibold text-slate-900">{summary.completed}</p>
+          <p className="text-2xl font-semibold text-foreground">{summary.completed}</p>
         </div>
       </div>
 
       {/* Awaiting follow-up */}
       <div className="rounded-lg border bg-white p-3 space-y-1">
-        <p className="text-xs text-slate-500">Awaiting follow-up</p>
+        <p className="text-xs text-muted-foreground">Awaiting follow-up</p>
         <div className="flex items-center gap-1.5">
           <Clock className="h-4 w-4 text-amber-500 shrink-0" />
-          <p className="text-2xl font-semibold text-slate-900">{summary.awaiting_followup}</p>
+          <p className="text-2xl font-semibold text-foreground">{summary.awaiting_followup}</p>
         </div>
       </div>
 
       {/* Avg delta */}
       <div className="rounded-lg border bg-white p-3 space-y-1">
-        <p className="text-xs text-slate-500">Avg improvement</p>
+        <p className="text-xs text-muted-foreground">Avg improvement</p>
         <div className={`flex items-center gap-1.5 ${deltaColor}`}>
           <DeltaIcon className="h-4 w-4 shrink-0" />
           <p className="text-2xl font-semibold tabular-nums">

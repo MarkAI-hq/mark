@@ -16,6 +16,7 @@ import {
   ArrowRightLeft,
   GraduationCap,
   Settings,
+  LifeBuoy,
   LucideIcon,
 } from 'lucide-react'
 
@@ -42,5 +43,6 @@ export const studentNavItems: StudentNavItem[] = [
   { title: 'Exams',          href: '/student/exams',         icon: FileCheck                                 },
   { title: 'Welcome Pack',   href: '/student/welcome-pack',  icon: Gift                                      },
   { title: 'Transfer',       href: '/student/transfer',      icon: ArrowRightLeft, hideForMarketplace: true  },
+  { title: 'Help & Guide',   href: '/student/help',          icon: LifeBuoy                                  },
   { title: 'Settings',       href: '/student/settings',      icon: Settings                                  },
 ]

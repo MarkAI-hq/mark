@@ -216,7 +216,7 @@ export function StudentImportDialog({
           <div className="py-2">
             <div className="flex items-center gap-2 mb-4 p-3 bg-emerald-50 border border-emerald-200 rounded-lg">
               <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
-              <p className="text-sm text-emerald-700">
+              <p className="text-sm text-emerald-700 dark:text-emerald-300">
                 <span className="font-semibold">{importedStudents.length} students</span> imported successfully.
                 Print and distribute credentials below.
               </p>
@@ -225,7 +225,7 @@ export function StudentImportDialog({
             <div ref={printRef} className="border rounded-lg overflow-hidden">
               <div className="bg-slate-900 px-4 py-3">
                 <h1 className="text-white font-bold text-sm">Student Login Credentials</h1>
-                <p className="text-slate-400 text-xs mt-0.5">
+                <p className="text-muted-foreground text-xs mt-0.5">
                   Mirror Intelligence Labs — Generated {new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}
                   {' '}— Keep confidential
                 </p>
@@ -234,28 +234,28 @@ export function StudentImportDialog({
               <div className="max-h-80 overflow-y-auto">
                 <table className="w-full text-sm">
                   <thead className="sticky top-0">
-                    <tr className="bg-slate-100">
-                      <th className="text-left p-3 text-xs font-semibold text-slate-600 uppercase tracking-wide">Student Name</th>
-                      <th className="text-left p-3 text-xs font-semibold text-slate-600 uppercase tracking-wide">Student ID</th>
-                      <th className="text-left p-3 text-xs font-semibold text-slate-600 uppercase tracking-wide">PIN</th>
+                    <tr className="bg-muted">
+                      <th className="text-left p-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Student Name</th>
+                      <th className="text-left p-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Student ID</th>
+                      <th className="text-left p-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">PIN</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y">
                     {importedStudents.map((student, i) => (
-                      <tr key={student.user_id ?? i} className={i % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
+                      <tr key={student.user_id ?? i} className={i % 2 === 0 ? 'bg-white' : 'bg-muted'}>
                         <td className="p-3 font-medium">
                           {student.name ?? `${student.first_name} ${student.last_name}`.trim()}
                         </td>
-                        <td className="p-3 text-slate-600">
+                        <td className="p-3 text-muted-foreground">
                           {student.student_school_id ?? '—'}
                         </td>
                         <td className="p-3">
                           {student.pin ? (
-                            <Badge variant="outline" className="font-mono text-sm tracking-widest font-bold border-amber-300 text-amber-700 bg-amber-50">
+                            <Badge variant="outline" className="font-mono text-sm tracking-widest font-bold border-amber-300 text-amber-700 dark:text-amber-300 bg-amber-50">
                               {student.pin}
                             </Badge>
                           ) : (
-                            <span className="text-slate-400 text-xs">Not available</span>
+                            <span className="text-muted-foreground text-xs">Not available</span>
                           )}
                         </td>
                       </tr>
@@ -264,8 +264,8 @@ export function StudentImportDialog({
                 </table>
               </div>
 
-              <div className="bg-slate-50 px-4 py-2 border-t">
-                <p className="text-xs text-slate-500">
+              <div className="bg-muted px-4 py-2 border-t">
+                <p className="text-xs text-muted-foreground">
                   Login at: <span className="font-medium">your-domain.com/student/login</span>
                   {' '}· School Code: <span className="font-mono font-bold">shown in settings</span>
                   {' '}· PINs are shown once — store securely

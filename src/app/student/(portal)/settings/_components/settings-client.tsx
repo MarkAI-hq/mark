@@ -153,6 +153,10 @@ export function SettingsClient({
             </div>
             <Switch checked={inAppEnabled} disabled={savingNotifications} onCheckedChange={(v) => handleSaveNotifications({ inApp: v })} />
           </div>
+          <p className="text-xs text-muted-foreground pt-1 border-t">
+            These control account-wide notifications. Study-reminder channels (including WhatsApp) are set separately under{' '}
+            <Link href="/student/schedule?tab=timetable" className="text-gold hover:underline">Schedule → Nudge me on</Link>.
+          </p>
         </CardContent>
       </Card>
 
@@ -162,10 +166,10 @@ export function SettingsClient({
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground mb-3">
-            Manage your daily study pace, reminder times, and pacing mode from the Schedule page.
+            Manage your daily study pace, reminder times, pacing mode, and which channels (in-app, email, WhatsApp) nudge you to study — all from the Schedule page.
           </p>
           <Button asChild variant="outline">
-            <Link href="/student/schedule">Go to Schedule</Link>
+            <Link href="/student/schedule?tab=timetable">Go to Schedule</Link>
           </Button>
         </CardContent>
       </Card>

@@ -24,19 +24,19 @@ const ATTRIBUTION_META: Record<AttributionType, {
   never_exposed: {
     label: 'Missed Lessons',
     color: 'border-rose-200 bg-rose-50',
-    text:  'text-rose-700',
+    text:  'text-rose-700 dark:text-rose-300',
     Icon:  AlertTriangle,
   },
   partially_exposed: {
     label: 'Partial Exposure',
     color: 'border-amber-200 bg-amber-50',
-    text:  'text-amber-700',
+    text:  'text-amber-700 dark:text-amber-300',
     Icon:  Clock,
   },
   not_yet_taught: {
     label: 'Not Yet Taught',
-    color: 'border-slate-200 bg-slate-50',
-    text:  'text-slate-600',
+    color: 'border-border bg-muted',
+    text:  'text-muted-foreground',
     Icon:  BookOpen,
   },
 }
@@ -62,7 +62,7 @@ export function GapAttributionCard({ gaps, studentId, assessmentId, className }:
 
   return (
     <div className={`space-y-2 ${className ?? ''}`}>
-      <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Gap Attribution</p>
+      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Gap Attribution</p>
       <div className="space-y-2">
         {gaps.slice(0, 6).map((gap, i) => {
           const meta = ATTRIBUTION_META[gap.attribution] ?? ATTRIBUTION_META.not_yet_taught
@@ -74,17 +74,17 @@ export function GapAttributionCard({ gaps, studentId, assessmentId, className }:
                   <Icon className={`h-3.5 w-3.5 mt-0.5 shrink-0 ${meta.text}`} />
                   <div className="min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-sm font-medium text-slate-900">{gap.topic}</span>
+                      <span className="text-sm font-medium text-foreground">{gap.topic}</span>
                       <Badge variant="outline" className={`text-xs border-current ${meta.text}`}>
                         {meta.label}
                       </Badge>
                     </div>
                     {gap.subtopic && (
-                      <p className="text-xs text-slate-500 mt-0.5">{gap.subtopic}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">{gap.subtopic}</p>
                     )}
                     <p className={`text-xs mt-1 ${meta.text}`}>{gap.explanation}</p>
                     {gap.attendance_pct !== null && (
-                      <p className="text-xs text-slate-500 mt-0.5">
+                      <p className="text-xs text-muted-foreground mt-0.5">
                         Attendance: {gap.attendance_pct}% of lessons
                       </p>
                     )}

@@ -13,9 +13,13 @@ interface FlashQuestion {
   days_ago: number
 }
 
-interface Props { scene: any; onReady?: () => void }
+interface Props {
+  scene: any
+  onReady?: () => void
+  onResponse?: (response: { type: string; correct: boolean }) => void
+}
 
-export function SceneRetrievalFlash({ scene, onReady }: Props) {
+export function SceneRetrievalFlash({ scene, onReady, onResponse }: Props) {
   const { title, content } = scene
   const questions: FlashQuestion[] = content?.questions ?? []
   const [answers, setAnswers] = useState<Record<number, number>>({})
@@ -24,6 +28,7 @@ export function SceneRetrievalFlash({ scene, onReady }: Props) {
     if (answers[qIdx] !== undefined) return
     const next = { ...answers, [qIdx]: optIdx }
     setAnswers(next)
+    onResponse?.({ type: 'retrieval_flash', correct: optIdx === questions[qIdx]?.correct })
     if (Object.keys(next).length >= questions.length && questions.length > 0) {
       onReady?.()
     }

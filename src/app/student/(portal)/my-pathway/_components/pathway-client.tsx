@@ -2,28 +2,21 @@
 
 // src/app/student/(portal)/my-pathway/_components/pathway-client.tsx
 
-import { useState, useTransition, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import {
-  TrendingUp, TrendingDown, Minus, AlertTriangle,
+  TrendingUp, TrendingDown, Minus, AlertTriangle, AlertCircle,
   ArrowRight, Target, Timer, Flame, ArrowUpRight, ArrowDownRight,
-  ArrowUp, ArrowDown, Info, Upload, FileText, Check, Plus, Loader2, ShieldAlert, Clock
+  ArrowUp, ArrowDown, Info, ShieldAlert, Clock
 } from 'lucide-react'
 import { format } from 'date-fns'
-import { toast } from 'sonner'
 
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from '@/components/ui/select'
 
 import { NationalExamPredictionCard } from '@/components/prediction/national-exam-prediction-card'
-import { uploadStudentDocument } from '@/lib/actions/student-onboarding'
+import { ClassConfirmationUploadWidget } from '@/components/students/class-confirmation-upload-widget'
 
 interface Props {
   user:         any
@@ -31,48 +24,29 @@ interface Props {
   predictions:  any[]
   prediction:   any | null
   curriculumId: string
+  classFetchFailed?: boolean
 }
 
-export function PathwayClient({ user, hasClass, predictions, prediction, curriculumId }: Props) {
-  const fileInputRef = useRef<HTMLInputElement>(null)
-
-  // ── Document Upload State ──────────────────────────────────────────────────
-  const [selectedFile, setSelectedFile] = useState<File | null>(null)
-  const [docType, setDocType] = useState<string>('term_report')
-  const [uploadSuccess, setUploadSuccess] = useState(false)
-  const [uploading, startUpload] = useTransition()
-  const [hasUploadedBefore, setHasUploadedBefore] = useState(false)
+export function PathwayClient({ user, hasClass, predictions, prediction, curriculumId, classFetchFailed }: Props) {
   const studentId = user?.user_id ?? user?.id
 
-  useEffect(() => {
-    if (studentId) {
-      setHasUploadedBefore(localStorage.getItem(`proof_uploaded_${studentId}`) === 'true')
-    }
-  }, [studentId])
-
-  function handleDocumentSubmit() {
-    if (!selectedFile) {
-      toast.error('Please select a file to upload.')
-      return
-    }
-
-    const fd = new FormData()
-    fd.append('file', selectedFile)
-    fd.append('doc_type', docType)
-
-    startUpload(async () => {
-      const { error } = await uploadStudentDocument(fd)
-      if (error) {
-        toast.error(error.message)
-        return
-      }
-      toast.success('Confirmation document uploaded successfully!')
-      localStorage.setItem(`proof_uploaded_${studentId}`, 'true')
-      setUploadSuccess(true)
-      setHasUploadedBefore(true)
-      setSelectedFile(null)
-      if (fileInputRef.current) fileInputRef.current.value = ''
-    })
+  if (!hasClass && classFetchFailed) {
+    return (
+      <div className="max-w-2xl mx-auto space-y-4 pt-4 px-4">
+        <div>
+          <h1 className="text-xl font-semibold tracking-tight font-sans">My Pathway</h1>
+        </div>
+        <Card className="shadow-sm border-rose-200">
+          <CardContent className="flex flex-col items-center justify-center py-12 text-center max-w-lg mx-auto">
+            <AlertCircle className="h-10 w-10 text-rose-400 mb-3" />
+            <h3 className="font-semibold text-lg text-foreground font-sans">Couldn&apos;t load your pathway</h3>
+            <p className="text-sm text-muted-foreground mt-2 px-3">
+              Something went wrong on our end — this isn&apos;t about your class registration. Please refresh, or try again shortly.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    )
   }
 
   // ── Gating: Render Pending Approval State ── [4]
@@ -101,106 +75,7 @@ export function PathwayClient({ user, hasClass, predictions, prediction, curricu
               </span>.
             </p>
 
-            {/* ── Document Upload Widget ── [4] */}
-            <div className="w-full mt-6 border border-border/70 rounded-xl p-4 bg-muted/20 text-left space-y-4">
-              <div className="flex items-start gap-2.5">
-                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#C9A84C]/10 text-[#C9A84C]">
-                  <Upload className="h-4 w-4" />
-                </div>
-                <div>
-                  <p className="text-xs font-semibold text-foreground">Upload class confirmation document</p>
-                  <p className="text-[11px] text-muted-foreground mt-0.5 leading-normal">
-                    Optionally submit a photo of your report card or results sheet so your administrator can verify your class and accept your request faster.
-                  </p>
-                </div>
-              </div>
-
-              {hasUploadedBefore || uploadSuccess ? (
-                <div className="flex items-start gap-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 p-3 text-emerald-800 dark:text-emerald-300 text-xs font-medium w-full animate-fade-up">
-                  <Check className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" />
-                  <div>
-                    <p className="font-semibold">Confirmation document submitted!</p>
-                    <p className="text-[11px] text-muted-foreground/80 mt-0.5 leading-normal font-normal">
-                      We have received your proof. An administrator is currently reviewing it to set up your subjects.
-                    </p>
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-3 pt-1">
-                  <div className="grid grid-cols-2 gap-2.5">
-                    <div className="space-y-1">
-                      <Label className="text-[10px] uppercase font-semibold text-muted-foreground tracking-wider">Document Type</Label>
-                      <Select value={docType} onValueChange={setDocType}>
-                        <SelectTrigger className="h-8 text-xs">
-                          <SelectValue placeholder="Select type" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="term_report">Term Report Card</SelectItem>
-                          <SelectItem value="prior_results">Prior Exam Results</SelectItem>
-                          <SelectItem value="other">Other Document</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-1">
-                      <Label className="text-[10px] uppercase font-semibold text-muted-foreground tracking-wider">Choose File</Label>
-                      <div className="relative">
-                        <input
-                          ref={fileInputRef}
-                          type="file"
-                          accept="image/*,application/pdf"
-                          onChange={(e) => {
-                            setSelectedFile(e.target.files?.[0] ?? null)
-                            setUploadSuccess(false)
-                          }}
-                          className="hidden"
-                          id="pathway-doc-file"
-                        />
-                        <label
-                          htmlFor="pathway-doc-file"
-                          className="flex h-8 w-full items-center justify-center gap-1 px-3 border border-input rounded-lg bg-background hover:bg-muted text-xs cursor-pointer truncate font-medium transition-colors"
-                        >
-                          <FileText className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                          <span className="truncate">{selectedFile ? selectedFile.name : 'Select PDF or Photo'}</span>
-                        </label>
-                      </div>
-                    </div>
-                  </div>
-
-                  {selectedFile && (
-                    <div className="flex gap-2">
-                      <Button
-                        size="sm"
-                        onClick={handleDocumentSubmit}
-                        disabled={uploading}
-                        className="h-8 text-xs font-bold flex-1"
-                      >
-                        {uploading ? (
-                          <>
-                            <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
-                            Uploading…
-                          </>
-                        ) : (
-                          <>
-                            <Plus className="h-3.5 w-3.5 mr-1" />
-                            Upload File to Teacher
-                          </>
-                        )}
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => setSelectedFile(null)}
-                        disabled={uploading}
-                        className="h-8 text-xs text-muted-foreground"
-                      >
-                        Cancel
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
+            <ClassConfirmationUploadWidget studentId={studentId} />
 
             <div className="mt-4 rounded-xl bg-amber-500/5 border border-amber-500/10 p-4 text-xs text-amber-700 dark:text-amber-300 text-left w-full flex items-start gap-2.5">
               <ShieldAlert className="h-4 w-4 shrink-0 text-amber-500 mt-0.5" />

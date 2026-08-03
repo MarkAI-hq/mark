@@ -65,10 +65,10 @@ export function ReteachGenerationConfirmDialog({ open, context, onConfirm, onCan
             Review the context the AI will use before generating this session.
           </p>
 
-          <div className="rounded-lg border bg-slate-50 p-3 space-y-2.5">
+          <div className="rounded-lg border bg-muted p-3 space-y-2.5">
 
             {context.score !== undefined && (
-              <Row icon={<Target className="h-3.5 w-3.5 text-slate-500" />} label="Score">
+              <Row icon={<Target className="h-3.5 w-3.5 text-muted-foreground" />} label="Score">
                 <span className="font-semibold">{context.score}%</span>
               </Row>
             )}
@@ -96,7 +96,7 @@ export function ReteachGenerationConfirmDialog({ open, context, onConfirm, onCan
 
             {context.strategy && (
               <Row icon={<BookOpen className="h-3.5 w-3.5 text-emerald-500" />} label="Strategy">
-                <Badge variant="outline" className="text-xs text-emerald-700 border-emerald-200 bg-emerald-50">
+                <Badge variant="outline" className="text-xs text-emerald-700 dark:text-emerald-300 border-emerald-200 bg-emerald-50">
                   {STRATEGY_LABELS[context.strategy] ?? context.strategy}
                 </Badge>
                 <span className="text-xs text-muted-foreground ml-1">(mandated by curriculum)</span>

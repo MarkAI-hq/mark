@@ -2,22 +2,18 @@
 
 // src/components/students/student-dashboard-client.tsx
 
-import { useState, useTransition, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import {
   TrendingUp, BookOpen, Target, Award,
   AlertCircle, CheckCircle2, Clock, Download, Flame,
   Calendar, ChevronRight, ArrowRight, RotateCcw,
-  BookOpenCheck, Upload, FileText, Check, Plus, Loader2, Sparkles, ShieldAlert
+  BookOpenCheck, Sparkles, ShieldAlert
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge }          from '@/components/ui/badge'
 import { Progress }       from '@/components/ui/progress'
 import { Button }         from '@/components/ui/button'
-import { Label }          from '@/components/ui/label'
 import { ErrorTypeLabel } from '@/components/ui/error-type-label'
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from '@/components/ui/select'
 import Link               from 'next/link'
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -31,17 +27,17 @@ import { LearningToolkits }     from '@/components/students/learning-toolkits'
 import { CertPreviewAnchor }    from '@/components/students/cert-preview-anchor'
 import { NextStep }             from '@/components/students/next-step'
 import { TermBillingStatusCard } from '@/components/students/term-billing-status-card'
+import { ClassConfirmationUploadWidget } from '@/components/students/class-confirmation-upload-widget'
 import type { ExamHistoryItem, LearningTool, StudentCognitiveProfile, StudyPlan, SocialProof, SubjectProgress, StudentPrediction, NextAction } from '@/lib/actions/student-dashboard'
-import { uploadStudentDocument } from '@/lib/actions/student-onboarding'
 
 const LESSON_TYPE_CONFIG: Record<string, { label: string; color: string }> = {
-  catch_up:     { label: 'Catch-Up',     color: 'bg-blue-100 text-blue-800' },
-  gap_closure:  { label: 'Gap Closure',  color: 'bg-amber-100 text-amber-800' },
-  reteach:      { label: 'Reteach',      color: 'bg-purple-100 text-purple-800' },
-  pre_class:    { label: 'Pre-Class',    color: 'bg-cyan-100 text-cyan-800' },
-  consolidation:{ label: 'Consolidation',color: 'bg-green-100 text-green-800' },
-  exam_prep:    { label: 'Exam Prep',    color: 'bg-red-100 text-red-800' },
-  pre_teach:    { label: 'Pre-Teach',    color: 'bg-teal-100 text-teal-800' },
+  catch_up:     { label: 'Catch-Up',     color: 'bg-blue-100 text-blue-800 dark:bg-blue-950/40 dark:text-blue-300' },
+  gap_closure:  { label: 'Gap Closure',  color: 'bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300' },
+  reteach:      { label: 'Reteach',      color: 'bg-purple-100 text-purple-800 dark:bg-purple-950/40 dark:text-purple-300' },
+  pre_class:    { label: 'Pre-Class',    color: 'bg-cyan-100 text-cyan-800 dark:bg-cyan-950/40 dark:text-cyan-300' },
+  consolidation:{ label: 'Consolidation',color: 'bg-green-100 text-green-800 dark:bg-green-950/40 dark:text-green-300' },
+  exam_prep:    { label: 'Exam Prep',    color: 'bg-red-100 text-red-800 dark:bg-red-950/40 dark:text-red-300' },
+  pre_teach:    { label: 'Pre-Teach',    color: 'bg-teal-100 text-teal-800 dark:bg-teal-950/40 dark:text-teal-300' },
 }
 
 interface Props {
@@ -59,6 +55,10 @@ interface Props {
   currentWeekEntries?: any[]
   nextAction?:         NextAction | null
   classId?:            string | null // <-- Gating prop passed from dashboard page
+  /** True when class-lookup itself failed (outage), not that the student
+   *  genuinely has no class yet — must show a different message than the
+   *  pending-approval empty state below. */
+  classFetchFailed?:   boolean
 }
 
 const perfColor = (p: number) =>
@@ -68,37 +68,23 @@ const perfLabel = (p: number) =>
   p >= 80 ? 'Excellent' : p >= 65 ? 'Good' : p >= 50 ? 'Developing' : 'Needs Support'
 
 const statusColor: Record<string, string> = {
-  COMPLETED:  'bg-emerald-100 text-emerald-700',
-  GRADED:     'bg-emerald-100 text-emerald-700',
-  PENDING:    'bg-slate-100 text-slate-600',
-  PROCESSING: 'bg-blue-100 text-blue-700',
-  FAILED:     'bg-rose-100 text-rose-700',
+  COMPLETED:  'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300',
+  GRADED:     'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300',
+  PENDING:    'bg-muted text-muted-foreground',
+  PROCESSING: 'bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300',
+  FAILED:     'bg-rose-100 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300',
 }
 
 export function StudentDashboardClient({
-  user, analytics, currentProfile, submissions, examHistory, tools, studyPlans = [], streak = 0, socialProof, subjectProgress = [], predictions = [], currentWeekEntries = [], nextAction = null, classId,
+  user, analytics, currentProfile, submissions, examHistory, tools, studyPlans = [], streak = 0, socialProof, subjectProgress = [], predictions = [], currentWeekEntries = [], nextAction = null, classId, classFetchFailed,
 }: Props) {
-  const fileInputRef = useRef<HTMLInputElement>(null)
-
   // ── Client-Side Local State ────────────────────────────────────────────────
   const [dataSaver, setDataSaver] = useState(false)
-  const [selectedFile, setSelectedFile] = useState<File | null>(null)
-  const [docType, setDocType] = useState<string>('term_report')
-  const [uploadSuccess, setUploadSuccess] = useState(false)
-  
-  const [uploading, startUpload] = useTransition()
-  const [hasUploadedBefore, setHasUploadedBefore] = useState(false)
   const studentId = user?.user_id ?? user?.id
 
   useEffect(() => {
-    // Sync local storage preference
     setDataSaver(localStorage.getItem('data_saver_mode') === 'true')
-    
-    if (studentId) {
-      const isUploaded = localStorage.getItem(`proof_uploaded_${studentId}`) === 'true'
-      setHasUploadedBefore(isUploaded)
-    }
-  }, [studentId])
+  }, [])
 
   // pick the most urgent prediction (lowest gap_to_next_grade with fewest weeks)
   const topPrediction = predictions.length > 0
@@ -191,36 +177,26 @@ export function StudentDashboardClient({
     }
   }
 
-  // ── Document Upload Submission ─────────────────────────────────────────────
-  function handleDocumentSubmit() {
-    if (!selectedFile) {
-      toast.error('Please select a file to upload.')
-      return
-    }
-
-    const fd = new FormData()
-    fd.append('file', selectedFile)
-    fd.append('doc_type', docType)
-
-    startUpload(async () => {
-      const { error } = await uploadStudentDocument(fd)
-      if (error) {
-        toast.error(error.message)
-        return
-      }
-      toast.success('Confirmation document uploaded successfully!')
-      if (studentId) {
-        localStorage.setItem(`proof_uploaded_${studentId}`, 'true')
-      }
-      setUploadSuccess(true)
-      setHasUploadedBefore(true)
-      setSelectedFile(null)
-      if (fileInputRef.current) fileInputRef.current.value = ''
-    })
-  }
-
   // ── Gating: Render Pending Approval State ──────────────────────────────────
   const hasClass = !!classId
+  if (!hasClass && classFetchFailed) {
+    return (
+      <div className="space-y-4">
+        <div>
+          <h1 className="text-xl font-semibold tracking-tight font-sans">My Dashboard</h1>
+        </div>
+        <Card className="shadow-sm border-rose-200">
+          <CardContent className="flex flex-col items-center justify-center py-12 text-center max-w-lg mx-auto">
+            <AlertCircle className="h-10 w-10 text-rose-400 mb-3" />
+            <h3 className="font-semibold text-lg text-foreground font-sans">Couldn&apos;t load your dashboard</h3>
+            <p className="text-sm text-muted-foreground mt-2 px-3">
+              Something went wrong on our end — this isn&apos;t about your class registration. Please refresh, or try again shortly.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
   if (!hasClass) {
     return (
       <div className="space-y-4">
@@ -228,7 +204,7 @@ export function StudentDashboardClient({
           <h1 className="text-xl font-semibold tracking-tight font-sans">My Dashboard</h1>
           <p className="text-muted-foreground text-sm mt-1">Gaining structured access to school subjects and performance targets.</p>
         </div>
-        
+
         <Card className="shadow-sm">
           <CardContent className="flex flex-col items-center justify-center py-12 text-center max-w-lg mx-auto">
             <div className="relative mb-4">
@@ -237,7 +213,7 @@ export function StudentDashboardClient({
                 <Clock className="h-3.5 w-3.5" />
               </div>
             </div>
-            
+
             <h3 className="font-semibold text-lg text-foreground font-sans">Account Verification Required</h3>
             <p className="text-sm text-muted-foreground mt-2 px-3">
               Your class registration request at{' '}
@@ -247,108 +223,9 @@ export function StudentDashboardClient({
               is waiting to be processed by a school administrator.
             </p>
 
-            {/* ── Document Upload Widget ── */}
-            <div className="w-full mt-6 border border-border/70 rounded-xl p-4 bg-muted/20 text-left space-y-4">
-              <div className="flex items-start gap-2.5">
-                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#C9A84C]/10 text-[#C9A84C]">
-                  <Upload className="h-4 w-4" />
-                </div>
-                <div>
-                  <p className="text-xs font-semibold text-foreground">Upload class confirmation document</p>
-                  <p className="text-[11px] text-muted-foreground mt-0.5 leading-normal">
-                    Submit a photo of your registration form, report card, or fee receipts so your administrator can verify and accept you faster.
-                  </p>
-                </div>
-              </div>
+            <ClassConfirmationUploadWidget studentId={studentId} />
 
-              {hasUploadedBefore || uploadSuccess ? (
-                <div className="flex items-start gap-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 p-3 text-emerald-800 dark:text-emerald-300 text-xs font-medium w-full">
-                  <Check className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" />
-                  <div>
-                    <p className="font-semibold">Confirmation document submitted!</p>
-                    <p className="text-[11px] text-muted-foreground/80 mt-0.5 leading-normal font-normal">
-                      We have received your proof. An administrator is currently reviewing it.
-                    </p>
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-3 pt-1">
-                  <div className="grid grid-cols-2 gap-2.5">
-                    <div className="space-y-1">
-                      <Label className="text-[10px] uppercase font-semibold text-muted-foreground tracking-wider">Document Type</Label>
-                      <Select value={docType} onValueChange={setDocType}>
-                        <SelectTrigger className="h-8 text-xs">
-                          <SelectValue placeholder="Select type" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="term_report">Term Report Card</SelectItem>
-                          <SelectItem value="prior_results">Prior Exam Results</SelectItem>
-                          <SelectItem value="other">Other Document</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-1">
-                      <Label className="text-[10px] uppercase font-semibold text-muted-foreground tracking-wider">Choose File</Label>
-                      <div className="relative">
-                        <input
-                          ref={fileInputRef}
-                          type="file"
-                          accept="image/*,application/pdf"
-                          onChange={(e) => {
-                            setSelectedFile(e.target.files?.[0] ?? null)
-                            setUploadSuccess(false)
-                          }}
-                          className="hidden"
-                          id="dashboard-doc-file"
-                        />
-                        <label
-                          htmlFor="dashboard-doc-file"
-                          className="flex h-8 w-full items-center justify-center gap-1 px-3 border border-input rounded-lg bg-background hover:bg-muted text-xs cursor-pointer truncate font-medium transition-colors"
-                        >
-                          <FileText className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                          <span className="truncate">{selectedFile ? selectedFile.name : 'Select PDF or Photo'}</span>
-                        </label>
-                      </div>
-                    </div>
-                  </div>
-
-                  {selectedFile && (
-                    <div className="flex gap-2">
-                      <Button
-                        size="sm"
-                        onClick={handleDocumentSubmit}
-                        disabled={uploading}
-                        className="h-8 text-xs font-bold flex-1"
-                      >
-                        {uploading ? (
-                          <>
-                            <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
-                            Uploading…
-                          </>
-                        ) : (
-                          <>
-                            <Plus className="h-3.5 w-3.5 mr-1" />
-                            Submit Confirmation
-                          </>
-                        )}
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => setSelectedFile(null)}
-                        disabled={uploading}
-                        className="h-8 text-xs text-muted-foreground"
-                      >
-                        Cancel
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-
-            <div className="mt-4 rounded-xl bg-amber-500/5 border border-amber-500/10 p-4 text-xs text-amber-700 dark:text-amber-300 text-left w-full flex items-start gap-2.5">
+            <div className="mt-4 rounded-xl bg-amber-500/5 border border-amber-500/10 p-4 text-xs text-amber-700 dark:text-amber-300 dark:text-amber-300 text-left w-full flex items-start gap-2.5">
               <ShieldAlert className="h-4 w-4 shrink-0 text-amber-500 mt-0.5" />
               <div>
                 <p className="font-semibold">Need help?</p>
@@ -589,9 +466,9 @@ export function StudentDashboardClient({
             </div>
           )}
           {socialProof.peers_completed_this_week > 0 && (
-            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-50 border border-emerald-100">
-              <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
-              <p className="text-xs text-emerald-700">
+            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-100 dark:border-emerald-900">
+              <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+              <p className="text-xs text-emerald-700 dark:text-emerald-300 dark:text-emerald-300">
                 <span className="font-semibold">{socialProof.peers_completed_this_week}</span> schoolmate{socialProof.peers_completed_this_week === 1 ? '' : 's'} completed assessments this week
               </p>
             </div>
@@ -613,7 +490,7 @@ export function StudentDashboardClient({
             {subjectProgress.map((s) => (
               <div key={s.subject} className="space-y-1">
                 <div className="flex items-center justify-between text-sm">
-                  <span className="font-medium text-slate-700">{s.subject}</span>
+                  <span className="font-medium text-foreground">{s.subject}</span>
                   <span className={`text-xs font-semibold ${
                     s.mastery_label === 'strong'     ? 'text-emerald-600' :
                     s.mastery_label === 'developing' ? 'text-amber-600'   :
@@ -894,7 +771,9 @@ export function StudentDashboardClient({
         <Card className="border-dashed">
           <CardContent className="flex items-center gap-4 py-5 px-5">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-muted">
-              <BookOpen className="h-5 w-5 text-muted-foreground/30 mb-1" />
+              <BookOpen className="h-5 w-5 text-muted-foreground/30" />
+            </div>
+            <div className="min-w-0">
               <p className="text-sm font-medium text-muted-foreground">Assessment results appear here once your teacher grades your first assignment</p>
               <Link href="/student/subjects" className="text-xs text-gold hover:underline mt-0.5 inline-block">
                 Go study a subject now →

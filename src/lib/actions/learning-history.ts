@@ -22,9 +22,19 @@ export interface LearningHistoryMastery {
   last_attempted_at: string | null
 }
 
+export interface LearningHistoryLesson {
+  id: string
+  subject: string
+  topic: string
+  lesson_type: string
+  score_after: number | null
+  completed_at: string | null
+}
+
 export interface LearningHistoryResult {
   submissions: LearningHistorySubmission[]
   mastery: LearningHistoryMastery[]
+  lessons: LearningHistoryLesson[]
 }
 
 export async function getLearningHistory(filters: {

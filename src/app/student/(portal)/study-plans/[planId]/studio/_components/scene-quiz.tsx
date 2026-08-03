@@ -4,9 +4,13 @@ import { useState } from 'react'
 import { HelpCircle, CheckCircle2, XCircle } from 'lucide-react'
 import { LessonProse } from '@/components/lesson/lesson-prose'
 
-interface Props { scene: any; onReady?: () => void }
+interface Props {
+  scene: any
+  onReady?: () => void
+  onResponse?: (response: { type: string; correct: boolean }) => void
+}
 
-export function SceneQuiz({ scene, onReady }: Props) {
+export function SceneQuiz({ scene, onReady, onResponse }: Props) {
   const { title, content } = scene
   const { question, options, correct, explanation } = content ?? {}
   const [selected, setSelected] = useState<number | null>(null)
@@ -35,7 +39,7 @@ export function SceneQuiz({ scene, onReady }: Props) {
             <button
               key={i}
               disabled={answered}
-              onClick={() => { setSelected(i); onReady?.() }}
+              onClick={() => { setSelected(i); onReady?.(); onResponse?.({ type: 'quiz', correct: i === correct }) }}
               className={`w-full flex items-center gap-3 rounded-xl border px-4 py-3.5 text-left text-base transition-colors ${cls}`}
             >
               <span className="shrink-0 h-7 w-7 rounded-full border flex items-center justify-center text-xs font-bold">

@@ -99,8 +99,11 @@ export async function getStudyPlan(planId: string) {
 
 export interface MarkCompletePayload {
   score_after?: number
-  scene_responses?: { type: string; correct?: boolean; score?: number }[]
+  scene_responses?: { type: string; correct?: boolean; score?: number; sceneIndex?: number; selected?: number | string }[]
   outcomes_achieved?: string[]
+  /** True for a refresher/practice retake of an already-completed lesson —
+   *  server computes and returns a score but persists nothing. */
+  practice?: boolean
 }
 
 export async function markStudyPlanComplete(
@@ -122,6 +125,27 @@ export async function markStudyPlanComplete(
   return res
 }
 
+export type NextInSequenceResult =
+  | { mode: 'none' }
+  | { mode: 'auto_continue'; plan: StudyPlan; topic: string; subject: string }
+  | {
+      mode: 'day_complete'
+      assessment_plan: StudyPlan
+      can_continue_extra: boolean
+      extra_entry_id: string | null
+      extra_topic: string | null
+    }
+
+/** Called right after a lesson completes — resolves same-day auto-advance
+ *  or (once today's periods are done) a generated assessment covering what
+ *  was just completed. Never blocks the completion flow if it errors. */
+export async function resolveNextInSequence(planId: string) {
+  return fetcher<NextInSequenceResult>(
+    `/study-plans/${planId}/next-in-sequence`,
+    { method: 'POST' },
+  )
+}
+
 export interface PaceSettings {
   student_id: string
   lessons_per_day: number
@@ -131,10 +155,21 @@ export interface PaceSettings {
   nudge_channels?: NudgeChannel[]
   study_days?: number[]
   acceleration_weeks?: number | null
+  weekly_target_hours?: number | null
+  assistant_name?: string | null
 }
 
 export async function getStudentPaceSettings(studentId: string) {
   return fetcher<PaceSettings>(`/students/${studentId}/pace-settings`)
+}
+
+/** Rename the student's Tracy assistant — cosmetic only. Pass null/empty to
+ *  reset to the default name "Tracy". */
+export async function setMyAssistantName(name: string | null) {
+  return fetcher<{ assistant_name: string | null }>(
+    '/students/me/assistant-name',
+    { method: 'PATCH', body: JSON.stringify({ name }) },
+  )
 }
 
 export async function updateStudentPaceSettings(
@@ -333,6 +368,14 @@ export interface GradingScale {
   assessmentWeights: { continuous: number; exam: number }
 }
 
+export interface TriangulationCategory {
+  key: string
+  label: string
+  description: string | null
+  icon_hint: string | null
+  level: NcdcLevel | null
+}
+
 export interface GradebookTopic {
   entry_id: string
   topic: string
@@ -340,6 +383,8 @@ export interface GradebookTopic {
   achievement: NcdcLevel
   sow_entry_id: string
   has_plan: boolean
+  exam_weight_pct: number | null
+  requirement_statement: string | null
 }
 
 export interface SubjectGradebook {
@@ -353,11 +398,8 @@ export interface SubjectGradebook {
   grade_points: number | null
   is_passing: boolean
   trend_delta: number | null
-  triangulation: {
-    observation: NcdcLevel | null
-    product: NcdcLevel | null
-    conversation: NcdcLevel | null
-  }
+  triangulation: TriangulationCategory[]
+  assessment_model_source: string | null
   topics: GradebookTopic[]
   activity_weeks: { week: number; count: number }[]
   plans_completed: number
@@ -370,6 +412,13 @@ export interface SubjectGradebook {
   score_distribution: { range: string; count: number }[]
 }
 
+export interface UceResultCategory {
+  result: 1 | 2 | 3
+  label: string
+  detail: string
+  actionable: string
+}
+
 export interface GradebookResponse {
   scale: GradingScale
   term: {
@@ -380,6 +429,7 @@ export interface GradebookResponse {
   } | null
   subjects: SubjectGradebook[]
   no_enrollment?: boolean
+  uce_result?: UceResultCategory | null
 }
 
 export async function getMyGradebook() {

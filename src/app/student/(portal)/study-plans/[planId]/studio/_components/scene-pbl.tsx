@@ -8,15 +8,17 @@ import { toast } from 'sonner'
 import { validateStudentInput, copyProtectionProps } from '@/lib/utils/validation'
 import { LessonProse } from '@/components/lesson/lesson-prose'
 
-interface Props { 
-  scene: any 
-  onReady?: () => void 
+interface Props {
+  scene: any
+  onReady?: () => void
+  onResponse?: (response: { type: string }) => void
 }
 
-export function ScenePbl({ scene, onReady }: Props) {
+export function ScenePbl({ scene, onReady, onResponse }: Props) {
   const { title, content, bloom_level } = scene
   const { stage_name, challenge, guiding_questions } = content ?? {}
   const [openQ, setOpenQ] = useState<number | null>(null)
+  const [guidingAnswers, setGuidingAnswers] = useState<Record<number, string>>({})
   const [response, setResponse] = useState('')
   const [submitted, setSubmitted] = useState(false)
   const [validationError, setValidationError] = useState<string | null>(null)
@@ -35,6 +37,7 @@ export function ScenePbl({ scene, onReady }: Props) {
     setSubmitted(true)
     toast.success('Your approach has been saved!')
     onReady?.() // Signals the parent player to unlock the Next button
+    onResponse?.({ type: 'pbl_stage' })
   }
 
   return (
@@ -73,6 +76,8 @@ export function ScenePbl({ scene, onReady }: Props) {
               {openQ === i && (
                 <div className="border-t px-4 pb-3 pt-2">
                   <textarea
+                    value={guidingAnswers[i] ?? ''}
+                    onChange={(e) => setGuidingAnswers((prev) => ({ ...prev, [i]: e.target.value }))}
                     placeholder="Write your thinking here…"
                     rows={3}
                     disabled={submitted}
@@ -112,7 +117,7 @@ export function ScenePbl({ scene, onReady }: Props) {
       {submitted && (
         <div className="flex items-center gap-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 p-3 text-emerald-800 dark:text-emerald-300 text-xs font-medium">
           <Check className="h-4 w-4 text-emerald-500 shrink-0" />
-          <span>Your approach has been successfully verified. You may now continue.</span>
+          <span>Your approach has been saved. You may now continue.</span>
         </div>
       )}
     </div>

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition, type ElementType } from 'react'
+import { useRef, useState, useTransition, type ElementType } from 'react'
 import { Search, BookOpen, FileText, Video, Link as LinkIcon, ExternalLink } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -17,13 +17,17 @@ export function LibraryClient({ initial, error }: { initial: LibraryResource[]; 
   const [resources, setResources] = useState(initial)
   const [query, setQuery] = useState('')
   const [isPending, startTransition] = useTransition()
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   function search(q: string) {
     setQuery(q)
-    startTransition(async () => {
-      const { data } = await getLibraryResources({ q: q || undefined })
-      if (data) setResources(data)
-    })
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(() => {
+      startTransition(async () => {
+        const { data } = await getLibraryResources({ q: q || undefined })
+        if (data) setResources(data)
+      })
+    }, 300)
   }
 
   return (
