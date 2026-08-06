@@ -8,7 +8,7 @@
 // Google Calendar's — students can't edit or move anything here, only see it.
 
 import { useMemo, useState } from 'react'
-import { ChevronLeft, ChevronRight, MapPin, BookOpen, Clock } from 'lucide-react'
+import { ChevronLeft, ChevronRight, MapPin, BookOpen, Clock, Repeat } from 'lucide-react'
 import Link from 'next/link'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Badge } from '@/components/ui/badge'
@@ -60,6 +60,32 @@ export function WeekCalendar({ days, blocksByDay }: Props) {
     }
     return out
   }, [days, blocksByDay])
+
+  // A student who needs multiple weekly sessions on the same un-mastered
+  // topic sees that topic repeated across several days — intentional
+  // mastery-gating, not a data glitch. Track each topic's occurrences this
+  // week so repeated blocks can be labelled "Session N of M" instead of
+  // looking like the same lesson was copy-pasted onto every day.
+  const sessionOccurrences = useMemo(() => {
+    const out: Record<string, string[]> = {}
+    for (const d of days) {
+      for (const e of timedBlocksByDay[d] ?? []) {
+        if (e.kind === 'study' && e.sow_entry_id) {
+          const key = `${d}|${e.start_time}`
+          ;(out[e.sow_entry_id] ??= []).push(key)
+        }
+      }
+    }
+    return out
+  }, [days, timedBlocksByDay])
+
+  function sessionLabel(event: CalendarEvent): string | null {
+    if (event.kind !== 'study' || !event.sow_entry_id) return null
+    const list = sessionOccurrences[event.sow_entry_id]
+    if (!list || list.length <= 1) return null
+    const idx = list.indexOf(`${event.day_of_week}|${event.start_time}`)
+    return idx >= 0 ? `Session ${idx + 1} of ${list.length}` : null
+  }
 
   const allEvents = days.flatMap((d) => timedBlocksByDay[d] ?? [])
   const { startHour, endHour } = useMemo(() => {
@@ -141,6 +167,7 @@ export function WeekCalendar({ days, blocksByDay }: Props) {
               {(timedBlocksByDay[day] ?? []).map((event, i) => {
                 const top = (toMinutes(event.start_time) / 60 - startHour) * HOUR_HEIGHT
                 const height = Math.max(20, ((toMinutes(event.end_time) - toMinutes(event.start_time)) / 60) * HOUR_HEIGHT)
+                const session = sessionLabel(event)
                 return (
                   <button
                     key={i}
@@ -154,6 +181,12 @@ export function WeekCalendar({ days, blocksByDay }: Props) {
                   >
                     <p className="font-medium truncate">{event.subject}</p>
                     {event.topic && <p className="truncate opacity-80">{event.topic}</p>}
+                    {session && (
+                      <p className="flex items-center gap-0.5 truncate opacity-70 mt-0.5">
+                        <Repeat className="h-2.5 w-2.5 shrink-0" />
+                        {session}
+                      </p>
+                    )}
                   </button>
                 )
               })}
@@ -191,6 +224,15 @@ export function WeekCalendar({ days, blocksByDay }: Props) {
                   <div className="flex items-center gap-2">
                     <MapPin className="h-4 w-4 text-muted-foreground shrink-0" />
                     <span>{selected.room}</span>
+                  </div>
+                )}
+                {sessionLabel(selected) && (
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <Repeat className="h-4 w-4 shrink-0" />
+                    <span>
+                      {sessionLabel(selected)} on this topic this week — you&apos;re still working
+                      towards mastery, so it repeats until you get there.
+                    </span>
                   </div>
                 )}
               </div>
