@@ -73,9 +73,14 @@ interface ToolStatus {
 
 // ── SSE parsing helpers ───────────────────────────────────────────────────────
 
-const ARTIFACT_RE = /(?:^|\n)(?:__)?ARTIFACT(?:__)?\s*:\s*(\{[\s\S]*)/
-const CONFIRM_RE  = /(?:^|\n)(?:__)?CONFIRM(?:__)?\s*:\s*(\{[\s\S]*)/
-const NEXT_RE     = /(?:^|\n)(?:__)?NEXT(?:__)?\s*:\s*(\{[\s\S]*)/
+// Markers are meant to be appended on their own line at the end of a reply,
+// but the model doesn't always emit the leading newline — it sometimes puts
+// the marker right after trailing prose separated only by a space. Matching
+// on `\s` (not just `\n`) as the leading boundary catches both cases so the
+// raw "__NEXT__:{...}" JSON never leaks into the rendered chat bubble.
+const ARTIFACT_RE = /(?:^|\s)(?:__)?ARTIFACT(?:__)?\s*:\s*(\{[\s\S]*)/
+const CONFIRM_RE  = /(?:^|\s)(?:__)?CONFIRM(?:__)?\s*:\s*(\{[\s\S]*)/
+const NEXT_RE     = /(?:^|\s)(?:__)?NEXT(?:__)?\s*:\s*(\{[\s\S]*)/
 
 function extractJson(str: string): string | null {
   const start = str.indexOf('{')
