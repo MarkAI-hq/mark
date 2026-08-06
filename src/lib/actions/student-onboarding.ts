@@ -477,16 +477,21 @@ export interface Scene {
 }
 
 // ── Student: upload provisional proof-of-class document (Safe Native Upload) ──
+const UPLOAD_TIMEOUT_MS = 45_000
+
 export async function uploadStudentDocument(
   formData: FormData,
 ): Promise<ServerActionResponse<any>> {
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), UPLOAD_TIMEOUT_MS)
+
   try {
     const cookieStore = await cookies()
     const token = cookieStore.get('token')?.value
     const API = process.env.API_BASE_URL ?? process.env.NEXT_PUBLIC_API_URL ?? ''
 
     const headers: HeadersInit = {
-      // We intentionally OMIT 'Content-Type' so the fetch API can 
+      // We intentionally OMIT 'Content-Type' so the fetch API can
       // automatically generate the multipart/form-data boundary.
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     }
@@ -495,6 +500,7 @@ export async function uploadStudentDocument(
       method: 'POST',
       headers,
       body: formData,
+      signal: controller.signal,
     })
 
     if (!res.ok) {
@@ -505,7 +511,12 @@ export async function uploadStudentDocument(
     const data = await res.json()
     return { data, error: null }
   } catch (err: any) {
-    return { data: null, error: { message: err.message ?? 'Upload failed' } }
+    const message = err?.name === 'AbortError'
+      ? 'Upload timed out. Please check your connection and try again.'
+      : err.message ?? 'Upload failed'
+    return { data: null, error: { message } }
+  } finally {
+    clearTimeout(timeout)
   }
 }
 

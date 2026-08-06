@@ -20,7 +20,6 @@ import {
   Upload,
   FileText,
   Check,
-  Plus,
   Wallet,
 } from 'lucide-react'
 
@@ -2000,10 +1999,7 @@ export function JoinClient({ schoolCode, schoolName }: { schoolCode: string; sch
                           Uploading…
                         </>
                       ) : (
-                        <>
-                          <Plus className="h-3.5 w-3.5 mr-1" />
-                          Upload Document
-                        </>
+                        'Submit'
                       )}
                     </Button>
                     <Button
