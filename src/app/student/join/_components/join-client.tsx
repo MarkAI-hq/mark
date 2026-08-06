@@ -161,6 +161,15 @@ export function JoinClient({ schoolCode, schoolName }: { schoolCode: string; sch
   const router = useRouter()
   const [step, setStep] = useState<Step>('details')
 
+  // Tracks the step immediately before the current one, so "Go back" links
+  // return to wherever the student actually was instead of hardcoding a
+  // single fixed step. Updated in a cleanup, which fires with the OLD step
+  // value right before `step` changes.
+  const prevStepRef = useRef<Step>('details')
+  useEffect(() => {
+    return () => { prevStepRef.current = step }
+  }, [step])
+
   // ── Step 1: details ────────────────────────────────────────────────────────
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
@@ -1160,7 +1169,7 @@ export function JoinClient({ schoolCode, schoolName }: { schoolCode: string; sch
               type="button"
               onClick={() => {
                 setLocalError(null)
-                setStep('details')
+                setStep(prevStepRef.current)
               }}
               className="w-full text-center text-xs text-muted-foreground underline mt-2"
             >
@@ -1218,7 +1227,7 @@ export function JoinClient({ schoolCode, schoolName }: { schoolCode: string; sch
               type="button"
               onClick={() => {
                 setLocalError(null)
-                setStep('details')
+                setStep(prevStepRef.current)
               }}
               className="w-full text-center text-xs text-muted-foreground underline"
             >
