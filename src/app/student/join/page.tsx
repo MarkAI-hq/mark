@@ -26,19 +26,15 @@ export default async function StudentJoinPage({
   const schoolName = school?.name || schoolCode
 
   return (
-    <main className="min-h-screen bg-surface-base">
-      <div className="mx-auto flex max-w-2xl items-center px-4 pt-6 sm:px-0">
-        <Link
-          href={backHref}
-          className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-[#926C15] transition-colors"
-        >
-          <ArrowLeft className="h-3.5 w-3.5" />
-          Back
-        </Link>
-      </div>
-      <div className="flex items-start justify-center px-4 py-10">
-        <JoinClient schoolCode={schoolCode} schoolName={schoolName} />
-      </div>
+    <main className="min-h-screen bg-surface-base relative">
+      <Link
+        href={backHref}
+        className="absolute top-6 left-4 sm:left-6 z-20 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-[#926C15] transition-colors bg-surface-base/80 backdrop-blur-sm rounded-full px-3 py-1.5"
+      >
+        <ArrowLeft className="h-3.5 w-3.5" />
+        Back
+      </Link>
+      <JoinClient schoolCode={schoolCode} schoolName={schoolName} />
     </main>
   )
 }

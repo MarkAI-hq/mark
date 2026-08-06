@@ -4,6 +4,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import Image from 'next/image'
 import {
   Sparkles,
   GraduationCap,
@@ -21,7 +22,10 @@ import {
   FileText,
   Check,
   Wallet,
+  Brain,
+  Target,
 } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 import { toast } from '@/hooks/use-toast'
 import { Button } from '@/components/ui/button'
@@ -75,6 +79,40 @@ type Step =
   | 'upload'
   | 'payment'
   | 'results'
+
+// ── Two-panel onboarding shell ──────────────────────────────────────────────
+// Applies up to (not including) the 'demo' step — that step embeds the full
+// LessonPlayer, which needs the whole viewport width, so from there on the
+// flow drops the left panel and renders full-width instead.
+const STEP_COUNTER: { step: Step; label: string }[] = [
+  { step: 'details',  label: 'Your Info' },
+  { step: 'verify',   label: 'Verify' },
+  { step: 'pledge',   label: 'Pledge' },
+  { step: 'class',    label: 'Class' },
+  { step: 'subjects', label: 'Subjects' },
+]
+const TWO_PANEL_STEPS = new Set(STEP_COUNTER.map(s => s.step))
+
+const SHELL_SLIDES = [
+  {
+    image: 'https://images.unsplash.com/photo-1523050854058-8df90110c9f1?w=800&auto=format&fit=crop',
+    icon: Brain,
+    title: 'We map what you already know.',
+    sub: 'A short diagnostic finds your real starting point — no wasted time on things you\'ve already mastered.',
+  },
+  {
+    image: 'https://images.unsplash.com/photo-1509228468518-180dd4864904?w=800&auto=format&fit=crop',
+    icon: Target,
+    title: 'A plan built around your gaps.',
+    sub: 'Every lesson after this is chosen for you, paced to close the specific gaps we find today.',
+  },
+  {
+    image: 'https://images.unsplash.com/photo-1523240795612-9a054b0db644?w=800&auto=format&fit=crop',
+    icon: GraduationCap,
+    title: 'Learn at your own pace.',
+    sub: 'Study on your schedule, with a companion that checks in and keeps you on track.',
+  },
+]
 
 const LEVELS = ['S1', 'S2', 'S3', 'S4', 'S5', 'S6']
 const DAYS = [
@@ -169,6 +207,15 @@ export function JoinClient({ schoolCode, schoolName }: { schoolCode: string; sch
   useEffect(() => {
     return () => { prevStepRef.current = step }
   }, [step])
+
+  // ── Two-panel shell: rotating image/copy on the left panel ────────────────
+  const [slideIndex, setSlideIndex] = useState(0)
+  useEffect(() => {
+    const id = setInterval(() => {
+      setSlideIndex(i => (i + 1) % SHELL_SLIDES.length)
+    }, 5000)
+    return () => clearInterval(id)
+  }, [])
 
   // ── Step 1: details ────────────────────────────────────────────────────────
   const [firstName, setFirstName] = useState('')
@@ -998,8 +1045,8 @@ export function JoinClient({ schoolCode, schoolName }: { schoolCode: string; sch
   })()
 
   // ── Render ───────────────────────────────────────────────────────────────────
-  return (
-    <div className="w-full max-w-2xl">
+  const stepContent = (
+    <>
       <div className="flex items-center gap-2 mb-6 justify-center">
         <Sparkles className="h-5 w-5 text-gold" />
         <span className="font-semibold tracking-tight">Mirror Intelligence Online High School</span>
@@ -2119,6 +2166,98 @@ export function JoinClient({ schoolCode, schoolName }: { schoolCode: string; sch
           </CardContent>
         </Card>
       )}
+    </>
+  )
+
+  if (TWO_PANEL_STEPS.has(step)) {
+    const stepIndex = STEP_COUNTER.findIndex(s => s.step === step)
+    const slide = SHELL_SLIDES[slideIndex]
+
+    return (
+      <div className="min-h-screen w-full flex">
+        {/* Left panel — dark background, rotating image/copy */}
+        <div className="hidden lg:flex lg:w-[440px] xl:w-[480px] flex-col gap-8 bg-slate-900 p-14 text-white shrink-0 relative overflow-hidden">
+          <div className="flex items-center gap-2.5 relative z-10">
+            <GraduationCap className="h-6 w-6 text-amber-400" />
+            <span className="font-semibold tracking-tight">Mirror Intelligence</span>
+          </div>
+
+          <div className="flex-1 flex flex-col justify-center relative z-10">
+            <div key={slideIndex} className="space-y-5 animate-fade-in">
+              <div className="relative w-full aspect-[4/3] rounded-2xl overflow-hidden bg-white/5">
+                <Image
+                  src={slide.image}
+                  alt=""
+                  fill
+                  sizes="480px"
+                  className="object-cover"
+                />
+              </div>
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/10">
+                <slide.icon className="h-4 w-4 text-amber-400" />
+              </div>
+              <div className="space-y-2">
+                <h2 className="text-2xl font-bold leading-tight">{slide.title}</h2>
+                <p className="text-sm text-muted-foreground leading-relaxed max-w-sm">{slide.sub}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-1.5 relative z-10">
+            {SHELL_SLIDES.map((_, i) => (
+              <div
+                key={i}
+                className={cn(
+                  'h-1 rounded-full transition-all duration-500',
+                  i === slideIndex ? 'w-6 bg-amber-400' : 'w-1.5 bg-white/20',
+                )}
+              />
+            ))}
+          </div>
+
+          <p className="text-xs text-muted-foreground relative z-10">
+            © {new Date().getFullYear()} Mark. All rights reserved.
+          </p>
+        </div>
+
+        {/* Right panel */}
+        <div className="flex-1 flex flex-col overflow-y-auto">
+          {/* Step counter */}
+          <div className="px-6 pt-8 pb-2 max-w-2xl mx-auto w-full">
+            <div className="flex items-center gap-2 mb-1.5">
+              {STEP_COUNTER.map((s, i) => (
+                <div key={s.step} className="flex-1">
+                  <div className={cn(
+                    'h-1.5 rounded-full transition-all duration-500',
+                    stepIndex > i  ? 'bg-amber-400' :
+                    stepIndex === i ? 'bg-amber-400/40' : 'bg-muted',
+                  )} />
+                </div>
+              ))}
+            </div>
+            {stepIndex >= 0 && (
+              <p className="text-xs text-muted-foreground font-medium">
+                Step {stepIndex + 1} of {STEP_COUNTER.length} —{' '}
+                <span className="text-muted-foreground">{STEP_COUNTER[stepIndex].label}</span>
+              </p>
+            )}
+          </div>
+
+          <div className="flex-1 flex items-start justify-center px-6 py-6">
+            <div className="w-full max-w-2xl">
+              {stepContent}
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="min-h-screen w-full flex items-start justify-center px-4 py-10">
+      <div className="w-full max-w-2xl">
+        {stepContent}
+      </div>
     </div>
   )
 }
