@@ -122,13 +122,15 @@ interface DashboardClientProps {
   stats:            StatsResponse
   analytics:        SchoolAnalytics | null
   learningVelocity?: LearningVelocity | null
+  billingStatus?:   string | null
   user:      { id: string; name?: string; role?: string; organizationName?: string } // ← ADDED organizationName
 }
 
-export function DashboardClient({ stats, analytics, learningVelocity, user }: DashboardClientProps) {
+export function DashboardClient({ stats, analytics, learningVelocity, billingStatus, user }: DashboardClientProps) {
   const greeting  = getGreeting()
   const name      = user?.name?.split(' ')[0] ?? 'Teacher'
   const hasDrafts = stats.upcomingDeadlines.length > 0
+  const [billingDismissed, setBillingDismissed] = useState(false)
 
   return (
     <div className="space-y-6">
@@ -162,6 +164,22 @@ export function DashboardClient({ stats, analytics, learningVelocity, user }: Da
               dueDate={item.dueDate}
             />
           ))}
+        </div>
+      )}
+
+      {/* ── Billing alert ────────────────────────────────────────────── */}
+      {billingStatus === 'past_due' && !billingDismissed && (
+        <div className="flex items-center gap-3 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800 dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-300">
+          <AlertTriangle className="h-4 w-4 shrink-0 text-rose-500" />
+          <span className="flex-1">
+            <strong>Your last payment failed.</strong> Update your billing details to avoid losing access to Pro features.
+          </span>
+          <Button variant="outline" size="sm" className="border-rose-300 text-rose-800 hover:bg-rose-100 dark:border-rose-800 dark:text-rose-300 dark:hover:bg-rose-900/40" asChild>
+            <Link href="/dashboard/settings/billing">Update billing</Link>
+          </Button>
+          <Button variant="ghost" size="sm" className="text-rose-700 hover:bg-rose-100 dark:text-rose-400 dark:hover:bg-rose-900/40" onClick={() => setBillingDismissed(true)}>
+            Dismiss
+          </Button>
         </div>
       )}
 

@@ -5,6 +5,7 @@ import { getSession }              from '@/lib/session'
 import { getStats }                from '@/lib/actions/stats'
 import { getSchoolAnalytics, getLearningVelocity } from '@/lib/actions/analytics'
 import { getOrganizationDetails }  from '@/lib/actions/organizations'
+import { getSubscription }         from '@/lib/actions/subscriptions'
 import { DashboardClient }         from '@/components/dashboard/dashboard-client'
 
 export default async function DashboardPage() {
@@ -21,7 +22,7 @@ export default async function DashboardPage() {
 
   if (user.onboarding_complete === false) redirect('/onboarding')
 
-  const [stats, analytics, orgRes, velocityRes] = await Promise.all([
+  const [stats, analytics, orgRes, velocityRes, subRes] = await Promise.all([
     getStats(),
     getSchoolAnalytics(),
     user.organizationId
@@ -30,6 +31,9 @@ export default async function DashboardPage() {
     user.role === 'Admin'
       ? getLearningVelocity()
       : Promise.resolve({ data: null, error: null }),
+    user.role === 'Admin'
+      ? getSubscription()
+      : Promise.resolve({ data: null, error: null }),
   ])
 
   return (
@@ -37,6 +41,7 @@ export default async function DashboardPage() {
       stats={stats}
       analytics={analytics}
       learningVelocity={velocityRes.data}
+      billingStatus={subRes.data?.status ?? null}
       user={{ ...user, organizationName: orgRes.data?.name ?? '' }}
     />
   )

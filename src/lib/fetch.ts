@@ -87,12 +87,15 @@ export async function fetcher<T>(
     if (!response.ok) {
       const raw = Array.isArray(parsed.message)
         ? parsed.message[0]
-        : parsed.message || parsed.error || 'An unknown API error occurred'
+        : parsed.message || parsed.error
 
-      // Never expose infrastructure details (OpenRouter, DB errors, etc.) for 5xx
-      const message = response.status >= 500
-        ? 'Something went wrong on our end. Please try again.'
-        : raw
+      // The backend's default exception filter already sanitises truly
+      // unhandled crashes to a generic "Internal server error" — it never
+      // leaks stack traces or DB internals here. A 5xx with a real message
+      // means a service deliberately threw it (e.g. a payment-provider
+      // decline), so surface it instead of flattening every 5xx to the
+      // same unhelpful string.
+      const message = raw || 'Something went wrong on our end. Please try again.'
 
       return { data: null, error: { message, status: response.status } }
     }
