@@ -107,7 +107,7 @@ const SHELL_SLIDES = [
     sub: 'Every lesson after this is chosen for you, paced to close the specific gaps we find today.',
   },
   {
-    image: 'https://images.unsplash.com/photo-1523240795612-9a054b0db644?w=800&auto=format&fit=crop',
+    image: 'https://images.unsplash.com/photo-1530026405186-ed1ea0ac7a63?w=800&auto=format&fit=crop',
     icon: GraduationCap,
     title: 'Learn at your own pace.',
     sub: 'Study on your schedule, with a companion that checks in and keeps you on track.',
