@@ -650,9 +650,6 @@ function MessageBubble({ message, activeIds, onGenerateChip, toolStatuses }: {
 
   return (
     <div className="flex gap-3 max-w-[80%]">
-      <div className="w-[30px] h-[30px] rounded-[9px] shrink-0 flex items-center justify-center bg-[#f5f0e4] dark:bg-[#2a2315] text-[#8a6713] dark:text-[#c9a03c]">
-        <Sparkles className="h-[14px] w-[14px]" strokeWidth={1.8} />
-      </div>
       <div className="bg-[#f6f6f5] dark:bg-[#141414] border border-[#e8e8e6] dark:border-[#1f1f1f] text-[#2a2722] dark:text-[#f4ead8] text-[14.5px] leading-[1.62] px-[17px] py-[14px]"
         style={{ borderRadius: '4px 16px 16px 16px' }}>
         {message.isLoading ? (

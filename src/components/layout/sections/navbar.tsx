@@ -25,6 +25,7 @@ const baseRouteList: RouteItem[] = [
   { href: "/program", label: "The Program" },
   { href: "/schools", label: "Explore Schools" },
   { href: "/schools/register", label: "Start for free" },
+  { href: "/student/login", label: "Student Portal" },
   { href: "/login", label: "Login" },
 ];
 
