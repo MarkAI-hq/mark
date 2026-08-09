@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Image from "next/image";
-import { Menu } from "lucide-react";
+import { Menu, GraduationCap } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 
@@ -19,20 +19,51 @@ import { Separator } from "@/components/ui/separator";
 import { ThemeToggle } from "../theme-toggle";
 import { WHATSAPP_GROUP_URL } from "@/config/site-domains";
 
-type RouteItem = { href: string; label: string; cal?: boolean; external?: boolean };
+type RouteItem = {
+  href: string;
+  label: string;
+  cal?: boolean;
+  external?: boolean;
+  // Content links render as plain nav text; cta links render as buttons,
+  // weighted the way Login / Get a demo / Start free trial usually are —
+  // ghost (quietest) < outline < solid (heaviest, one per nav).
+  cta?: "ghost" | "outline" | "solid";
+  icon?: typeof GraduationCap;
+};
+
+// Order matters: ghost Login goes first so the two actual buttons (outline,
+// solid) land next to each other at the end, Clay-style — not sandwiched
+// apart by a plain text link in between.
+// "Partner Portal" on intel.mirror.education points at the main /login (this
+// site pitches *schools*, so there's no separate student account to log
+// into) — swapped below for "Student Portal" -> /student/login on
+// mirror.education, where the audience actually is students.
 const baseRouteList: RouteItem[] = [
-  // { href: "", label: "Demo", cal: true },
   { href: "/program", label: "The Program" },
+  { href: "/founders-academy", label: "Founders Academy" },
   { href: "/schools", label: "Explore Schools" },
-  { href: "/schools/register", label: "Start for free" },
-  { href: "/student/login", label: "Student Portal" },
-  { href: "/login", label: "Login" },
+  { href: "/login", label: "Login", cta: "ghost" },
+  { href: "/login", label: "Partner Portal", cta: "outline", icon: GraduationCap },
+  { href: "/schools/register", label: "Start for free", cta: "solid" },
 ];
 
 const calAttrs = {
   "data-cal-link": "tusii-mirror/30min",
   "data-cal-namespace": "30min",
   "data-cal-config": '{"layout":"month_view","useSlotsViewOnSmallScreen":"true"}',
+};
+
+// Clay's button language: the secondary action is a flat, borderless
+// soft-fill (not an outline) — only the primary gets a strong solid fill.
+const ctaClasses: Record<NonNullable<RouteItem["cta"]>, string> = {
+  // Extra right margin so Login reads as its own thing, separate from the
+  // outline+solid button pair that follows it directly (gap-1 between them).
+  ghost:
+    "mr-2 px-3 py-2 text-sm font-medium text-muted-foreground hover:text-[#926C15] transition-colors",
+  outline:
+    "inline-flex items-center gap-1.5 rounded-xl bg-muted px-3.5 py-2 text-sm font-semibold text-foreground transition-all duration-200 hover:bg-[#926C15]/10 hover:text-[#926C15]",
+  solid:
+    "inline-flex items-center gap-1.5 rounded-xl bg-[#926C15] px-3.5 py-2 text-sm font-bold text-white shadow-sm shadow-[#926C15]/30 transition-all duration-200 hover:bg-[#7A5A10] hover:-translate-y-0.5",
 };
 
 // On the flagship school's own site: "Start for free" pitches other schools to
@@ -49,10 +80,21 @@ export const Navbar = ({ isSchoolSite = false }: { isSchoolSite?: boolean }) => 
     ? [
         ...baseRouteList
           .filter((route) => !["/schools/register", "/program", "/schools"].includes(route.href))
-          .map((route) => (route.href === "/login" ? { href: "/schools", label: "Apply" } : route)),
+          .map((route) => {
+            // Both the ghost Login link and the outline Partner Portal
+            // button point at "/login" on the base list — distinguish by
+            // `icon` (only Partner Portal has one), not href, now that
+            // they share a destination on intel.mirror.education.
+            if (route.icon) return { ...route, href: "/student/login", label: "Student Portal" };
+            if (route.href === "/login") return { href: "/schools", label: "Apply", cta: "solid" as const };
+            return route;
+          }),
         { href: WHATSAPP_GROUP_URL, label: "Contact Us", external: true },
       ]
     : baseRouteList;
+
+  const contentRoutes = routeList.filter((r) => !r.cta);
+  const ctaRoutes = routeList.filter((r) => r.cta);
 
   const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -67,11 +109,19 @@ export const Navbar = ({ isSchoolSite = false }: { isSchoolSite?: boolean }) => 
     <header
       className={cn(
         "sticky top-5 mx-auto z-40 flex items-center justify-between px-3 py-2 transition-all duration-300",
-        "w-[92%] md:w-[88%] lg:w-[76%] lg:max-w-screen-xl",
+        // Same box every section below uses (max-w-6xl, 2rem of total side
+        // margin) instead of a viewport-percentage width — otherwise the
+        // pill's edges drift out of alignment with the content underneath
+        // as the viewport resizes, since percentage and max-width+margin
+        // don't scale the same way.
+        "w-[calc(100%-2rem)] max-w-6xl",
         "rounded-2xl",
+        // Clay's nav is a crisp, fully opaque bar — not a translucent/blurred
+        // glass pill — so it reads the same whether it's sitting over a
+        // photo hero or a plain background further down the page.
         scrolled
-          ? "border border-[#926C15]/20 bg-background/90 shadow-md shadow-black/5 backdrop-blur-xl"
-          : "border border-border bg-card/80 backdrop-blur-sm"
+          ? "border border-[#926C15]/20 bg-card shadow-md shadow-black/5"
+          : "border border-border bg-card shadow-sm"
       )}
     >
       <Link href="/" className="flex items-center">
@@ -113,7 +163,7 @@ export const Navbar = ({ isSchoolSite = false }: { isSchoolSite?: boolean }) => 
               </SheetHeader>
 
               <div className="flex flex-col gap-1 px-1">
-                {routeList.map(({ href, label, cal, external }) =>
+                {contentRoutes.map(({ href, label, cal, external }) =>
                   cal ? (
                     <button
                       key={label}
@@ -140,6 +190,22 @@ export const Navbar = ({ isSchoolSite = false }: { isSchoolSite?: boolean }) => 
                   )
                 )}
               </div>
+
+              <Separator className="my-4" />
+
+              <div className="flex flex-col gap-2 px-1">
+                {ctaRoutes.map(({ href, label, cta, icon: Icon }) => (
+                  <Link
+                    key={href}
+                    href={href}
+                    onClick={() => setIsOpen(false)}
+                    className={cn("justify-center", ctaClasses[cta!])}
+                  >
+                    {Icon && <Icon className="h-4 w-4" />}
+                    {label}
+                  </Link>
+                ))}
+              </div>
             </div>
 
             <SheetFooter className="flex-col sm:flex-col justify-start items-start">
@@ -152,7 +218,7 @@ export const Navbar = ({ isSchoolSite = false }: { isSchoolSite?: boolean }) => 
 
       {/* Desktop */}
       <nav className="hidden md:flex items-center gap-0.5">
-        {routeList.map(({ href, label, cal, external }) =>
+        {contentRoutes.map(({ href, label, cal, external }) =>
           cal ? (
             <button
               key={label}
@@ -183,7 +249,13 @@ export const Navbar = ({ isSchoolSite = false }: { isSchoolSite?: boolean }) => 
         )}
       </nav>
 
-      <div className="hidden md:flex">
+      <div className="hidden md:flex items-center gap-1.5">
+        {ctaRoutes.map(({ href, label, cta, icon: Icon }) => (
+          <Link key={href} href={href} className={cn("whitespace-nowrap", ctaClasses[cta!])}>
+            {Icon && <Icon className="h-4 w-4" />}
+            {label}
+          </Link>
+        ))}
         <ThemeToggle />
       </div>
     </header>

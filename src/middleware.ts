@@ -57,6 +57,7 @@ export async function middleware(request: NextRequest) {
     '/certificates',
     '/schools',
     '/program',
+    '/founders-academy',
     '/record',
     '/pay',
     '/learning-compass',
