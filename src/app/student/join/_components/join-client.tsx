@@ -4,7 +4,6 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import Image from 'next/image'
 import {
   Sparkles,
   GraduationCap,
@@ -22,10 +21,14 @@ import {
   FileText,
   Check,
   Wallet,
-  Brain,
-  Target,
+  Quote,
+  ChevronDown,
+  Mail,
+  ArrowLeft,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 
 import { toast } from '@/hooks/use-toast'
 import { Button } from '@/components/ui/button'
@@ -93,26 +96,49 @@ const STEP_COUNTER: { step: Step; label: string }[] = [
 ]
 const TWO_PANEL_STEPS = new Set(STEP_COUNTER.map(s => s.step))
 
+// Quote cards instead of stock photography — brand-colored (gold/amber) and
+// text-only, so there's nothing to hotlink, nothing to optimize, and nothing
+// that can 404 or time out. Each quote is paired to the slide's message.
 const SHELL_SLIDES = [
   {
-    image: 'https://images.unsplash.com/photo-1523050854058-8df90110c9f1?w=800&auto=format&fit=crop',
-    icon: Brain,
+    quote: 'Knowing yourself is the beginning of all wisdom.',
+    author: 'Aristotle',
     title: 'We map what you already know.',
     sub: 'A short diagnostic finds your real starting point — no wasted time on things you\'ve already mastered.',
   },
   {
-    image: 'https://images.unsplash.com/photo-1509228468518-180dd4864904?w=800&auto=format&fit=crop',
-    icon: Target,
+    quote: 'Everybody is a genius. But if you judge a fish by its ability to climb a tree, it will live its whole life believing that it is stupid.',
+    author: 'Attributed to Albert Einstein',
     title: 'A plan built around your gaps.',
     sub: 'Every lesson after this is chosen for you, paced to close the specific gaps we find today.',
   },
   {
-    image: 'https://images.unsplash.com/photo-1530026405186-ed1ea0ac7a63?w=800&auto=format&fit=crop',
-    icon: GraduationCap,
+    quote: 'It does not matter how slowly you go, as long as you do not stop.',
+    author: 'Confucius',
     title: 'Learn at your own pace.',
     sub: 'Study on your schedule, with a companion that checks in and keeps you on track.',
   },
 ]
+
+// Frosted-glass treatment for the Card in every two-panel step — sits on the
+// shared dark background instead of the theme's opaque white/black bg-card,
+// so the form reads as floating on one continuous surface, not a box on top.
+const GLASS_CARD = 'bg-white/[0.04] backdrop-blur-2xl border-white/10 shadow-2xl'
+
+// Shared error display for every step's inline validation/API error — a
+// consistent bordered Alert instead of a bare line of red text repeated
+// verbatim across every step.
+function LocalErrorAlert({ message }: { message: string }) {
+  return (
+    <Alert
+      variant="destructive"
+      className="border-rose-500/30 bg-rose-500/10 py-2.5 text-rose-600 [&>svg]:top-3 [&>svg]:text-rose-600 dark:text-rose-400 dark:[&>svg]:text-rose-400"
+    >
+      <AlertCircle className="h-4 w-4" />
+      <AlertDescription className="font-medium">{message}</AlertDescription>
+    </Alert>
+  )
+}
 
 const LEVELS = ['S1', 'S2', 'S3', 'S4', 'S5', 'S6']
 const DAYS = [
@@ -224,6 +250,10 @@ export function JoinClient({ schoolCode, schoolName }: { schoolCode: string; sch
   const [email, setEmail] = useState('')
   const [phone, setPhone] = useState('')
   const [enrolling, setEnrolling] = useState(false)
+  const [showRequirements, setShowRequirements] = useState(false)
+  // Splits the details step into two short screens (name+level, then
+  // email+phone) instead of five fields on one screen at once.
+  const [detailsPhase, setDetailsPhase] = useState<'basics' | 'contact'>('basics')
 
   // ── Step 2: verify (email OTP, or WhatsApp click-to-chat) ────────────────────
   const [pending, setPending] = useState<PendingSignup | null>(null)
@@ -364,6 +394,7 @@ export function JoinClient({ schoolCode, schoolName }: { schoolCode: string; sch
     }
     setResumedFromStorage(false)
     setStep('details')
+    setDetailsPhase('basics')
     setPending(null)
     setCreds(null)
     setFirstName('')
@@ -1065,8 +1096,8 @@ export function JoinClient({ schoolCode, schoolName }: { schoolCode: string; sch
         </div>
       )}
 
-      {step === 'details' && (
-        <Card>
+      {step === 'details' && detailsPhase === 'basics' && (
+        <Card className={GLASS_CARD}>
           <CardContent className="p-6 space-y-5">
             <div className="space-y-1">
               <h1 className="text-xl font-bold">Do you have what it takes to study here?</h1>
@@ -1076,28 +1107,10 @@ export function JoinClient({ schoolCode, schoolName }: { schoolCode: string; sch
               </p>
             </div>
 
-            {/* ── Notice: What you will need ───────────────────────────────────── */}
-            <div className="rounded-xl border border-amber-200 bg-amber-50/50 p-4 text-xs text-amber-900 space-y-2 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-100">
-              <p className="font-semibold flex items-center gap-1.5 text-amber-800 dark:text-amber-300">
-                <AlertCircle className="h-4 w-4 shrink-0" /> What you will need before you begin:
-              </p>
-              <ul className="list-disc pl-5 space-y-1 text-muted-foreground leading-relaxed">
-                <li>
-                  <span className="font-medium text-foreground">Active Email Address:</span> Used to verify your account.
-                </li>
-                <li>
-                  <span className="font-medium text-foreground">Report Card or Results (Optional):</span> A photo or document to upload at the end, helping teachers approve your account faster.
-                </li>
-                <li>
-                  <span className="font-medium text-foreground">15 Minutes of Uninterrupted Time:</span> To complete a quick diagnostic check to map your learning strengths.
-                </li>
-              </ul>
-            </div>
-
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>First name</Label>
-                <Input value={firstName} onChange={(e) => setFirstName(e.target.value)} />
+                <Input value={firstName} onChange={(e) => setFirstName(e.target.value)} autoFocus />
               </div>
               <div className="space-y-1.5">
                 <Label>Last name</Label>
@@ -1121,44 +1134,20 @@ export function JoinClient({ schoolCode, schoolName }: { schoolCode: string; sch
               </Select>
             </div>
 
-            <div className="space-y-1.5">
-              <Label>Email</Label>
-              <Input
-                type="email"
-                placeholder="you@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
-            </div>
+            {localError && <LocalErrorAlert message={localError} />}
 
-            <div className="space-y-1.5">
-              <Label>WhatsApp number <span className="text-muted-foreground">(optional)</span></Label>
-              <Input
-                type="tel"
-                placeholder="+256…"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-              />
-            </div>
-            <p className="text-xs text-muted-foreground -mt-2">
-              We&apos;ll verify your account contact. Mirror Intelligence Online High School is live in Uganda and expanding soon.
-            </p>
-
-            {localError && (
-              <p className="text-xs text-rose-500 font-medium flex items-center gap-1">
-                <AlertCircle className="h-3.5 w-3.5 shrink-0" />
-                {localError}
-              </p>
-            )}
-
-            <Button onClick={handleEnroll} disabled={enrolling} className="w-full font-bold">
-              {enrolling ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" /> Setting up…
-                </>
-              ) : (
-                'Create my account'
-              )}
+            <Button
+              onClick={() => {
+                if (!firstName.trim() || !lastName.trim()) {
+                  setLocalError('Please enter your name.')
+                  return
+                }
+                setLocalError(null)
+                setDetailsPhase('contact')
+              }}
+              className="w-full font-bold"
+            >
+              Continue
             </Button>
             <p className="text-center text-xs text-muted-foreground">
               Joining <span className="font-medium">{schoolName || schoolCode}</span>. Already have
@@ -1171,8 +1160,105 @@ export function JoinClient({ schoolCode, schoolName }: { schoolCode: string; sch
         </Card>
       )}
 
+      {step === 'details' && detailsPhase === 'contact' && (
+        <Card className={GLASS_CARD}>
+          <CardContent className="p-6 space-y-5">
+            <div className="space-y-1">
+              <h1 className="text-xl font-bold">How do we reach you, {firstName}?</h1>
+              <p className="text-sm text-muted-foreground">
+                We&apos;ll send a verification code here before your account is created.
+              </p>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>Email</Label>
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  type="email"
+                  placeholder="you@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  autoFocus
+                  className="pl-9"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>WhatsApp number <span className="text-muted-foreground">(optional)</span></Label>
+              <div className="relative">
+                <MessageCircle className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  type="tel"
+                  placeholder="+256…"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground -mt-2">
+              We&apos;ll verify your account contact. Mirror Intelligence Online High School is live in Uganda and expanding soon.
+            </p>
+
+            {/* ── Notice: What you will need — collapsed by default. ─────────── */}
+            <Collapsible
+              open={showRequirements}
+              onOpenChange={setShowRequirements}
+              className="rounded-xl border border-amber-200 bg-amber-50/50 text-xs text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-100"
+            >
+              <CollapsibleTrigger className="w-full flex items-center justify-between gap-1.5 p-3 font-semibold text-amber-800 dark:text-amber-300">
+                <span className="flex items-center gap-1.5">
+                  <AlertCircle className="h-4 w-4 shrink-0" /> What you&apos;ll need before you begin
+                </span>
+                <ChevronDown
+                  className={cn('h-3.5 w-3.5 shrink-0 transition-transform', showRequirements && 'rotate-180')}
+                />
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <ul className="list-disc pl-5 pb-3 pr-3 space-y-1 text-muted-foreground leading-relaxed">
+                  <li>
+                    <span className="font-medium text-foreground">Active email address:</span> used to verify your account.
+                  </li>
+                  <li>
+                    <span className="font-medium text-foreground">Report card or results (optional):</span> a photo or document to upload at the end, helping teachers approve your account faster.
+                  </li>
+                  <li>
+                    <span className="font-medium text-foreground">15 minutes of uninterrupted time:</span> to complete a quick diagnostic check that maps your learning strengths.
+                  </li>
+                </ul>
+              </CollapsibleContent>
+            </Collapsible>
+
+            {localError && <LocalErrorAlert message={localError} />}
+
+            <Button onClick={handleEnroll} disabled={enrolling} className="w-full font-bold">
+              {enrolling ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" /> Setting up…
+                </>
+              ) : (
+                'Create my account'
+              )}
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => {
+                setLocalError(null)
+                setDetailsPhase('basics')
+              }}
+              className="w-full text-xs text-muted-foreground font-normal h-8"
+            >
+              <ArrowLeft className="h-3.5 w-3.5 mr-1.5" /> Go back
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
       {step === 'verify' && pending && pending.channel === 'whatsapp' && (
-        <Card>
+        <Card className={GLASS_CARD}>
           <CardContent className="p-6 space-y-5 text-center">
             <div className="space-y-1">
               <h1 className="text-xl font-bold">Verify on WhatsApp</h1>
@@ -1205,12 +1291,7 @@ export function JoinClient({ schoolCode, schoolName }: { schoolCode: string; sch
               </div>
             )}
 
-            {localError && (
-              <p className="text-xs text-rose-500 font-medium flex items-center justify-center gap-1 mt-2">
-                <AlertCircle className="h-3.5 w-3.5 shrink-0" />
-                {localError}
-              </p>
-            )}
+            {localError && <LocalErrorAlert message={localError} />}
 
             <button
               type="button"
@@ -1227,7 +1308,7 @@ export function JoinClient({ schoolCode, schoolName }: { schoolCode: string; sch
       )}
 
       {step === 'verify' && pending && pending.channel === 'email' && (
-        <Card>
+        <Card className={GLASS_CARD}>
           <CardContent className="p-6 space-y-5">
             <div className="space-y-1">
               <h1 className="text-xl font-bold">Confirm it&apos;s you</h1>
@@ -1250,12 +1331,7 @@ export function JoinClient({ schoolCode, schoolName }: { schoolCode: string; sch
               />
             </div>
 
-            {localError && (
-              <p className="text-xs text-rose-500 font-medium flex items-center gap-1">
-                <AlertCircle className="h-3.5 w-3.5 shrink-0" />
-                {localError}
-              </p>
-            )}
+            {localError && <LocalErrorAlert message={localError} />}
 
             <Button
               onClick={handleVerify}
@@ -1285,7 +1361,7 @@ export function JoinClient({ schoolCode, schoolName }: { schoolCode: string; sch
       )}
 
       {step === 'pledge' && (
-        <Card>
+        <Card className={GLASS_CARD}>
           <CardContent className="p-6 space-y-5">
             <div className="space-y-1">
               <h1 className="text-xl font-bold">The Mirror Campus Code</h1>
@@ -1330,12 +1406,7 @@ export function JoinClient({ schoolCode, schoolName }: { schoolCode: string; sch
               </>
             )}
 
-            {localError && (
-              <p className="text-xs text-rose-500 font-medium flex items-center gap-1">
-                <AlertCircle className="h-3.5 w-3.5 shrink-0" />
-                {localError}
-              </p>
-            )}
+            {localError && <LocalErrorAlert message={localError} />}
           </CardContent>
         </Card>
       )}
@@ -1434,18 +1505,13 @@ export function JoinClient({ schoolCode, schoolName }: { schoolCode: string; sch
               </>
             )}
 
-            {localError && (
-              <p className="text-xs text-rose-500 font-medium flex items-center justify-center gap-1">
-                <AlertCircle className="h-3.5 w-3.5 shrink-0" />
-                {localError}
-              </p>
-            )}
+            {localError && <LocalErrorAlert message={localError} />}
           </CardContent>
         </Card>
       )}
 
       {step === 'class' && (
-        <Card>
+        <Card className={GLASS_CARD}>
           <CardContent className="p-6 space-y-5">
             <div className="space-y-1">
               <h1 className="text-xl font-bold">Choose your class</h1>
@@ -1460,7 +1526,7 @@ export function JoinClient({ schoolCode, schoolName }: { schoolCode: string; sch
                 <Loader2 className="h-4 w-4 animate-spin" /> Loading classes…
               </div>
             ) : classes.length === 0 ? (
-              <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+              <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-100">
                 No classes are open for self-enrollment here yet. You can continue —
                 an admin will place you in the right class on approval.
               </div>
@@ -1477,7 +1543,7 @@ export function JoinClient({ schoolCode, schoolName }: { schoolCode: string; sch
                     className={`text-left rounded-xl border p-4 transition ${
                       selectedClassId === c.class_id
                         ? 'border-gold bg-gold/10'
-                        : 'border-slate-200 hover:bg-surface-raised'
+                        : 'border-white/10 hover:bg-white/5'
                     }`}
                   >
                     <div className="flex items-center gap-2">
@@ -1494,12 +1560,7 @@ export function JoinClient({ schoolCode, schoolName }: { schoolCode: string; sch
               </div>
             )}
 
-            {localError && (
-              <p className="text-xs text-rose-500 font-medium flex items-center gap-1">
-                <AlertCircle className="h-3.5 w-3.5 shrink-0" />
-                {localError}
-              </p>
-            )}
+            {localError && <LocalErrorAlert message={localError} />}
 
             <Button
               onClick={handleChooseClass}
@@ -1513,7 +1574,7 @@ export function JoinClient({ schoolCode, schoolName }: { schoolCode: string; sch
       )}
 
       {step === 'subjects' && (
-        <Card>
+        <Card className={GLASS_CARD}>
           <CardContent className="p-6 space-y-5">
             <div className="space-y-1">
               <h1 className="text-xl font-bold">Your subjects</h1>
@@ -1540,7 +1601,7 @@ export function JoinClient({ schoolCode, schoolName }: { schoolCode: string; sch
                       {subjects.compulsory.map((s) => (
                         <span
                           key={s.key}
-                          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-surface-raised px-3 py-1.5 text-sm"
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-sm"
                         >
                           <Lock className="h-3 w-3 text-muted-foreground" />
                           {s.label}
@@ -1573,7 +1634,7 @@ export function JoinClient({ schoolCode, schoolName }: { schoolCode: string; sch
                               className={`flex items-center justify-between rounded-lg border px-3 py-2 text-sm transition ${
                                 selected
                                   ? 'border-gold bg-gold/10 font-semibold'
-                                  : 'border-slate-200 hover:bg-surface-raised'
+                                  : 'border-white/10 hover:bg-white/5'
                               }`}
                             >
                               <span className="flex items-center gap-2">
@@ -1599,7 +1660,7 @@ export function JoinClient({ schoolCode, schoolName }: { schoolCode: string; sch
                         {subjects.comingSoon.map((s) => (
                           <span
                             key={s.key}
-                            className="inline-flex items-center gap-1.5 rounded-lg border border-dashed border-slate-200 px-3 py-1.5 text-sm text-muted-foreground"
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-dashed border-white/10 px-3 py-1.5 text-sm text-muted-foreground"
                           >
                             {s.label}
                           </span>
@@ -1611,12 +1672,7 @@ export function JoinClient({ schoolCode, schoolName }: { schoolCode: string; sch
               )
             )}
 
-            {localError && (
-              <p className="text-xs text-rose-500 font-medium flex items-center gap-1">
-                <AlertCircle className="h-3.5 w-3.5 shrink-0" />
-                {localError}
-              </p>
-            )}
+            {localError && <LocalErrorAlert message={localError} />}
 
             <Button
               onClick={handleChooseSubjects}
@@ -1869,12 +1925,7 @@ export function JoinClient({ schoolCode, schoolName }: { schoolCode: string; sch
               </div>
             )}
 
-            {localError && (
-              <p className="text-xs text-rose-500 font-medium flex items-center gap-1">
-                <AlertCircle className="h-3.5 w-3.5 shrink-0" />
-                {localError}
-              </p>
-            )}
+            {localError && <LocalErrorAlert message={localError} />}
 
             <Button
               onClick={handleChooseTimetable}
@@ -1942,12 +1993,7 @@ export function JoinClient({ schoolCode, schoolName }: { schoolCode: string; sch
               </div>
             ))}
 
-            {localError && (
-              <p className="text-xs text-rose-500 font-medium flex items-center gap-1">
-                <AlertCircle className="h-3.5 w-3.5 shrink-0" />
-                {localError}
-              </p>
-            )}
+            {localError && <LocalErrorAlert message={localError} />}
 
             <Button
               onClick={handleSubmitDiagnostic}
@@ -2174,36 +2220,41 @@ export function JoinClient({ schoolCode, schoolName }: { schoolCode: string; sch
     const slide = SHELL_SLIDES[slideIndex]
 
     return (
-      <div className="min-h-screen w-full flex">
-        {/* Left panel — dark background, rotating image/copy */}
-        <div className="hidden lg:flex lg:w-[440px] xl:w-[480px] flex-col gap-8 bg-slate-900 p-14 text-white shrink-0 relative overflow-hidden">
-          <div className="flex items-center gap-2.5 relative z-10">
+      // `dark` is scoped to this subtree on purpose: the onboarding shell is
+      // always a dark experience regardless of the site's light/dark theme
+      // setting, so every token below (bg-background, text-foreground, the
+      // Card's bg-card/border) resolves to the dark palette automatically —
+      // one continuous background across both panels instead of two
+      // different hardcoded colors meeting at a seam.
+      <div className="dark min-h-screen w-full flex relative overflow-hidden bg-background text-foreground">
+        <div className="pointer-events-none absolute -top-40 -left-40 h-[560px] w-[560px] rounded-full bg-amber-400/[0.07] blur-3xl" />
+        <div className="pointer-events-none absolute bottom-0 right-0 h-[420px] w-[420px] rounded-full bg-amber-400/[0.05] blur-3xl" />
+
+        {/* Left panel — brand mark, headline, demoted pull-quote */}
+        <div className="hidden lg:flex lg:w-[440px] xl:w-[480px] flex-col gap-8 p-14 shrink-0 relative z-10">
+          <div className="flex items-center gap-2.5">
             <GraduationCap className="h-6 w-6 text-amber-400" />
             <span className="font-semibold tracking-tight">Mirror Intelligence</span>
           </div>
 
-          <div className="flex-1 flex flex-col justify-center relative z-10">
-            <div key={slideIndex} className="space-y-5 animate-fade-in">
-              <div className="relative w-full aspect-[4/3] rounded-2xl overflow-hidden bg-white/5">
-                <Image
-                  src={slide.image}
-                  alt=""
-                  fill
-                  sizes="480px"
-                  className="object-cover"
-                />
-              </div>
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/10">
-                <slide.icon className="h-4 w-4 text-amber-400" />
-              </div>
+          <div className="flex-1 flex flex-col justify-center">
+            <div key={slideIndex} className="space-y-8 animate-fade-in">
               <div className="space-y-2">
                 <h2 className="text-2xl font-bold leading-tight">{slide.title}</h2>
                 <p className="text-sm text-muted-foreground leading-relaxed max-w-sm">{slide.sub}</p>
               </div>
+
+              <div className="border-l-2 border-amber-400/30 pl-4">
+                <Quote className="h-4 w-4 text-amber-400/60 mb-1.5" />
+                <p className="text-sm italic leading-relaxed text-white/70 max-w-sm">
+                  &ldquo;{slide.quote}&rdquo;
+                </p>
+                <p className="mt-1.5 text-xs font-medium text-amber-400/70">— {slide.author}</p>
+              </div>
             </div>
           </div>
 
-          <div className="flex items-center gap-1.5 relative z-10">
+          <div className="flex items-center gap-1.5">
             {SHELL_SLIDES.map((_, i) => (
               <div
                 key={i}
@@ -2215,13 +2266,13 @@ export function JoinClient({ schoolCode, schoolName }: { schoolCode: string; sch
             ))}
           </div>
 
-          <p className="text-xs text-muted-foreground relative z-10">
+          <p className="text-xs text-muted-foreground">
             © {new Date().getFullYear()} Mark. All rights reserved.
           </p>
         </div>
 
-        {/* Right panel */}
-        <div className="flex-1 flex flex-col overflow-y-auto">
+        {/* Right panel — same shared background shows through */}
+        <div className="flex-1 flex flex-col overflow-y-auto relative z-10">
           {/* Step counter */}
           <div className="px-6 pt-8 pb-2 max-w-2xl mx-auto w-full">
             <div className="flex items-center gap-2 mb-1.5">
