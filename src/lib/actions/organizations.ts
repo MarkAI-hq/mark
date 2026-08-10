@@ -211,6 +211,27 @@ export async function goPrivate(): Promise<ServerActionResponse<{ is_public: boo
   })
 }
 
+export interface PricingSettings {
+  currency:              string
+  is_public:             boolean
+  admission_fee_ugx:     number | null
+  term_billing_enabled:  boolean
+  term_fee_ugx:          number | null
+  term_fee_usd:          number | null
+}
+
+export async function updatePricingSettings(data: {
+  admission_fee_ugx?:    number
+  term_billing_enabled?: boolean
+  term_fee_ugx?:         number
+  term_fee_usd?:         number
+}): Promise<ServerActionResponse<PricingSettings>> {
+  return fetcher<PricingSettings>('/organizations/my/settings', {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  })
+}
+
 export async function updateOrganization(
   organizationId: string,
   data: Partial<Omit<Organization, 'organization_id'>>,

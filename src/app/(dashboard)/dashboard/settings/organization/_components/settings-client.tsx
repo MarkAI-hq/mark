@@ -5,13 +5,14 @@ import { useState, useTransition } from 'react';
 import { Globe, CheckCircle2, ExternalLink } from 'lucide-react'
 import { toast } from '@/hooks/use-toast';
 import { Organization } from '@/lib/types';
-import { updateOrganization, updateOrgSso } from '@/lib/actions/organizations';
+import { updateOrganization, updateOrgSso, updatePricingSettings } from '@/lib/actions/organizations';
 import {
   OrganizationProfileForm,
   OrganizationProfileData,
 } from '@/components/organization/organization-profile-form';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -29,9 +30,51 @@ export function SettingsClient({ organization: initialOrganization }: SettingsCl
   const [isSsoPending, startSsoTransition] = useTransition();
   const [wizardOpen,   setWizardOpen]    = useState(false)
   const [privateOpen,  setPrivateOpen]   = useState(false)
+  const [isPricingPending, startPricingTransition] = useTransition();
 
   const isPublic     = organization.is_public
   const hasSigned    = !!organization.partner_config?.marketplace_agreement
+
+  // Falls back to the platform-wide default (100,000 UGX admission /
+  // 750,000 UGX·$218 term fee) when this school hasn't set its own —
+  // matches ADMISSION_FEE_AMOUNT_UGX / DEFAULT_TERM_FEE_UGX server-side,
+  // shown here so "blank" reads as "using the platform default" not "$0".
+  const [admissionFeeUgx, setAdmissionFeeUgx] = useState(
+    organization.partner_config?.admission_fee_ugx?.toString() ?? '',
+  )
+  const [termFeeUgx, setTermFeeUgx] = useState(
+    organization.partner_config?.term_fee_ugx?.toString() ?? '',
+  )
+  const [termFeeUsd, setTermFeeUsd] = useState(
+    organization.partner_config?.term_fee_usd?.toString() ?? '',
+  )
+
+  const handleSavePricing = () => {
+    startPricingTransition(async () => {
+      const payload: Parameters<typeof updatePricingSettings>[0] = {}
+      if (admissionFeeUgx.trim()) payload.admission_fee_ugx = Number(admissionFeeUgx)
+      if (termFeeUgx.trim())      payload.term_fee_ugx      = Number(termFeeUgx)
+      if (termFeeUsd.trim())      payload.term_fee_usd      = Number(termFeeUsd)
+
+      const { data, error } = await updatePricingSettings(payload)
+      if (error) {
+        toast({ title: 'Failed to update pricing', description: error.message, variant: 'destructive' })
+        return
+      }
+      toast({ title: 'Pricing updated', description: 'New charges apply from the next admission/term payment onward.' })
+      if (data) {
+        setOrganization((prev) => ({
+          ...prev,
+          partner_config: {
+            ...prev.partner_config,
+            admission_fee_ugx: data.admission_fee_ugx ?? undefined,
+            term_fee_ugx: data.term_fee_ugx ?? undefined,
+            term_fee_usd: data.term_fee_usd ?? undefined,
+          },
+        }))
+      }
+    })
+  }
 
   const handleProfileUpdate = (formData: OrganizationProfileData) => {
     startTransition(async () => {
@@ -164,6 +207,60 @@ export function SettingsClient({ organization: initialOrganization }: SettingsCl
             </CardContent>
           </Card>
         )}
+      </div>
+
+      <Separator />
+
+      {/* ── Pricing ──────────────────────────────────────────────────── */}
+      <div className="space-y-4">
+        <div>
+          <h3 className="text-base font-semibold">Pricing</h3>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            Override the platform default admission fee and term fee for your school. Leave a
+            field blank to use the platform default. Changes apply to the next payment — plans
+            already in progress keep the amount they were created with.
+          </p>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-1.5">
+            <Label htmlFor="admission-fee-ugx">Admission fee (UGX)</Label>
+            <Input
+              id="admission-fee-ugx"
+              type="number"
+              min={0}
+              placeholder="Platform default"
+              value={admissionFeeUgx}
+              onChange={(e) => setAdmissionFeeUgx(e.target.value)}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="term-fee-ugx">Term fee (UGX)</Label>
+            <Input
+              id="term-fee-ugx"
+              type="number"
+              min={0}
+              placeholder="Platform default"
+              value={termFeeUgx}
+              onChange={(e) => setTermFeeUgx(e.target.value)}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="term-fee-usd">Term fee, USD (display only)</Label>
+            <Input
+              id="term-fee-usd"
+              type="number"
+              min={0}
+              placeholder="Platform default"
+              value={termFeeUsd}
+              onChange={(e) => setTermFeeUsd(e.target.value)}
+            />
+          </div>
+        </div>
+
+        <Button size="sm" onClick={handleSavePricing} disabled={isPricingPending}>
+          {isPricingPending ? 'Saving…' : 'Save pricing'}
+        </Button>
       </div>
 
       <Separator />

@@ -65,6 +65,10 @@ export interface Organization {
       signed_at: string;
       version: string;
     };
+    admission_fee_ugx?: number;
+    term_billing_enabled?: boolean;
+    term_fee_ugx?: number;
+    term_fee_usd?: number;
     [key: string]: unknown;
   } | null;
   welcome_pack_config?: {
