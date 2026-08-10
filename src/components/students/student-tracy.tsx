@@ -39,6 +39,11 @@ import {
 } from '@/lib/actions/student-dashboard'
 import type { SubjectProgress } from '@/lib/actions/student-dashboard'
 import { getStudentPaceSettings, setMyAssistantName } from '@/lib/actions/study-plans'
+import {
+  listAssistantArtifacts,
+  createAssistantArtifact,
+  updateAssistantArtifact,
+} from '@/lib/actions/assistant'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -736,10 +741,32 @@ export function StudentTracyPage({ user, weakSubjects, currentTopics, initialNot
   const [savingName,    setSavingName]    = useState(false)
 
   useEffect(() => {
+    // localStorage first for an instant paint, then the server list — the
+    // authoritative source now that artifacts persist server-side —
+    // reconciles it. Keeps this working offline/on API hiccups (stale local
+    // list) while fixing the real bug (list was localStorage-only, so a new
+    // device or a cleared cache showed nothing despite the content still
+    // existing server-side via plan_id/audio_url).
     try {
       const raw = localStorage.getItem(STORE_KEY)
       if (raw) setArtifacts(JSON.parse(raw) as Artifact[])
     } catch {}
+
+    listAssistantArtifacts().then(({ data }) => {
+      if (!data) return
+      const mapped: Artifact[] = data.map((a) => ({
+        id: a.id,
+        type: a.type,
+        title: a.title,
+        status: a.status,
+        plan_id: a.plan_id ?? undefined,
+        audio_url: a.audio_url ?? undefined,
+        sourceNoteIds: a.source_note_ids,
+        sourceLabels: a.source_labels,
+        createdAt: a.createdAt,
+      }))
+      persistArtifacts(mapped)
+    }).catch(() => {})
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -869,39 +896,73 @@ export function StudentTracyPage({ user, weakSubjects, currentTopics, initialNot
     if (activeIds.size === 0) { toast.error('Select at least one source first.'); return }
     if (!activeSubject || !activeTopic) { toast.error('Activate a source to set subject and topic.'); return }
 
-    const tempId    = crypto.randomUUID()
-    const sourceIds = Array.from(activeIds)
+    const tempId       = crypto.randomUUID()
+    const sourceIds    = Array.from(activeIds)
+    const title        = autoTitle(type, activeTopic)
+    const sourceLabels = activeNotes.map(n => n.topic)
 
     const newArt: Artifact = {
       id: tempId, type, status: 'generating',
-      title: autoTitle(type, activeTopic),
+      title,
       sourceNoteIds: sourceIds,
-      sourceLabels:  activeNotes.map(n => n.topic),
+      sourceLabels,
       createdAt: new Date().toISOString(),
     }
 
     persistArtifacts([newArt, ...artifacts])
     setGeneratingType(type)
 
+    // Create the server-side index record in parallel with generation —
+    // swap the local temp id for the real one once it comes back, so the
+    // status/plan_id/audio_url updates below land on the right row both
+    // locally and server-side, regardless of which call finishes first.
+    let realId: string | null = null
+    const createPromise = createAssistantArtifact({
+      type, title, status: 'generating', source_note_ids: sourceIds, source_labels: sourceLabels,
+    }).then(({ data }) => {
+      if (!data) return
+      realId = data.id
+      setArtifacts(prev => {
+        const next = prev.map(a => a.id === tempId ? { ...a, id: data.id } : a)
+        try { localStorage.setItem(STORE_KEY, JSON.stringify(next)) } catch {}
+        return next
+      })
+    }).catch(() => {})
+
+    const currentId = () => realId ?? tempId
+
     try {
       if (type === 'audio_overview') {
         const res = await generateAudioOverview(activeSubject, activeTopic, sourceIds)
-        if (res.error) { updateArtifact(tempId, { status: 'failed' }); toast.error(res.error.message); return }
+        await createPromise
+        if (res.error) {
+          updateArtifact(currentId(), { status: 'failed' })
+          if (realId) void updateAssistantArtifact(realId, { status: 'failed' })
+          toast.error(res.error.message); return
+        }
         const url = res.data?.audio_url ?? null
-        updateArtifact(tempId, { status: 'ready', audio_url: url ?? undefined })
-        if (url) loadAndPlayAudio({ ...newArt, status: 'ready', audio_url: url })
+        updateArtifact(currentId(), { status: 'ready', audio_url: url ?? undefined })
+        if (realId) void updateAssistantArtifact(realId, { status: 'ready', audio_url: url })
+        if (url) loadAndPlayAudio({ ...newArt, id: currentId(), status: 'ready', audio_url: url })
         else toast.info('Audio generation is not currently configured.')
       } else {
         const res = await generateStudyPlanFromSources(activeSubject, activeTopic, type as any, sourceIds)
-        if (res.error) { updateArtifact(tempId, { status: 'failed' }); toast.error(res.error.message); return }
-        updateArtifact(tempId, { status: 'ready', plan_id: res.data?.plan_id })
+        await createPromise
+        if (res.error) {
+          updateArtifact(currentId(), { status: 'failed' })
+          if (realId) void updateAssistantArtifact(realId, { status: 'failed' })
+          toast.error(res.error.message); return
+        }
+        updateArtifact(currentId(), { status: 'ready', plan_id: res.data?.plan_id })
+        if (realId) void updateAssistantArtifact(realId, { status: 'ready', plan_id: res.data?.plan_id ?? null })
         toast.success(`${ARTIFACT_CONFIG[type].label} ready!`)
       }
       if (document.hidden) {
         try { await createArtifactNotification(autoTitle(type, activeTopic)) } catch {}
       }
     } catch {
-      updateArtifact(tempId, { status: 'failed' })
+      updateArtifact(currentId(), { status: 'failed' })
+      if (realId) void updateAssistantArtifact(realId, { status: 'failed' })
       toast.error('Generation failed — please try again.')
     } finally {
       setGeneratingType(null)
@@ -919,6 +980,7 @@ export function StudentTracyPage({ user, weakSubjects, currentTopics, initialNot
     updateArtifact(id, { title: title.trim() })
     const artifact = artifacts.find(a => a.id === id)
     if (artifact?.plan_id) await renameArtifact(artifact.plan_id, title.trim())
+    void updateAssistantArtifact(id, { title: title.trim() })
   }
 
   async function sendMessage(text: string) {
