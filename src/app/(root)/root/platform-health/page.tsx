@@ -1,6 +1,6 @@
 import { redirect }         from 'next/navigation'
 import { getSession }       from '@/lib/session'
-import { getPlatformHealth, type SeedTableCount, type ThinSchemeOfWork } from '@/lib/actions/analytics'
+import { getPlatformHealth, type SeedTableCount, type ThinSchemeOfWork, type MissingLearningObjectives } from '@/lib/actions/analytics'
 import { Activity, CheckCircle2, AlertTriangle, Database } from 'lucide-react'
 
 function countColor(row: SeedTableCount): string {
@@ -26,6 +26,18 @@ function SeedCountCard({ row }: { row: SeedTableCount }) {
           {Object.entries(row.breakdown).map(([k, v]) => `${k}: ${v}`).join(' · ')}
         </p>
       )}
+    </div>
+  )
+}
+
+function MissingObjectivesRow({ row }: { row: MissingLearningObjectives }) {
+  return (
+    <div
+      className="flex items-center justify-between rounded-lg px-4 py-3"
+      style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.07)' }}
+    >
+      <p className="text-sm text-white">{row.subject} — {row.gradeLevel}</p>
+      <p className="text-lg font-bold" style={{ color: '#f87171' }}>{row.missingCount} entries</p>
     </div>
   )
 }
@@ -112,6 +124,29 @@ export default async function PlatformHealthPage() {
               <div className="space-y-2">
                 {health.schemeCoverage.map((s) => (
                   <ThinSchemeRow key={s.schemeId} scheme={s} />
+                ))}
+              </div>
+            )}
+          </section>
+
+          <section>
+            <div className="flex items-center gap-2 mb-3">
+              <h2 className="text-sm font-semibold text-white">Missing Learning Objectives</h2>
+              <p className="text-xs" style={{ color: 'rgba(255,255,255,0.35)' }}>
+                Active, curriculum-linked entries with no learning_objectives — topic mastery can never
+                be recorded for these until the curriculum topic has outcomes authored. Run{' '}
+                <code>backfill-sow-learning-objectives.ts</code> first to re-sync stale entries; what&apos;s
+                left here needs real content authoring.
+              </p>
+            </div>
+            {health.missingLearningObjectives.length === 0 ? (
+              <p className="text-sm" style={{ color: 'rgba(255,255,255,0.4)' }}>
+                No active scheme has entries missing learning objectives.
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {health.missingLearningObjectives.map((row) => (
+                  <MissingObjectivesRow key={row.schemeId} row={row} />
                 ))}
               </div>
             )}

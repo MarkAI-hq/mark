@@ -108,10 +108,18 @@ export interface ThinSchemeOfWork {
   pct:          number | null
 }
 
+export interface MissingLearningObjectives {
+  schemeId:      string
+  subject:       string
+  gradeLevel:    string
+  missingCount:  number
+}
+
 export interface PlatformHealth {
   generatedAt:     string
   seedCounts:      SeedTableCount[]
   schemeCoverage:  ThinSchemeOfWork[]
+  missingLearningObjectives: MissingLearningObjectives[]
   learningAnalyticsCoverage: {
     activeEnrolledStudents:   number
     studentsWithAnalyticsRow: number
