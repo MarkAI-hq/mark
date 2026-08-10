@@ -111,7 +111,7 @@ export const HeroSection = () => {
               className="mb-6 text-lg leading-relaxed text-white/75 drop-shadow-sm sm:text-xl"
             >
               Intelligence Infrastructure to run any curriculum, streamline
-              teaching workflows, and launch AI-powered schools.
+              teaching workflows, and launch Mirror Intelligence schools.
             </motion.p>
 
             <motion.div

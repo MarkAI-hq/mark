@@ -22,10 +22,10 @@ interface Props {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { schoolCode } = await params
   const { data } = await getPublicSchoolProfile(schoolCode)
-  if (!data) return { title: 'School — Mark' }
+  if (!data) return { title: 'School — Mirror Intelligence' }
   return {
-    title: `${data.name} — Mark`,
-    description: `Study for free at ${data.name}. AI-powered school on the Mark platform.`,
+    title: `${data.name} — Mirror Intelligence`,
+    description: `Study for free at ${data.name}, powered by Mirror Intelligence.`,
   }
 }
 
@@ -85,24 +85,18 @@ export default async function SchoolProfilePage({ params }: Props) {
                 <span>{FIT_LABELS[school.education_system] ?? school.education_system}</span>
               </div>
             )}
-            {(school as any).student_count > 0 && (
-              <div className="flex items-center gap-1.5">
-                <Users className="h-3.5 w-3.5 shrink-0" />
-                <span>{(school as any).student_count} students enrolled</span>
-              </div>
-            )}
           </div>
 
           {/* Value props */}
           <div className="mt-6 grid grid-cols-3 gap-3">
             {(isFlagship
               ? [
-                  { icon: BookOpen, label: 'AI-powered learning', sub: 'Study at your pace' },
+                  { icon: BookOpen, label: 'Mirror Intelligence learning', sub: 'Study at your pace' },
                   { icon: Award, label: 'Admission: 100,000 UGX', sub: 'One-time, per enrollment' },
                   { icon: Users, label: 'Tuition: 218 USD / term', sub: '750,000 UGX, pay in halves' },
                 ]
               : [
-                  { icon: BookOpen, label: 'AI-powered learning', sub: 'Study at your pace' },
+                  { icon: BookOpen, label: 'Mirror Intelligence learning', sub: 'Study at your pace' },
                   { icon: Award, label: `Certificates from $${certPrice ?? 15}`, sub: 'Pay only for proof' },
                   { icon: Users, label: 'Free to join', sub: 'No tuition fees' },
                 ]
@@ -151,7 +145,7 @@ export default async function SchoolProfilePage({ params }: Props) {
               : [
                   ['Apply', 'Fill in a short form. No fees, no paperwork.'],
                   ['Get approved', 'The school reviews your application — usually within 24 hours.'],
-                  ['Start studying', 'Access AI-powered lessons and assessments immediately.'],
+                  ['Start studying', 'Access your Mirror Intelligence lessons and assessments immediately.'],
                   ['Earn your certificate', "Pass assessments and get a verified certificate. Pay only when you're ready."],
                 ]
             ).map(([step, desc], i) => (

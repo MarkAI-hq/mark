@@ -1,7 +1,7 @@
 import { Metadata } from 'next'
 import Link from 'next/link'
 import { GraduationCap, MapPin, BadgeCheck } from 'lucide-react'
-import { listPublicSchools, getPublicSchoolProfile } from '@/lib/actions/enrollment'
+import { listPublicSchools } from '@/lib/actions/enrollment'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { FLAGSHIP_SCHOOL_CODE } from '@/config/site-domains'
@@ -10,7 +10,7 @@ import { isSchoolDomain } from '@/lib/site-mode'
 export const metadata: Metadata = {
   title: 'Find your school — Mirror Intelligence',
   description:
-    'Mirror Intelligence Online High School is our flagship, live and enrolling today. Private schools are onboarding to run their own school on the same intelligence.',
+    'Mirror Intelligence Online High School is our flagship, live and enrolling today. Private schools are onboarding to run their own school on the same Mirror Intelligence.',
 }
 
 export default async function SchoolsPage() {
@@ -20,7 +20,6 @@ export default async function SchoolsPage() {
   const flagship = schools.find((s) => s.school_code === FLAGSHIP_SCHOOL_CODE) ?? schools[0]
   const otherSchools = flagship ? schools.filter((s) => s.school_code !== flagship.school_code) : []
 
-  const flagshipProfile = flagship ? (await getPublicSchoolProfile(flagship.school_code)).data : null
   const certPrice = flagship?.partner_config?.cert_price_ea_usd ?? flagship?.partner_config?.cert_price_usd
   const isSchoolSite = await isSchoolDomain()
 
@@ -34,9 +33,11 @@ export default async function SchoolsPage() {
               Start with our flagship school —<br className="hidden sm:block" /> more are onboarding soon.
             </h1>
             <p className="mt-3 max-w-xl text-muted-foreground">
-              Mirror Intelligence Online High School is our own flagship, built and run directly by us,
-              live and enrolling today. Private schools are now onboarding to run their own school on the
-              same AI — this directory will grow as they join.
+              The way you&apos;d trust a chef more for eating at their own restaurant: we didn&apos;t just
+              build Mirror Intelligence, we put our own students on it. Mirror Intelligence Online High
+              School is our flagship — live, enrolling, and teaching real classes today. Private schools
+              are now onboarding to run theirs on the same Mirror Intelligence — this list only grows
+              from here.
             </p>
             <p className="mt-3 text-sm text-muted-foreground">
               Not sure which subjects fit you yet?{' '}
@@ -55,12 +56,6 @@ export default async function SchoolsPage() {
               <p className="text-2xl font-bold text-foreground">{otherSchools.length}</p>
               <p className="text-xs uppercase tracking-wide text-muted-foreground">Also onboarded</p>
             </div>
-            {flagshipProfile && flagshipProfile.student_count > 0 && (
-              <div className="text-center lg:text-right">
-                <p className="text-2xl font-bold text-foreground">{flagshipProfile.student_count}</p>
-                <p className="text-xs uppercase tracking-wide text-muted-foreground">Students enrolled</p>
-              </div>
-            )}
           </div>
         </div>
 

@@ -119,7 +119,7 @@ export default function RegisterSchoolPage() {
             Put <span className="italic">your</span> school on Mirror Intelligence
           </h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            100% free. AI runs operations. You work 2–4 hours a week.
+            100% free. Mirror Intelligence runs operations. You work 2–4 hours a week.
           </p>
         </div>
 
@@ -127,7 +127,7 @@ export default function RegisterSchoolPage() {
           <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-[#C9A84C]" />
           <p className="text-sm text-foreground">
             Your students only ever see <strong>your school&apos;s</strong> name and branding — never
-            &ldquo;Mirror Intelligence.&rdquo; It&apos;s the AI running underneath, not the storefront.
+            &ldquo;Mirror Intelligence.&rdquo; It&apos;s the engine running underneath, not the storefront.
           </p>
         </div>
 
@@ -135,7 +135,7 @@ export default function RegisterSchoolPage() {
         <div className="mb-8 grid grid-cols-3 gap-3 text-center">
           {[
             { label: 'School cost', value: '$0/month' },
-            { label: 'AI grading', value: 'Automated' },
+            { label: 'Grading', value: 'Automated' },
             { label: 'School revenue', value: '~$15K/yr' },
           ].map((s) => (
             <div key={s.label} className="rounded-xl border border-border/40 bg-card p-3">

@@ -253,7 +253,7 @@ export default function ProgramPage() {
               </thead>
               <tbody>
                 {[
-                  ['Personalized AI Learning Assistant — 24/7, all year', 'Core curriculum', true],
+                  ['Personalized Learning Assistant — 24/7, all year', 'Core curriculum', true],
                   ['Teaching that adapts daily to how your child is actually learning', 'Core curriculum', true],
                   ['UCE / UACE exams sat at partner schools', 'Core curriculum', true],
                   ['Repeat exams until mastery, no extra charge', 'Included', false],
