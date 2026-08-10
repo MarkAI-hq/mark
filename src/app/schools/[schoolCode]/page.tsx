@@ -98,8 +98,8 @@ export default async function SchoolProfilePage({ params }: Props) {
             {(isFlagship
               ? [
                   { icon: BookOpen, label: 'AI-powered learning', sub: 'Study at your pace' },
-                  { icon: Award, label: 'Admission: 50,000 UGX', sub: 'One-time, per enrollment' },
-                  { icon: Users, label: 'Tuition: 145 USD / term', sub: '500,000 UGX, pay in halves' },
+                  { icon: Award, label: 'Admission: 100,000 UGX', sub: 'One-time, per enrollment' },
+                  { icon: Users, label: 'Tuition: 218 USD / term', sub: '750,000 UGX, pay in halves' },
                 ]
               : [
                   { icon: BookOpen, label: 'AI-powered learning', sub: 'Study at your pace' },

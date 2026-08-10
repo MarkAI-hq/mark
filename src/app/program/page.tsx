@@ -295,7 +295,7 @@ export default function ProgramPage() {
                     Admission fee
                   </div>
                   <div className="font-[family-name:var(--font-spectral)] text-3xl font-semibold sm:text-4xl">
-                    50,000 UGX
+                    100,000 UGX
                   </div>
                 </div>
                 <div>
@@ -303,9 +303,9 @@ export default function ProgramPage() {
                     Tuition, per term
                   </div>
                   <div className="font-[family-name:var(--font-spectral)] text-2xl font-semibold leading-tight sm:text-3xl">
-                    145 USD
+                    218 USD
                     <br />
-                    500,000 UGX
+                    750,000 UGX
                   </div>
                 </div>
               </div>

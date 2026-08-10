@@ -98,11 +98,11 @@ export default async function SchoolsPage() {
             <div className="mt-5 grid grid-cols-2 gap-3 border-t border-border/50 pt-4 sm:grid-cols-3">
               <div>
                 <p className="text-xs uppercase tracking-wide text-muted-foreground">Admission fee</p>
-                <p className="mt-0.5 font-semibold text-foreground">50,000 UGX</p>
+                <p className="mt-0.5 font-semibold text-foreground">100,000 UGX</p>
               </div>
               <div>
                 <p className="text-xs uppercase tracking-wide text-muted-foreground">Tuition, per term</p>
-                <p className="mt-0.5 font-semibold text-foreground">145 USD / 500,000 UGX</p>
+                <p className="mt-0.5 font-semibold text-foreground">218 USD / 750,000 UGX</p>
               </div>
               {certPrice && (
                 <div>
