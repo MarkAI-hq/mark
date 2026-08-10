@@ -12,7 +12,6 @@ import Link from 'next/link'
 import { useRef } from 'react'
 import { ArrowRight } from 'lucide-react'
 import { motion, useInView } from 'framer-motion'
-import { Button } from '@/components/ui/button'
 
 const ease = [0.22, 1, 0.36, 1] as const
 
@@ -87,7 +86,7 @@ export function ProgramHero() {
               variants={fadeUp}
               className="max-w-xl text-balance text-5xl font-black tracking-tighter leading-[1.03] text-white sm:text-6xl lg:text-7xl"
             >
-              The school that adapts to the learner, not the other way round.
+              The school that guarantees results for every student.
             </motion.h1>
           </div>
 
@@ -116,19 +115,19 @@ export function ProgramHero() {
               variants={fadeUp}
               className="flex flex-row flex-wrap items-center gap-3"
             >
-              <Button asChild size="lg" className="gap-2 rounded-xl bg-[#926C15] text-white hover:bg-[#7A5A10]">
-                <Link href="/schools">
-                  Find your school
-                  <ArrowRight className="h-4 w-4" />
-                </Link>
-              </Button>
-              <Button
-                asChild
-                size="lg"
-                className="gap-2 rounded-xl border-0 bg-white/15 text-white hover:bg-white/25"
+              <Link
+                href="/schools"
+                className="group inline-flex items-center gap-2.5 rounded-xl bg-[#926C15] px-8 py-3.5 text-sm font-bold text-white shadow-lg shadow-black/30 transition-all duration-300 hover:bg-[#7A5A10] hover:shadow-xl hover:-translate-y-1 active:translate-y-0"
               >
-                <Link href="#included">See what&apos;s included</Link>
-              </Button>
+                Find your school
+                <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
+              </Link>
+              <Link
+                href="#included"
+                className="inline-flex items-center gap-2 rounded-xl bg-white/15 px-8 py-3.5 text-sm font-semibold text-white transition-all duration-300 hover:bg-white/25 hover:-translate-y-1 active:translate-y-0"
+              >
+                See what&apos;s included
+              </Link>
             </motion.div>
           </div>
         </div>
