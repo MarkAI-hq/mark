@@ -93,7 +93,7 @@ export function LessonSidebar({ scenes, currentIndex, maxReached, onNavigate, su
   }
 
   return (
-    <aside className="w-64 shrink-0 border-r bg-muted/10 flex flex-col h-full overflow-hidden">
+    <aside className="w-64 shrink-0 border-r bg-background flex flex-col h-full overflow-hidden fixed inset-y-0 left-0 z-40 md:relative md:z-auto md:bg-muted/10">
       <div className="flex items-center border-b shrink-0">
         <div className="flex flex-1">
           {([

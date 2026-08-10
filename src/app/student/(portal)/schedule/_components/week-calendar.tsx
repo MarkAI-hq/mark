@@ -7,7 +7,7 @@
 // Clicking an event opens a read-only "view event" popup, the same shape as
 // Google Calendar's — students can't edit or move anything here, only see it.
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { ChevronLeft, ChevronRight, MapPin, BookOpen, Clock, Repeat } from 'lucide-react'
 import Link from 'next/link'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -49,6 +49,15 @@ export function WeekCalendar({ days, blocksByDay }: Props) {
   const [view, setView] = useState<ViewMode>('week')
   const [anchor, setAnchor] = useState(0) // index into `days` for day/3day views
   const [selected, setSelected] = useState<CalendarEvent | null>(null)
+
+  // 'week' packs every day into min-w-[110px] columns — fine once
+  // overflow-x-auto kicks in on desktop, but it means a phone lands on a
+  // grid that's scrolling before the student has read anything. One-time
+  // check on mount, not a resize listener, so it doesn't override a
+  // student's own view choice mid-session.
+  useEffect(() => {
+    if (window.innerWidth < 640) setView('day')
+  }, [])
 
   // Open-pace study blocks carry no clock time (there's no fixed schedule to
   // grid them into) — this view is inherently timed, so those are left out

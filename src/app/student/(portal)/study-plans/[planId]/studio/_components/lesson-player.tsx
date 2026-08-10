@@ -139,6 +139,14 @@ export function LessonPlayer({
   // this, or a student can click straight past a required quiz/notes scene.
   const [maxReached, setMaxReached] = useState(0)
   const [sidebarOpen, setSidebarOpen] = useState(true)
+  // Open by default on desktop, matching prior behavior — but a 256px
+  // sidebar permanently pushing content on a ~375px phone leaves barely a
+  // fifth of the screen for the lesson itself. One-time check on mount
+  // (not a resize listener) so it doesn't fight a student's own toggle
+  // choice later in the session.
+  useEffect(() => {
+    if (window.innerWidth < 768) setSidebarOpen(false)
+  }, [])
   const audioRef = useRef<HTMLAudioElement | null>(null)
 
   // One-line usage hint (item 11) — shown once, only when this lesson
@@ -296,7 +304,16 @@ export function LessonPlayer({
   if (scenes.length === 0) return null
 
   return (
-    <div className="flex h-full bg-background overflow-hidden">
+    <div className="flex h-full bg-background overflow-hidden relative">
+      {/* Backdrop — sidebar becomes a slide-over drawer below md (see
+          lesson-sidebar.tsx's fixed/md:relative split) instead of a second
+          permanent column competing with the lesson for a phone's width. */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 z-30 bg-black/40 md:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
       <LessonSidebar
         scenes={scenes}
         currentIndex={currentIndex}
