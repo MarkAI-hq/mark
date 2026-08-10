@@ -1,0 +1,114 @@
+/* Brand + theme overrides for the guided dashboard tour (tourguidejs).
+ * The library ships fixed light-mode colors (#fff background, #252525 text,
+ * a blue-purple accent — #5362d9/#4655cb) with no theme hook of its own —
+ * this file remaps every visible surface onto the app's existing
+ * shadcn/Tailwind CSS variables (defined in globals.css, toggled by
+ * next-themes' `.dark` class on <html>) so the tour follows the student's
+ * light/dark preference and uses the app's gold brand accent instead.
+ *
+ * Every rule uses !important. Verified live that plain cascade order is NOT
+ * reliable here: some of these selectors match the library's own rule with
+ * identical specificity, and Next.js/Turbopack's dev CSS chunking does not
+ * guarantee this file's chunk is injected after tour.min.css's — some rules
+ * won on source order alone, some silently lost to the library's original
+ * (blue) values despite loading second in the layout. !important is the
+ * correct tool for "unconditionally override a third-party library's
+ * non-!important defaults", not a workaround for our own CSS. */
+
+.tg-dialog {
+  background: hsl(var(--card)) !important;
+  color: hsl(var(--card-foreground)) !important;
+  border: 1px solid hsl(var(--border)) !important;
+  border-radius: calc(var(--radius) * 2) !important;
+  box-shadow: var(--shadow-lg) !important;
+  font-family: inherit !important;
+}
+
+#tg-dialog-title {
+  color: hsl(var(--foreground)) !important;
+  font-family: inherit !important;
+}
+
+#tg-dialog-body {
+  color: hsl(var(--muted-foreground)) !important;
+  line-height: 1.5 !important;
+}
+
+.tg-dialog .tg-arrow {
+  background: hsl(var(--card)) !important;
+  border: 1px solid hsl(var(--border)) !important;
+}
+
+#tg-dialog-close-btn svg path {
+  fill: hsl(var(--muted-foreground)) !important;
+}
+#tg-dialog-close-btn:hover svg path {
+  fill: hsl(var(--foreground)) !important;
+}
+
+/* "Back" button — targeted by its unique id, not the shared .tg-dialog-btn
+ * class, and every state declared explicitly so none can fall through to
+ * the library's own :active rule (blue-purple #4655cb text / #5362d9
+ * border). */
+#tg-dialog-prev-btn,
+#tg-dialog-prev-btn:hover,
+#tg-dialog-prev-btn:focus,
+#tg-dialog-prev-btn:active {
+  border-radius: calc(var(--radius) - 2px) !important;
+  border: 1px solid hsl(var(--border)) !important;
+  color: hsl(var(--foreground)) !important;
+  background: transparent !important;
+  font-weight: 600 !important;
+  font-family: inherit !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+#tg-dialog-prev-btn:hover,
+#tg-dialog-prev-btn:active {
+  background: hsl(var(--muted)) !important;
+}
+#tg-dialog-prev-btn.disabled {
+  opacity: 0.4 !important;
+}
+
+/* Primary action — this id is reused for both the "Next" and "Finish"
+ * labels, so one rule covers both. */
+#tg-dialog-next-btn,
+#tg-dialog-next-btn:hover,
+#tg-dialog-next-btn:focus,
+#tg-dialog-next-btn:active {
+  background: hsl(var(--gold)) !important;
+  color: hsl(var(--gold-foreground)) !important;
+  border-color: hsl(var(--gold)) !important;
+  border-radius: calc(var(--radius) - 2px) !important;
+  font-weight: 600 !important;
+  font-family: inherit !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+#tg-dialog-next-btn:hover,
+#tg-dialog-next-btn:active {
+  background: hsl(var(--gold) / 0.88) !important;
+}
+
+.tg-dialog-dots > span.tg-dot {
+  background: hsl(var(--muted-foreground) / 0.3) !important;
+}
+.tg-dialog-dots > span.tg-dot.tg-dot-active {
+  background: hsl(var(--gold)) !important;
+}
+
+#tg-step-progress {
+  color: hsl(var(--muted-foreground)) !important;
+}
+
+.tg-dialog-progress-bar {
+  background: hsl(var(--muted)) !important;
+}
+.tg-dialog-progress-bar > .tg-bar {
+  background: hsl(var(--gold)) !important;
+}
+
+.tg-backdrop {
+  border-color: hsl(var(--gold) / 0.5) !important;
+}

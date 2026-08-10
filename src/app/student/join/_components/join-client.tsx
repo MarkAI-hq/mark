@@ -3,7 +3,6 @@
 // src/app/student/join/_components/join-client.tsx
 
 import { useState, useRef, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
 import {
   Sparkles,
   GraduationCap,
@@ -26,7 +25,7 @@ import {
   Mail,
   ArrowLeft,
 } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { cn, formatTopicTitle } from '@/lib/utils'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 
@@ -222,7 +221,6 @@ function progressStorageKey(schoolCode: string) {
 }
 
 export function JoinClient({ schoolCode, schoolName }: { schoolCode: string; schoolName?: string }) {
-  const router = useRouter()
   const [step, setStep] = useState<Step>('details')
 
   // Tracks the step immediately before the current one, so "Go back" links
@@ -998,7 +996,7 @@ export function JoinClient({ schoolCode, schoolName }: { schoolCode: string; sch
 
     // We inject high-fidelity personalization containing the student's name on-the-fly [1, 4]
     if (introduction) {
-      const personalizedIntro = `Hello ${firstName}! Welcome to your demo class. Today, let's explore ${demo.topic} in ${demo.subject}. ` + introduction
+      const personalizedIntro = `Hello ${firstName}! Welcome to your demo class. Today, let's explore ${formatTopicTitle(demo.topic)} in ${demo.subject}. ` + introduction
       synthesized.push({
         type: 'slide',
         title: 'Introduction',
@@ -2170,7 +2168,7 @@ export function JoinClient({ schoolCode, schoolName }: { schoolCode: string; sch
                         ? `On track — continuing from week ${s.starting_week}.`
                         : `Starting from week ${s.starting_week} to build a strong base.`}
                       {s.weak_topics.length > 0 &&
-                        ` First focus: ${s.weak_topics.slice(0, 3).join(', ')}.`}
+                        ` First focus: ${s.weak_topics.slice(0, 3).map(formatTopicTitle).join(', ')}.`}
                     </p>
                   </div>
                 ))}
@@ -2203,8 +2201,9 @@ export function JoinClient({ schoolCode, schoolName }: { schoolCode: string; sch
                 } catch {
                   // best-effort
                 }
-                router.push('/student/dashboard')
-                router.refresh()
+                // A full navigation, not router.push() — see the matching
+                // comment in finish-setup-client.tsx's goToDashboard().
+                window.location.href = '/student/dashboard?tour=welcome'
               }}
             >
               Go to my dashboard

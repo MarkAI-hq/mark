@@ -10,7 +10,6 @@
 // like every other student — those are about the student, not the channel.
 
 import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { Loader2, AlertCircle, GraduationCap, ArrowRight, CheckCircle2 } from 'lucide-react'
 
 import { toast } from '@/hooks/use-toast'
@@ -29,7 +28,6 @@ import {
 type Step = 'loading' | 'pledge' | 'diagnostic' | 'done'
 
 export function FinishSetupClient({ studentName }: { studentName: string }) {
-  const router = useRouter()
   const [step, setStep] = useState<Step>('loading')
   const [error, setError] = useState<string | null>(null)
 
@@ -131,8 +129,14 @@ export function FinishSetupClient({ studentName }: { studentName: string }) {
 
   function goToDashboard() {
     toast({ title: 'Welcome!', description: 'Your account is ready.' })
-    router.push('/student/dashboard')
-    router.refresh()
+    // A full navigation, not router.push() — the dashboard's guided tour
+    // (GuidedTour) only renders reliably right after a hard page load. A
+    // client-side transition into it hits a genuine tourguidejs/React
+    // interaction bug (its constructor eagerly and asynchronously builds
+    // DOM, and that timing collides with how a client-side route change
+    // commits) that a full load sidesteps entirely, and this redirect only
+    // ever fires once per account anyway, so the cost is negligible.
+    window.location.href = '/student/dashboard?tour=welcome'
   }
 
   return (

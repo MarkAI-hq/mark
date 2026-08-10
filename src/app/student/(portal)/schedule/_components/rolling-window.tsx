@@ -18,6 +18,7 @@ import {
   type RollingWindow as RollingWindowData,
   type DailyPlan,
 } from '@/lib/actions/study-plans'
+import { formatTopicTitle } from '@/lib/utils'
 
 const QUICK_LOG = [15, 30, 45]
 
@@ -92,7 +93,7 @@ function DayCard({
                 <ArrowRight className="mt-0.5 h-3.5 w-3.5 shrink-0 text-gold" />
                 <span>
                   <span className="font-medium">{l.subject}</span>
-                  <span className="text-muted-foreground"> — {l.topic}</span>
+                  <span className="text-muted-foreground"> — {formatTopicTitle(l.topic)}</span>
                 </span>
               </li>
             ))}

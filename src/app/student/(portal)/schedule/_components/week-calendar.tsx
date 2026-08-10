@@ -13,6 +13,7 @@ import Link from 'next/link'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { formatTopicTitle } from '@/lib/utils'
 
 export interface CalendarEvent {
   day_of_week: string
@@ -189,7 +190,7 @@ export function WeekCalendar({ days, blocksByDay }: Props) {
                     }`}
                   >
                     <p className="font-medium truncate">{event.subject}</p>
-                    {event.topic && <p className="truncate opacity-80">{event.topic}</p>}
+                    {event.topic && <p className="truncate opacity-80">{formatTopicTitle(event.topic)}</p>}
                     {session && (
                       <p className="flex items-center gap-0.5 truncate opacity-70 mt-0.5">
                         <Repeat className="h-2.5 w-2.5 shrink-0" />
@@ -222,7 +223,7 @@ export function WeekCalendar({ days, blocksByDay }: Props) {
                 {selected.topic && (
                   <div className="flex items-start gap-2">
                     <BookOpen className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
-                    <span>{selected.topic}</span>
+                    <span>{formatTopicTitle(selected.topic)}</span>
                   </div>
                 )}
                 <div className="flex items-center gap-2">

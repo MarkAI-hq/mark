@@ -363,20 +363,27 @@ export async function getMyClassTimetable(params?: { term?: string; academic_yea
 }
 
 // ── Attendance ────────────────────────────────────────────────────────────────
+// Merges formal class-session attendance with a self-view-only "platform
+// activity" signal (logins / completed study plans) so students without a
+// teacher-recorded session (or gaps between them) still see something in
+// their Attendance tab. The teacher/admin-facing attendance view is a
+// separate endpoint/component and stays session-only.
 export async function getMyAttendance(studentId: string): Promise<any[]> {
-  try {
-    const headers = await authHeaders()
-    const res = await fetch(`${API}/api/v1/attendance/students/${studentId}`, {
-      headers,
-      cache: 'no-store',
-    })
-    if (!res.ok) return []
-    const data = await res.json()
-    return Array.isArray(data) ? data : (data.records ?? [])
-  } catch (err) {
-    console.error('[getMyAttendance]', err)
-    return []
-  }
+  const headers = await authHeaders()
+
+  const [sessionsRes, activityRes] = await Promise.all([
+    fetch(`${API}/api/v1/attendance/students/${studentId}`, { headers, cache: 'no-store' })
+      .then((res) => (res.ok ? res.json() : null))
+      .catch((err) => { console.error('[getMyAttendance:sessions]', err); return null }),
+    fetch(`${API}/api/v1/attendance/students/${studentId}/activity`, { headers, cache: 'no-store' })
+      .then((res) => (res.ok ? res.json() : []))
+      .catch((err) => { console.error('[getMyAttendance:activity]', err); return [] }),
+  ])
+
+  const sessions = Array.isArray(sessionsRes) ? sessionsRes : (sessionsRes?.sessions ?? [])
+  const activity = Array.isArray(activityRes) ? activityRes : []
+
+  return [...sessions, ...activity].sort((a, b) => (a.date < b.date ? 1 : -1))
 }
 
 // ── Classmates ────────────────────────────────────────────────────────────────

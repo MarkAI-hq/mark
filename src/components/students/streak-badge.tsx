@@ -18,6 +18,7 @@ export function StreakBadge({ streak }: { streak: number | null | undefined }) {
     <Link
       href="/student/school?tab=leaderboard"
       title={`${days} day${days === 1 ? '' : 's'} study streak`}
+      data-tour="streak-badge"
       className="flex items-center gap-1 rounded-full border border-orange-200 dark:border-orange-900 bg-orange-50 dark:bg-orange-950/30 pl-1 pr-2.5 py-1 text-xs font-semibold text-orange-700 dark:text-orange-400 hover:bg-orange-100 dark:hover:bg-orange-950/50 transition-colors"
     >
       <StreakMascot mood={moodForStreak(days)} size={22} />

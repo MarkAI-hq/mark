@@ -21,6 +21,7 @@ import { SceneRetrievalFlash }          from './scene-retrieval-flash'
 import { SceneOutcomesIntro }           from './scene-outcomes-intro'
 import { SceneOutcomesCheck }           from './scene-outcomes-check'
 import { LessonSidebar }                from './lesson-sidebar'
+import { formatTopicTitle }             from '@/lib/utils'
 
 // ── 5E Stage config ───────────────────────────────────────────────────────────
 
@@ -118,13 +119,14 @@ interface LessonPlayerProps {
 export function LessonPlayer({
   scenes,
   subject = '',
-  topic = '',
+  topic: topicProp = '',
   planId = '',
   completeLabel = 'Complete',
   onComplete,
   onExit,
   sessionHint,
 }: LessonPlayerProps) {
+  const topic = formatTopicTitle(topicProp)
   const [currentIndex, setCurrentIndex] = useState(0)
   const [completing, setCompleting]     = useState(false)
   const [audioPlaying, setAudioPlaying] = useState(false)

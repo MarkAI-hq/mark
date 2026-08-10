@@ -6,6 +6,7 @@ import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { format } from 'date-fns'
+import type { ColumnDef } from '@tanstack/react-table'
 import {
   CalendarDays, CheckCircle2, AlertCircle, Clock,
   BookOpen, UserCheck, XCircle, MinusCircle, Sparkles,
@@ -16,6 +17,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
+import { DataTable } from '@/components/ui/data-table'
+import { formatTopicTitle, splitTopicHeadline } from '@/lib/utils'
 import { toast } from 'sonner'
 import {
   selfInitiateStudyPlan,
@@ -48,6 +51,174 @@ const ATTENDANCE_ICON: Record<string, any> = {
   absent:  XCircle,
   late:    Clock,
   excused: MinusCircle,
+}
+
+function AttendanceTable({ records }: { records: any[] }) {
+  const columns: ColumnDef<any>[] = [
+    {
+      id: 'status',
+      header: 'Status',
+      accessorFn: (r) => r.status,
+      cell: ({ row }) => {
+        const record = row.original
+        const Icon = ATTENDANCE_ICON[record.status] ?? CheckCircle2
+        return (
+          <div className="flex items-center gap-2">
+            <Icon className={`h-4 w-4 shrink-0 ${ATTENDANCE_COLOR[record.status] ?? 'text-muted-foreground'}`} />
+            <span className="text-sm font-medium capitalize">{record.status}</span>
+          </div>
+        )
+      },
+    },
+    {
+      id: 'subject',
+      header: 'Subject',
+      accessorFn: (r) => r.subject ?? r.session?.subject ?? '',
+      cell: ({ getValue }) => {
+        const subject = getValue<string>()
+        return subject
+          ? <span className="text-xs text-muted-foreground">{subject}</span>
+          : <span className="text-xs text-muted-foreground/50">—</span>
+      },
+    },
+    {
+      id: 'date',
+      header: 'Date',
+      accessorFn: (r) => new Date(r.date ?? r.session?.date ?? r.created_at ?? 0).getTime(),
+      cell: ({ row }) => {
+        const record = row.original
+        const dateStr = record.date
+          ? format(new Date(record.date), 'EEE, MMM d')
+          : record.session?.date
+          ? format(new Date(record.session.date), 'EEE, MMM d')
+          : null
+        return dateStr ? <span className="text-xs text-muted-foreground">{dateStr}</span> : null
+      },
+    },
+    {
+      id: 'source',
+      header: 'Source',
+      accessorFn: (r) => (r.source === 'platform_activity' ? 'Self-study' : 'Class session'),
+      cell: ({ getValue }) => (
+        <Badge variant="outline" className="text-[10px] font-normal text-muted-foreground">
+          {getValue<string>()}
+        </Badge>
+      ),
+    },
+  ]
+
+  const sorted = [...records].sort((a, b) =>
+    new Date(b.date ?? b.created_at ?? 0).getTime() - new Date(a.date ?? a.created_at ?? 0).getTime(),
+  )
+
+  return (
+    <DataTable
+      columns={columns}
+      data={sorted}
+      filter={{ prompt: 'Search by subject...', column: 'subject' }}
+    />
+  )
+}
+
+function ThisWeekTable({
+  entries,
+  onStudyThis,
+  initiating,
+  initiatingEntry,
+}: {
+  entries: any[]
+  onStudyThis: (id: string, isDelivered: boolean, subject: string, topic: string) => void
+  initiating: boolean
+  initiatingEntry: string | null
+}) {
+  const columns: ColumnDef<any>[] = [
+    {
+      accessorKey: 'topic',
+      header: 'Topic',
+      cell: ({ row }) => {
+        const entry = row.original
+        const { headline, extraCount } = splitTopicHeadline(entry.topic)
+        return (
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <div className={`rounded-full p-1 shrink-0 ${entry.is_delivered ? 'bg-emerald-100' : 'bg-muted'}`}>
+                {entry.is_delivered
+                  ? <CheckCircle2 className="h-3 w-3 text-emerald-600" />
+                  : <AlertCircle className="h-3 w-3 text-muted-foreground" />
+                }
+              </div>
+              <span className="font-medium text-sm">{headline}</span>
+              {extraCount > 0 && (
+                <Badge variant="secondary" className="text-[10px] px-1.5 py-0">+{extraCount} more</Badge>
+              )}
+            </div>
+            {(entry.subtopics as string[])?.length > 0 && (
+              <p className="text-xs text-muted-foreground mt-1">
+                {(entry.subtopics as string[]).slice(0, 3).join(' · ')}
+              </p>
+            )}
+          </div>
+        )
+      },
+    },
+    {
+      id: 'week',
+      header: 'Week',
+      accessorFn: (e) => e.week_number,
+      cell: ({ getValue }) => <span className="text-xs text-muted-foreground tabular-nums">Wk {getValue<number>()}</span>,
+    },
+    {
+      id: 'status',
+      header: 'Status',
+      accessorFn: (e) => (e.is_delivered ? 'Delivered' : 'Upcoming'),
+      cell: ({ row }) => row.original.is_delivered
+        ? <Badge className="text-[10px] px-1.5 py-0 bg-emerald-100 text-emerald-700">Delivered</Badge>
+        : <Badge variant="secondary" className="text-[10px] px-1.5 py-0">Upcoming</Badge>,
+    },
+    {
+      id: 'duration',
+      header: 'Duration',
+      cell: ({ row }) => row.original.duration_lessons
+        ? (
+          <span className="flex items-center gap-1 text-xs text-muted-foreground">
+            <Clock className="h-3 w-3" />
+            {row.original.duration_lessons} lesson{row.original.duration_lessons > 1 ? 's' : ''}
+          </span>
+        )
+        : null,
+    },
+    {
+      id: 'actions',
+      header: '',
+      cell: ({ row }) => {
+        const entry = row.original
+        const busy = initiating && initiatingEntry === entry.id
+        return (
+          <Button
+            size="sm"
+            className={`h-7 text-xs shrink-0 gap-1 font-semibold ${
+              entry.is_delivered
+                ? 'bg-gold hover:bg-gold/90 text-gold-foreground'
+                : 'bg-muted hover:bg-muted/80 text-foreground border border-border/80'
+            }`}
+            onClick={() => onStudyThis(entry.id, entry.is_delivered, entry.subject, entry.topic)}
+            disabled={busy}
+          >
+            <Sparkles className="h-3 w-3" />
+            {busy ? '…' : entry.is_delivered ? 'Review' : 'Pre-study'}
+          </Button>
+        )
+      },
+    },
+  ]
+
+  return (
+    <DataTable
+      columns={columns}
+      data={entries}
+      filter={{ prompt: 'Search topics...', column: 'topic' }}
+    />
+  )
 }
 
 interface Props {
@@ -362,61 +533,12 @@ export function ScheduleClient({
               </CardContent>
             </Card>
           ) : (
-            currentWeekEntries.map((entry: any, i: number) => (
-              <Card key={i} className={entry.is_delivered ? 'border-emerald-200' : 'border-border'}>
-                <CardContent className="pt-4 pb-3">
-                  <div className="flex items-start gap-3">
-                    <div className={`mt-0.5 rounded-full p-1 ${entry.is_delivered ? 'bg-emerald-100' : 'bg-muted'}`}>
-                      {entry.is_delivered
-                        ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
-                        : <AlertCircle className="h-3.5 w-3.5 text-muted-foreground" />
-                      }
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <p className="font-medium text-sm">{entry.topic}</p>
-                        <Badge variant="outline" className="text-[10px] px-1.5 py-0">
-                          Week {entry.week_number}
-                        </Badge>
-                        {entry.is_delivered ? (
-                          <Badge className="text-[10px] px-1.5 py-0 bg-emerald-100 text-emerald-700">
-                            Delivered
-                          </Badge>
-                        ) : (
-                          <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
-                            Upcoming
-                          </Badge>
-                        )}
-                      </div>
-                      {(entry.subtopics as string[])?.length > 0 && (
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {(entry.subtopics as string[]).slice(0, 3).join(' · ')}
-                        </p>
-                      )}
-                      {entry.duration_lessons && (
-                        <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
-                          <Clock className="h-3 w-3" />
-                          {entry.duration_lessons} lesson{entry.duration_lessons > 1 ? 's' : ''}
-                        </p>
-                      )}
-                    </div>
-                    <Button
-                      size="sm"
-                      className={`h-7 text-xs shrink-0 gap-1 font-semibold ${
-                        entry.is_delivered 
-                          ? 'bg-gold hover:bg-gold/90 text-gold-foreground' 
-                          : 'bg-muted hover:bg-muted/80 text-foreground border border-border/80'
-                      }`}
-                      onClick={() => handleStudyThis(entry.id, entry.is_delivered, entry.subject, entry.topic)}
-                      disabled={initiating && initiatingEntry === entry.id}
-                    >
-                      <Sparkles className="h-3 w-3" />
-                      {initiating && initiatingEntry === entry.id ? '…' : entry.is_delivered ? 'Review' : 'Pre-study'}
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))
+            <ThisWeekTable
+              entries={currentWeekEntries}
+              onStudyThis={handleStudyThis}
+              initiating={initiating}
+              initiatingEntry={initiatingEntry}
+            />
           )}
         </div>
       </TabsContent>
@@ -648,7 +770,7 @@ export function ScheduleClient({
                                     </Badge>
                                   </div>
                                   {isStudy && slot.topic && (
-                                    <p className="text-xs text-muted-foreground truncate mt-0.5">{slot.topic}</p>
+                                    <p className="text-xs text-muted-foreground truncate mt-0.5">{formatTopicTitle(slot.topic)}</p>
                                   )}
                                   {!isStudy && slot.room && (
                                     <p className="text-xs text-muted-foreground truncate mt-0.5">Room: {slot.room}</p>
@@ -697,7 +819,7 @@ export function ScheduleClient({
                                   Mirror Study
                                 </Badge>
                               </div>
-                              <p className="text-xs text-muted-foreground truncate mt-0.5">{b.topic}</p>
+                              <p className="text-xs text-muted-foreground truncate mt-0.5">{formatTopicTitle(b.topic)}</p>
                             </div>
                             <Button
                               size="sm"
@@ -747,7 +869,7 @@ export function ScheduleClient({
                             <div>
                               <p className="text-sm font-medium">{slot.subject}</p>
                               {slot.type === 'study' && slot.topic && (
-                                <p className="text-xs text-muted-foreground">{slot.topic}</p>
+                                <p className="text-xs text-muted-foreground">{formatTopicTitle(slot.topic)}</p>
                               )}
                               {slot.type === 'class' && slot.room && (
                                 <p className="text-xs text-muted-foreground">{slot.room}</p>
@@ -813,37 +935,7 @@ export function ScheduleClient({
               </CardContent>
             </Card>
           ) : (
-            <div className="space-y-1.5">
-              {[...attendance]
-                .sort((a, b) => new Date(b.date ?? b.created_at ?? 0).getTime() - new Date(a.date ?? a.created_at ?? 0).getTime())
-                .slice(0, 30)
-                .map((record: any, i: number) => {
-                  const Icon = ATTENDANCE_ICON[record.status] ?? CheckCircle2
-                  const dateStr = record.date
-                    ? format(new Date(record.date), 'EEE, MMM d')
-                    : record.session?.date
-                    ? format(new Date(record.session.date), 'EEE, MMM d')
-                    : null
-                  return (
-                    <Card key={i}>
-                      <CardContent className="py-2.5 px-4">
-                        <div className="flex items-center gap-3">
-                          <Icon className={`h-4 w-4 shrink-0 ${ATTENDANCE_COLOR[record.status] ?? 'text-muted-foreground'}`} />
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium capitalize">{record.status}</p>
-                            {(record.subject ?? record.session?.subject) && (
-                              <p className="text-xs text-muted-foreground">{record.subject ?? record.session?.subject}</p>
-                            )}
-                          </div>
-                          {dateStr && (
-                            <p className="text-xs text-muted-foreground shrink-0">{dateStr}</p>
-                          )}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  )
-                })}
-            </div>
+            <AttendanceTable records={attendance} />
           )}
         </div>
       </TabsContent>

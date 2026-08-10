@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { LifeBuoy, Send, Sparkles, BookOpen, MessageCircle, CheckCircle2 } from 'lucide-react'
+import { LifeBuoy, Send, Sparkles, BookOpen, MessageCircle, CheckCircle2, Compass } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
@@ -86,6 +86,22 @@ export function HelpClient({ isMarketplace }: { isMarketplace: boolean }) {
       )}
 
       <div className="grid sm:grid-cols-2 gap-3">
+        {/* Plain <a>, not next/link's <Link> — a full page load, not a
+            client-side transition, is what makes the guided tour render
+            reliably (see the comment in guided-tour.tsx). */}
+        <a href="/student/dashboard?tour=replay">
+          <Card className="hover:border-gold/40 transition-colors h-full">
+            <CardContent className="py-4 px-4 flex items-start gap-3">
+              <Compass className="h-4 w-4 text-gold shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-medium">Retake the dashboard tour</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  A quick walkthrough of your dashboard, lessons, and streak — the same one you saw when you first joined.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </a>
         <Link href="/student/tracy">
           <Card className="hover:border-gold/40 transition-colors h-full">
             <CardContent className="py-4 px-4 flex items-start gap-3">

@@ -17,7 +17,11 @@ import {
 import { fetcher } from '@/lib/fetch'
 import { StudentDashboardClient } from '@/components/students/student-dashboard-client'
 
-export default async function StudentDashboardPage() {
+interface Props {
+  searchParams: Promise<{ tour?: string }>
+}
+
+export default async function StudentDashboardPage({ searchParams }: Props) {
   const cookieStore = await cookies()
   const userCookie  = cookieStore.get('user')?.value
 
@@ -32,6 +36,13 @@ export default async function StudentDashboardPage() {
 
   const studentId = user?.user_id ?? user?.id
   if (!studentId) redirect('/student/login')
+
+  // Only ever set by the post-onboarding redirect ("welcome") or the Help
+  // page's explicit "Retake the tour" link ("replay") — a normal dashboard
+  // visit carries neither, so an existing student never sees the tour just
+  // because their browser/device has no local "seen it" record.
+  const { tour } = await searchParams
+  const tourTrigger = tour === 'welcome' || tour === 'replay' ? tour : null
 
   // 1. Resolve Class assignment first so we don't over-fetch data for pending students
   const sowData = await getMyClassSoW()
@@ -56,6 +67,7 @@ export default async function StudentDashboardPage() {
         nextAction={null}
         classId={sowData.classId}
         classFetchFailed={sowData.fetchFailed}
+        tourTrigger={null}
       />
     )
   }
@@ -103,6 +115,7 @@ export default async function StudentDashboardPage() {
       currentWeekEntries={sowData.currentWeekEntries}
       nextAction={nextAction}
       classId={sowData.classId}
+      tourTrigger={tourTrigger}
     />
   )
 }

@@ -18,6 +18,7 @@ import {
 } from '@/lib/actions/study-plans'
 import { submitStudentNote } from '@/lib/actions/student-notes'
 import { LessonPlayer, type SceneResponse } from './lesson-player'
+import { splitTopicHeadline } from '@/lib/utils'
 
 // ── Component ─────────────────────────────────────────────────────────────────
 //
@@ -155,7 +156,7 @@ export function StudioShell({ plan, scenes, user, isPractice }: Props) {
           </div>
           <div>
             <h2 className="text-xl font-bold">Practice complete</h2>
-            <p className="text-sm text-muted-foreground mt-1">{plan.subject}: {plan.topic}</p>
+            <p className="text-sm text-muted-foreground mt-1">{plan.subject}: {splitTopicHeadline(plan.topic).headline}</p>
           </div>
           <div className="rounded-xl border bg-muted/20 px-4 py-3">
             <p className="text-xs text-muted-foreground">Practice score (not recorded)</p>
@@ -197,7 +198,7 @@ export function StudioShell({ plan, scenes, user, isPractice }: Props) {
                 ? `Part ${sessionHint!.index} done — continues next session`
                 : 'Lesson complete!'}
             </h2>
-            <p className="text-sm text-muted-foreground mt-1">{plan.subject}: {plan.topic}</p>
+            <p className="text-sm text-muted-foreground mt-1">{plan.subject}: {splitTopicHeadline(plan.topic).headline}</p>
             {continuesNextSession && (
               <p className="text-xs text-muted-foreground mt-1">
                 {sessionHint!.of_estimate - sessionHint!.index} more session{sessionHint!.of_estimate - sessionHint!.index === 1 ? '' : 's'} to cover everything on this topic
@@ -250,7 +251,7 @@ export function StudioShell({ plan, scenes, user, isPractice }: Props) {
             <div className="rounded-xl border border-gold/30 bg-gold/5 p-4 flex items-center justify-between gap-3">
               <div className="min-w-0">
                 <p className="text-sm font-semibold flex items-center gap-1.5">
-                  <ArrowRight className="h-4 w-4 text-gold shrink-0" /> Next up: {sequence.topic}
+                  <ArrowRight className="h-4 w-4 text-gold shrink-0" /> Next up: {splitTopicHeadline(sequence.topic).headline}
                 </p>
                 <p className="text-xs text-muted-foreground mt-0.5">{sequence.subject} · continuing today&apos;s lessons</p>
               </div>
@@ -310,7 +311,7 @@ export function StudioShell({ plan, scenes, user, isPractice }: Props) {
           <X className="h-4 w-4" /> Exit
         </Button>
         <div className="rounded-2xl border bg-card p-6 max-w-2xl mx-auto w-full">
-          <h2 className="font-bold text-xl">{plan.topic}</h2>
+          <h2 className="font-bold text-xl">{splitTopicHeadline(plan.topic).headline}</h2>
           <p className="text-sm text-muted-foreground mt-1">{plan.subject}</p>
           <div className="mt-4 space-y-3 text-sm text-foreground/80 leading-relaxed">
             <p>{plan.content?.introduction}</p>

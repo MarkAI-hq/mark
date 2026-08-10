@@ -6,7 +6,7 @@ import { useState, useEffect } from 'react'
 import {
   TrendingUp, BookOpen, Target, Award,
   AlertCircle, CheckCircle2, Clock, Download, Flame,
-  Calendar, ChevronRight, ArrowRight, RotateCcw,
+  ChevronRight, ArrowRight, RotateCcw,
   BookOpenCheck, Sparkles, ShieldAlert
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
@@ -14,6 +14,7 @@ import { Badge }          from '@/components/ui/badge'
 import { Progress }       from '@/components/ui/progress'
 import { Button }         from '@/components/ui/button'
 import { ErrorTypeLabel } from '@/components/ui/error-type-label'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import Link               from 'next/link'
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -26,9 +27,11 @@ import { ExamHistoryDetail }    from '@/components/students/exam-history-detail'
 import { LearningToolkits }     from '@/components/students/learning-toolkits'
 import { CertPreviewAnchor }    from '@/components/students/cert-preview-anchor'
 import { NextStep }             from '@/components/students/next-step'
+import { GuidedTour }           from '@/components/students/guided-tour'
 import { TermBillingStatusCard } from '@/components/students/term-billing-status-card'
 import { ClassConfirmationUploadWidget } from '@/components/students/class-confirmation-upload-widget'
 import type { ExamHistoryItem, LearningTool, StudentCognitiveProfile, StudyPlan, SocialProof, SubjectProgress, StudentPrediction, NextAction } from '@/lib/actions/student-dashboard'
+import { formatTopicTitle } from '@/lib/utils'
 
 const LESSON_TYPE_CONFIG: Record<string, { label: string; color: string }> = {
   catch_up:     { label: 'Catch-Up',     color: 'bg-blue-100 text-blue-800 dark:bg-blue-950/40 dark:text-blue-300' },
@@ -59,6 +62,7 @@ interface Props {
    *  genuinely has no class yet — must show a different message than the
    *  pending-approval empty state below. */
   classFetchFailed?:   boolean
+  tourTrigger?:        'welcome' | 'replay' | null
 }
 
 const perfColor = (p: number) =>
@@ -76,7 +80,7 @@ const statusColor: Record<string, string> = {
 }
 
 export function StudentDashboardClient({
-  user, analytics, currentProfile, submissions, examHistory, tools, studyPlans = [], streak = 0, socialProof, subjectProgress = [], predictions = [], currentWeekEntries = [], nextAction = null, classId, classFetchFailed,
+  user, analytics, currentProfile, submissions, examHistory, tools, studyPlans = [], streak = 0, socialProof, subjectProgress = [], predictions = [], currentWeekEntries = [], nextAction = null, classId, classFetchFailed, tourTrigger = null,
 }: Props) {
   // ── Client-Side Local State ────────────────────────────────────────────────
   const [dataSaver, setDataSaver] = useState(false)
@@ -243,6 +247,9 @@ export function StudentDashboardClient({
   return (
     <div className="space-y-6">
 
+      {/* ── First-run guided tour — only fires on an explicit trigger ── */}
+      <GuidedTour trigger={tourTrigger} />
+
       {/* ── Next-Best-Action hero — total mental clarity ──────────────── */}
       <NextStep nextAction={nextAction} />
 
@@ -281,25 +288,32 @@ export function StudentDashboardClient({
 
       {/* ── Today's schedule strip ────────────────────────────────────── */}
       {currentWeekEntries.length > 0 && (
-        <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
-          {currentWeekEntries.slice(0, 4).map((entry: any, i: number) => (
-            <div
-              key={i}
-              className="flex-shrink-0 rounded-lg border bg-card px-3 py-2 flex items-center gap-2"
-            >
-              <Calendar className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-              <div>
-                <p className="text-xs font-medium whitespace-nowrap">{entry.topic}</p>
-                <p className="text-[10px] text-muted-foreground">{entry.subject ?? ''} · Wk {entry.week_number}</p>
-              </div>
-              {entry.is_delivered && (
-                <CheckCircle2 className="h-3 w-3 text-emerald-500 shrink-0" />
-              )}
-            </div>
-          ))}
+        <div className="rounded-lg border overflow-hidden">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Topic</TableHead>
+                <TableHead>Subject</TableHead>
+                <TableHead>Week</TableHead>
+                <TableHead className="w-8" />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {currentWeekEntries.slice(0, 4).map((entry: any, i: number) => (
+                <TableRow key={i}>
+                  <TableCell className="text-xs font-medium">{formatTopicTitle(entry.topic)}</TableCell>
+                  <TableCell className="text-xs text-muted-foreground">{entry.subject ?? ''}</TableCell>
+                  <TableCell className="text-xs text-muted-foreground">Wk {entry.week_number}</TableCell>
+                  <TableCell>
+                    {entry.is_delivered && <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
           <Link
             href="/student/schedule"
-            className="flex-shrink-0 rounded-lg border border-dashed bg-muted/30 px-3 py-2 flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+            className="flex items-center gap-1.5 px-3 py-2 text-xs text-muted-foreground hover:text-foreground transition-colors border-t bg-muted/20"
           >
             <ChevronRight className="h-3.5 w-3.5" />
             Full schedule
@@ -399,7 +413,7 @@ export function StudentDashboardClient({
             <div className="flex items-center gap-3 min-w-0">
               <BookOpen className="h-4 w-4 text-gold shrink-0" />
               <div className="min-w-0">
-                <p className="text-sm font-medium truncate">Continue: {nextPendingPlan.topic}</p>
+                <p className="text-sm font-medium truncate">Continue: {formatTopicTitle(nextPendingPlan.topic)}</p>
                 <p className="text-xs text-muted-foreground mt-0.5">
                   {nextPendingPlan.subject} · {nextPendingPlan.content?.estimated_minutes ?? 20} min
                 </p>
@@ -422,22 +436,33 @@ export function StudentDashboardClient({
             </div>
             <span className="text-[11px] text-violet-600 dark:text-violet-400 font-bold uppercase tracking-wider scale-95 origin-right">Active Recall</span>
           </div>
-          <div className="space-y-1.5">
-            {dueReviews.slice(0, 5).map((plan) => (
-              <Link
-                key={plan.id}
-                href={`/student/study-plans/${plan.id}/studio`}
-                className="flex items-center justify-between gap-3 rounded-lg bg-white dark:bg-violet-900/30 border border-violet-100 dark:border-violet-800 px-3 py-2.5 hover:bg-violet-50 dark:hover:bg-violet-900/50 transition-colors group"
-              >
-                <div className="min-w-0">
-                  <p className="text-sm font-medium truncate text-foreground">{plan.topic}</p>
-                  <p className="text-[11px] text-muted-foreground mt-0.5">
-                    {plan.subject} · {plan.daysOverdue === 0 ? 'due today' : `${plan.daysOverdue}d overdue`}
-                  </p>
-                </div>
-                <ArrowRight className="h-3.5 w-3.5 text-violet-400 shrink-0 group-hover:translate-x-0.5 transition-transform" />
-              </Link>
-            ))}
+          <div className="rounded-lg overflow-hidden border border-violet-100 dark:border-violet-800 bg-white dark:bg-violet-900/30">
+            <Table>
+              <TableHeader>
+                <TableRow className="hover:bg-transparent border-violet-100 dark:border-violet-800">
+                  <TableHead>Topic</TableHead>
+                  <TableHead>Subject</TableHead>
+                  <TableHead>Due</TableHead>
+                  <TableHead className="w-8" />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {dueReviews.slice(0, 5).map((plan) => (
+                  <TableRow key={plan.id} className="border-violet-100 dark:border-violet-800">
+                    <TableCell className="text-sm font-medium">{formatTopicTitle(plan.topic)}</TableCell>
+                    <TableCell className="text-xs text-muted-foreground">{plan.subject}</TableCell>
+                    <TableCell className="text-xs text-muted-foreground">{plan.daysOverdue === 0 ? 'Today' : `${plan.daysOverdue}d overdue`}</TableCell>
+                    <TableCell>
+                      <Button asChild size="sm" variant="ghost" className="h-7 w-7 p-0 text-violet-600 dark:text-violet-400">
+                        <Link href={`/student/study-plans/${plan.id}/studio`}>
+                          <ArrowRight className="h-3.5 w-3.5" />
+                        </Link>
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           </div>
           {dueReviews.length > 5 && (
             <Link href="/student/study-plans" className="text-xs text-violet-600 dark:text-violet-400 hover:underline">
@@ -740,22 +765,33 @@ export function StudentDashboardClient({
               <CardDescription>Personalised lessons generated from your gap analysis</CardDescription>
             </CardHeader>
             <CardContent className="space-y-2">
-              {pending.slice(0, 5).map((plan) => {
-                const cfg = LESSON_TYPE_CONFIG[plan.lesson_type] ?? { label: plan.lesson_type, color: 'bg-muted text-muted-foreground' }
-                return (
-                  <div key={plan.id} className="flex items-center gap-3 rounded-lg border px-3 py-2.5 hover:bg-muted/30 transition-colors">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">{plan.topic}</p>
-                      <p className="text-xs text-muted-foreground">{plan.subject} · {plan.content?.estimated_minutes ?? 20} min</p>
-                    </div>
-                    <div className="flex items-center gap-2 flex-shrink-0">
-                      <Badge className={`text-xs px-1.5 py-0 ${cfg.color}`}>{cfg.label}</Badge>
-                      <Clock className="h-3.5 w-3.5 text-muted-foreground" />
-                    </div>
-                  </div>
-                )
-              })}
-              {pending.length === 0 && (
+              {pending.length > 0 ? (
+                <div className="rounded-lg border overflow-hidden">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Topic</TableHead>
+                        <TableHead>Subject</TableHead>
+                        <TableHead>Type</TableHead>
+                        <TableHead>Duration</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {pending.slice(0, 5).map((plan) => {
+                        const cfg = LESSON_TYPE_CONFIG[plan.lesson_type] ?? { label: plan.lesson_type, color: 'bg-muted text-muted-foreground' }
+                        return (
+                          <TableRow key={plan.id}>
+                            <TableCell className="text-sm font-medium">{formatTopicTitle(plan.topic)}</TableCell>
+                            <TableCell className="text-xs text-muted-foreground">{plan.subject}</TableCell>
+                            <TableCell><Badge className={`text-xs px-1.5 py-0 ${cfg.color}`}>{cfg.label}</Badge></TableCell>
+                            <TableCell className="text-xs text-muted-foreground">{plan.content?.estimated_minutes ?? 20} min</TableCell>
+                          </TableRow>
+                        )
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+              ) : (
                 <div className="flex items-center gap-2 py-4 text-muted-foreground">
                   <CheckCircle2 className="h-4 w-4 text-emerald-500" />
                   <p className="text-sm">All caught up! No pending study plans.</p>

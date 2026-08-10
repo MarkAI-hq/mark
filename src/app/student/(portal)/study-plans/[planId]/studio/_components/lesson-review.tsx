@@ -10,6 +10,7 @@
 import Link from 'next/link'
 import { ArrowLeft, CheckCircle2, XCircle, Circle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { splitTopicHeadline } from '@/lib/utils'
 
 interface Props {
   plan: any
@@ -47,7 +48,7 @@ export function LessonReview({ plan, from }: Props) {
         </Link>
 
         <div>
-          <h1 className="text-xl font-bold">{plan.topic}</h1>
+          <h1 className="text-xl font-bold">{splitTopicHeadline(plan.topic).headline}</h1>
           <p className="text-sm text-muted-foreground">
             {plan.subject} · Reviewing your answers ({plan.score_after != null ? `${plan.score_after}%` : 'scored'}) — this is read-only.
           </p>

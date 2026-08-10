@@ -26,7 +26,7 @@ export function StudentShell({ children, user, organizationName }: StudentShellP
   return (
     <div className="h-screen flex bg-background overflow-hidden">
 
-      <WelcomeCheckIn userId={user.id} firstName={user.name?.split(' ')[0]} />
+      <WelcomeCheckIn userId={user.id} firstName={user.name?.split(' ')[0]} streak={user.study_streak} />
 
       <StudentSidebarNav
         user={user}

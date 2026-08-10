@@ -38,6 +38,18 @@ export function todaysQuote(): string {
   return QUOTES[dayOfYear % QUOTES.length]
 }
 
+/** Login should congratulate on something real (the student's own streak),
+ *  not a generic quote — students have that concept, teachers/admins don't,
+ *  so callers without a streak keep using todaysQuote() instead. */
+export function congratsMessage(streak: number): string {
+  if (streak <= 0) return "Ready to start today strong?"
+  if (streak === 1) return "You started your streak yesterday — keep it alive today!"
+  if (streak < 7) return `${streak} days in a row! You're building real momentum — keep going.`
+  if (streak < 14) return `A full week strong — ${streak} days straight. That's real discipline.`
+  if (streak < 30) return `${streak} days in a row! That kind of consistency is what actually moves the needle.`
+  return `${streak} days straight?! That's serious dedication — genuinely impressive.`
+}
+
 export function shouldShowCheckIn(userId: string): boolean {
   if (typeof window === 'undefined') return false
   try {

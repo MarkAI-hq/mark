@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import type { ColumnDef } from '@tanstack/react-table'
 import {
   GraduationCap, Eye, Package, MessageCircle,
   ChevronDown, ChevronRight, Printer,
@@ -10,10 +11,12 @@ import {
 import { selfInitiateFromEntry } from '@/lib/actions/study-plans'
 import { ReportCard } from '@/components/report-card/report-card'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { DataTable } from '@/components/ui/data-table'
 import type {
   GradebookResponse, SubjectGradebook, NcdcLevel, GradeBand, GradingScale,
   TriangulationCategory, GradebookTopic,
 } from '@/lib/actions/study-plans'
+import { formatTopicTitle } from '@/lib/utils'
 
 // icon_hint (from the curriculum's assessment_model) → lucide icon. Unknown
 // hints fall back to a generic icon so a new curriculum's categories still render.
@@ -270,12 +273,20 @@ function TopicList({ topics }: { topics: SubjectGradebook['topics'] }) {
     }
   }
 
-  return (
-    <div className="divide-y divide-[#e8e8e6] dark:divide-[#2a2a2a]">
-      {topics.map((t) => (
-        <div key={t.entry_id} className="flex items-center justify-between gap-3 py-2.5 px-1">
+  const columns: ColumnDef<GradebookTopic>[] = [
+    {
+      id: 'week',
+      header: 'Week',
+      accessorFn: (t) => t.week_number,
+      cell: ({ getValue }) => <span className="text-xs text-muted-foreground tabular-nums">W{getValue<number>()}</span>,
+    },
+    {
+      accessorKey: 'topic',
+      header: 'Topic',
+      cell: ({ row }) => {
+        const t = row.original
+        return (
           <div className="flex items-center gap-2 min-w-0">
-            <span className="text-[10px] text-muted-foreground shrink-0 w-6">W{t.week_number}</span>
             {t.achievement === 'all' ? (
               <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
             ) : t.achievement === 'some' ? (
@@ -283,32 +294,53 @@ function TopicList({ topics }: { topics: SubjectGradebook['topics'] }) {
             ) : (
               <Circle className="h-3.5 w-3.5 text-muted-foreground/40 shrink-0" />
             )}
-            <span className="text-sm truncate">{t.topic}</span>
+            <span className="text-sm truncate">{formatTopicTitle(t.topic)}</span>
             {(t.requirement_statement || t.exam_weight_pct != null) && (
               <TopicRequirementInfo topic={t} />
             )}
           </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${ncdcColor(t.achievement)}`}>
-              {ncdcLabel(t.achievement)}
-            </span>
-            {t.achievement !== 'all' && (
-              <button
-                onClick={() => handleStart(t.sow_entry_id)}
-                disabled={starting === t.sow_entry_id}
-                className="text-[11px] font-semibold text-[#c9a03c] dark:text-[#e6bc5a] hover:underline disabled:opacity-50 whitespace-nowrap"
-              >
-                {starting === t.sow_entry_id
-                  ? 'Loading…'
-                  : t.has_plan
-                    ? 'Continue →'
-                    : 'Start lesson →'}
-              </button>
-            )}
-          </div>
-        </div>
-      ))}
-    </div>
+        )
+      },
+    },
+    {
+      id: 'achievement',
+      header: 'Status',
+      accessorFn: (t) => t.achievement,
+      cell: ({ row }) => (
+        <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full whitespace-nowrap ${ncdcColor(row.original.achievement)}`}>
+          {ncdcLabel(row.original.achievement)}
+        </span>
+      ),
+    },
+    {
+      id: 'actions',
+      header: '',
+      cell: ({ row }) => {
+        const t = row.original
+        if (t.achievement === 'all') return null
+        return (
+          <button
+            onClick={() => handleStart(t.sow_entry_id)}
+            disabled={starting === t.sow_entry_id}
+            className="text-[11px] font-semibold text-[#c9a03c] dark:text-[#e6bc5a] hover:underline disabled:opacity-50 whitespace-nowrap"
+          >
+            {starting === t.sow_entry_id
+              ? 'Loading…'
+              : t.has_plan
+                ? 'Continue →'
+                : 'Start lesson →'}
+          </button>
+        )
+      },
+    },
+  ]
+
+  return (
+    <DataTable
+      columns={columns}
+      data={topics}
+      filter={{ prompt: 'Search topics...', column: 'topic' }}
+    />
   )
 }
 
@@ -624,7 +656,7 @@ function ThisWeekTab({
                 )}
               </div>
               <div className="min-w-0">
-                <p className="text-sm truncate">{entry.topic}</p>
+                <p className="text-sm truncate">{formatTopicTitle(entry.topic)}</p>
                 <span className={`text-[10px] ${ncdcColor(entry.achievement)} px-1.5 py-0.5 rounded-full`}>
                   {ncdcLabel(entry.achievement)}
                 </span>

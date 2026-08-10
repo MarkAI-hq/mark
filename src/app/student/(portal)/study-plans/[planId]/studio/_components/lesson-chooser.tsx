@@ -13,6 +13,7 @@ import { Eye, RotateCcw, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ConnectedProgress } from '@/components/students/connected-progress'
 import { getStudentSubjectProgress, getStudentPredictions } from '@/lib/actions/student-dashboard'
+import { splitTopicHeadline } from '@/lib/utils'
 
 interface Props {
   plan: any
@@ -49,7 +50,7 @@ export function LessonChooser({ plan, user, from }: Props) {
 
         <div>
           <p className="text-xs font-semibold uppercase tracking-wide text-emerald-600">Already completed</p>
-          <h1 className="text-xl font-bold mt-1">{plan.topic}</h1>
+          <h1 className="text-xl font-bold mt-1">{splitTopicHeadline(plan.topic).headline}</h1>
           <p className="text-sm text-muted-foreground">
             {plan.subject}
             {plan.score_after != null ? ` · scored ${plan.score_after}%` : ''}

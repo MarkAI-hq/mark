@@ -17,6 +17,7 @@ import { Separator } from '@/components/ui/separator'
 
 import { NationalExamPredictionCard } from '@/components/prediction/national-exam-prediction-card'
 import { ClassConfirmationUploadWidget } from '@/components/students/class-confirmation-upload-widget'
+import { formatTopicTitle } from '@/lib/utils'
 
 interface Props {
   user:         any
@@ -351,7 +352,7 @@ export function PathwayClient({ user, hasClass, predictions, prediction, curricu
                 </Badge>
               </div>
               <p className="text-sm text-foreground font-medium font-sans">{action.action}</p>
-              <p className="text-xs text-muted-foreground">Topic: {action.topic}</p>
+              <p className="text-xs text-muted-foreground">Topic: {formatTopicTitle(action.topic)}</p>
               {action.linked_id && (
                 <Button size="sm" variant="outline" className="h-7 text-xs gap-1" asChild>
                   <Link href={`/student/reteach/${action.linked_id}`}>
@@ -380,7 +381,7 @@ export function PathwayClient({ user, hasClass, predictions, prediction, curricu
           {prediction.topic_performance.map((t: any) => (
             <div key={t.topic} className="space-y-1">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-medium text-foreground">{t.topic}</span>
+                <span className="text-xs font-medium text-foreground">{formatTopicTitle(t.topic)}</span>
                 <span className="text-xs text-muted-foreground">
                   {t.student_mastery}% · national avg {t.national_average}%
                 </span>

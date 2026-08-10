@@ -4,13 +4,15 @@ import { useEffect, useState } from 'react'
 import { Sparkles } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { shouldShowCheckIn, recordCheckIn, todaysQuote } from '@/lib/checkin'
+import { shouldShowCheckIn, recordCheckIn, todaysQuote, congratsMessage } from '@/lib/checkin'
 
 /** Once-a-day welcome popup (item 15) — same component for students, teachers,
  *  and admins. Login/timestamp is already logged server-side; this only
  *  handles the "seen once today" presentation + local check-in record that
- *  the persistent header indicator reads from. */
-export function WelcomeCheckIn({ userId, firstName }: { userId?: string; firstName?: string }) {
+ *  the persistent header indicator reads from. Students get an immediate,
+ *  streak-specific congratulation instead of a generic quote — teachers/admins
+ *  (no `streak` prop, no streak concept) keep the quote. */
+export function WelcomeCheckIn({ userId, firstName, streak }: { userId?: string; firstName?: string; streak?: number }) {
   const [open, setOpen] = useState(false)
   const [quote, setQuote] = useState('')
 
@@ -18,10 +20,10 @@ export function WelcomeCheckIn({ userId, firstName }: { userId?: string; firstNa
     if (!userId) return
     if (shouldShowCheckIn(userId)) {
       recordCheckIn(userId)
-      setQuote(todaysQuote())
+      setQuote(streak !== undefined ? congratsMessage(streak) : todaysQuote())
       setOpen(true)
     }
-  }, [userId])
+  }, [userId, streak])
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>

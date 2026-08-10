@@ -27,7 +27,7 @@ import { Input } from '@/components/ui/input'
 interface DataTableProps<TData, TValue> {
 	columns: ColumnDef<TData, TValue>[]
 	data: TData[]
-	filter: { prompt: string; column: string }
+	filter?: { prompt: string; column: string }
 	headerSlot?: React.ReactNode
 }
 
@@ -59,19 +59,23 @@ export function DataTable<TData, TValue>({
 
 	return (
 		<div>
-			<div className='flex items-center justify-between py-4 mx-auto'>
-				<Input
-					placeholder={filter.prompt}
-					value={
-						(table.getColumn(filter.column)?.getFilterValue() as string) ?? ''
-					}
-					onChange={(event) =>
-						table.getColumn(filter.column)?.setFilterValue(event.target.value)
-					}
-					className='max-w-sm'
-				/>
-				{headerSlot}
-			</div>
+			{(filter || headerSlot) && (
+				<div className='flex items-center justify-between py-4 mx-auto'>
+					{filter && (
+						<Input
+							placeholder={filter.prompt}
+							value={
+								(table.getColumn(filter.column)?.getFilterValue() as string) ?? ''
+							}
+							onChange={(event) =>
+								table.getColumn(filter.column)?.setFilterValue(event.target.value)
+							}
+							className='max-w-sm'
+						/>
+					)}
+					{headerSlot}
+				</div>
+			)}
 			<div className='rounded-md border p-8'>
 				<Table>
 					<TableHeader>

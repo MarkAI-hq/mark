@@ -23,6 +23,7 @@ import {
 import { submitStudentNote, uploadStudentNote, updateStudentNote } from '@/lib/actions/student-notes'
 import { getAvailableSubjects } from '@/lib/actions/curricula'
 import type { StudentNote, StudentNoteStats } from '@/lib/actions/student-notes'
+import { formatTopicTitle } from '@/lib/utils'
 
 // ── Status config ─────────────────────────────────────────────────────────────
 
@@ -241,7 +242,7 @@ function EditNoteDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{note.topic}</DialogTitle>
+          <DialogTitle>{formatTopicTitle(note.topic)}</DialogTitle>
         </DialogHeader>
         <div className="space-y-1.5">
           <p className="text-xs text-muted-foreground">{note.subject}</p>
@@ -284,7 +285,7 @@ function NoteCard({ note, onUpdated }: { note: StudentNote; onUpdated: (note: St
             <div className="space-y-0.5 min-w-0 flex-1">
               <div className="flex items-center gap-1.5">
                 <SourceIcon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                <p className="text-sm font-semibold text-foreground truncate">{note.topic}</p>
+                <p className="text-sm font-semibold text-foreground truncate">{formatTopicTitle(note.topic)}</p>
               </div>
               <p className="text-xs text-muted-foreground">{note.subject}</p>
             </div>
@@ -323,6 +324,7 @@ export function KnowledgeBaseClient({ initialNotes, initialStats }: Props) {
   const [stats, setStats]     = useState(initialStats)
   const [dialogOpen, setDialog] = useState(false)
   const [filter, setFilter]   = useState<'all' | 'pending' | 'approved' | 'rejected'>('all')
+  const [search, setSearch]   = useState('')
 
   function handleNoteUpdated(note: StudentNote) {
     setNotes((prev) => prev.map((n) => (n.id === note.id ? note : n)))
@@ -337,7 +339,17 @@ export function KnowledgeBaseClient({ initialNotes, initialStats }: Props) {
     }))
   }
 
-  const filtered = filter === 'all' ? notes : notes.filter((n) => n.status === filter)
+  const filtered = notes
+    .filter((n) => filter === 'all' || n.status === filter)
+    .filter((n) => {
+      const q = search.trim().toLowerCase()
+      if (!q) return true
+      return (
+        n.topic.toLowerCase().includes(q) ||
+        n.subject.toLowerCase().includes(q) ||
+        n.content.toLowerCase().includes(q)
+      )
+    })
   const pendingCount  = notes.filter((n) => n.status === 'pending').length
   const approvedCount = notes.filter((n) => n.status === 'approved').length
 
@@ -393,28 +405,36 @@ export function KnowledgeBaseClient({ initialNotes, initialStats }: Props) {
           </Card>
         </div>
 
-        {/* ── Filter tabs ────────────────────────────────────────────── */}
+        {/* ── Search + filter tabs ──────────────────────────────────── */}
         {notes.length > 0 && (
-          <div className="flex gap-2 flex-wrap">
-            {(['all', 'pending', 'approved', 'rejected'] as const).map((f) => (
-              <button
-                key={f}
-                onClick={() => setFilter(f)}
-                className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-                  filter === f
-                    ? 'bg-foreground text-background'
-                    : 'bg-muted text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                {f === 'all'
-                  ? `All (${notes.length})`
-                  : f === 'pending'
-                  ? `Pending (${pendingCount})`
-                  : f === 'approved'
-                  ? `In school KB (${approvedCount})`
-                  : `Rejected (${notes.filter((n) => n.status === 'rejected').length})`}
-              </button>
-            ))}
+          <div className="space-y-2">
+            <Input
+              placeholder="Search notes by topic, subject, or content…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="max-w-sm"
+            />
+            <div className="flex gap-2 flex-wrap">
+              {(['all', 'pending', 'approved', 'rejected'] as const).map((f) => (
+                <button
+                  key={f}
+                  onClick={() => setFilter(f)}
+                  className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                    filter === f
+                      ? 'bg-foreground text-background'
+                      : 'bg-muted text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  {f === 'all'
+                    ? `All (${notes.length})`
+                    : f === 'pending'
+                    ? `Pending (${pendingCount})`
+                    : f === 'approved'
+                    ? `In school KB (${approvedCount})`
+                    : `Rejected (${notes.filter((n) => n.status === 'rejected').length})`}
+                </button>
+              ))}
+            </div>
           </div>
         )}
 
@@ -433,6 +453,8 @@ export function KnowledgeBaseClient({ initialNotes, initialStats }: Props) {
                   Write your first note
                 </Button>
               </>
+            ) : search.trim() ? (
+              <p className="text-sm text-muted-foreground">No notes match &ldquo;{search.trim()}&rdquo;.</p>
             ) : (
               <p className="text-sm text-muted-foreground">No {filter} notes.</p>
             )}

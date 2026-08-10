@@ -13,6 +13,7 @@ import { Button }   from '@/components/ui/button'
 import { toast }    from 'sonner'
 import type { SubjectProgress, StudyPlan, StudentPrediction } from '@/lib/actions/student-dashboard'
 import { initiateFreeStudyPlan } from '@/lib/actions/student-dashboard'
+import { formatTopicTitle } from '@/lib/utils'
 import { AskTracyChip } from '@/components/students/ask-tracy-chip'
 import { ClassConfirmationUploadWidget } from '@/components/students/class-confirmation-upload-widget'
 
@@ -239,7 +240,7 @@ export function SubjectsClient({
                           ? <CheckCircle2 className="h-3 w-3 text-emerald-500 shrink-0" />
                           : <AlertCircle className="h-3 w-3 text-amber-400 shrink-0" />
                         }
-                        <span>Week {entry.week_number}: {entry.topic}</span>
+                        <span>Week {entry.week_number}: {formatTopicTitle(entry.topic)}</span>
                       </div>
                     ))}
                   </div>

@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
+import type { ColumnDef } from '@tanstack/react-table'
 import {
   CheckCircle2, Clock, AlertTriangle, XCircle, Circle,
   TrendingUp, BookOpen, ArrowRight,
@@ -9,6 +10,7 @@ import {
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { DataTable } from '@/components/ui/data-table'
 import { toast } from 'sonner'
 import {
   type PacingResponse,
@@ -16,6 +18,7 @@ import {
   type PacingEntry,
   initiateFreeStudyPlan,
 } from '@/lib/actions/student-dashboard'
+import { formatTopicTitle } from '@/lib/utils'
 
 const BLOOM_LABELS: Record<string, string> = {
   knowledge:     'Memory',
@@ -44,84 +47,124 @@ function normaliseBloom(raw: Record<string, number>): Array<{ label: string; val
     .slice(0, 6)
 }
 
-// ── Entry row ─────────────────────────────────────────────────────────────────
+// ── Entry status ──────────────────────────────────────────────────────────────
 
-function EntryRow({
-  entry,
-  subject,
+function entryStatus(entry: PacingEntry) {
+  if (entry.status === 'strong') {
+    return { Icon: CheckCircle2, iconClass: 'text-emerald-500', ctaLabel: null as string | null }
+  }
+  if (entry.status === 'developing') {
+    return { Icon: Clock, iconClass: 'text-amber-500', ctaLabel: entry.is_behind ? 'Review' : null }
+  }
+  if (entry.is_behind && entry.plan_count === 0) {
+    return { Icon: XCircle, iconClass: 'text-rose-400', ctaLabel: 'Start' }
+  }
+  if (entry.is_behind) {
+    return { Icon: AlertTriangle, iconClass: 'text-rose-500', ctaLabel: 'Catch up' }
+  }
+  return { Icon: Circle, iconClass: 'text-muted-foreground/40', ctaLabel: null as string | null }
+}
+
+// ── Entries table ─────────────────────────────────────────────────────────────
+
+function SchemeEntriesTable({
+  entries,
   onCatchUp,
   loading,
 }: {
-  entry: PacingEntry
-  subject: string
+  entries: PacingEntry[]
   onCatchUp: (topic: string) => void
-  loading: boolean
+  loading: (topic: string) => boolean
 }) {
-  let Icon = Circle
-  let iconClass = 'text-muted-foreground/40'
-  let rowClass = ''
-  let ctaLabel: string | null = null
-  let ctaVariant: 'outline' | 'destructive' = 'outline'
-
-  if (entry.status === 'strong') {
-    Icon = CheckCircle2; iconClass = 'text-emerald-500'
-  } else if (entry.status === 'developing') {
-    Icon = Clock; iconClass = 'text-amber-500'
-    if (entry.is_behind) { ctaLabel = 'Review'; ctaVariant = 'outline' }
-  } else if (entry.is_behind && entry.plan_count === 0) {
-    Icon = XCircle; iconClass = 'text-rose-400'; rowClass = 'opacity-80'
-    ctaLabel = 'Start'
-  } else if (entry.is_behind) {
-    Icon = AlertTriangle; iconClass = 'text-rose-500'
-    ctaLabel = 'Catch up'
-  }
-
-  return (
-    <div className={`flex items-center gap-3 py-2.5 border-b last:border-0 ${rowClass}`}>
-      <span className="text-[11px] text-muted-foreground tabular-nums w-8 shrink-0">
-        Wk {entry.week_number}
-      </span>
-      <Icon className={`h-3.5 w-3.5 shrink-0 ${iconClass}`} />
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium truncate">{entry.topic}</p>
-        {entry.subtopics.length > 0 && (
-          <p className="text-[11px] text-muted-foreground truncate">
-            {entry.subtopics.slice(0, 2).join(' · ')}
-          </p>
-        )}
-      </div>
-      <div className="flex items-center gap-2 shrink-0">
-        {entry.curriculum_weight !== null && (
-          <span className="text-[11px] text-muted-foreground tabular-nums">
-            {entry.curriculum_weight.toFixed(0)}%
-          </span>
-        )}
-        {entry.student_mastery !== null ? (
-          <span className={`text-[11px] tabular-nums font-medium ${
-            entry.status === 'strong' ? 'text-emerald-600' :
-            entry.status === 'developing' ? 'text-amber-600' : 'text-rose-600'
-          }`}>
-            {entry.student_mastery}%
-          </span>
-        ) : entry.is_due ? (
-          <span className="text-[11px] text-muted-foreground">not studied</span>
-        ) : (
-          <span className="text-[11px] text-muted-foreground/50">upcoming</span>
-        )}
-        {ctaLabel && (
+  const columns: ColumnDef<PacingEntry>[] = [
+    {
+      id: 'week',
+      header: 'Week',
+      accessorFn: (e) => e.week_number,
+      cell: ({ getValue }) => (
+        <span className="text-xs text-muted-foreground tabular-nums">Wk {getValue<number>()}</span>
+      ),
+    },
+    {
+      accessorKey: 'topic',
+      header: 'Topic',
+      cell: ({ row }) => {
+        const entry = row.original
+        const { Icon, iconClass } = entryStatus(entry)
+        return (
+          <div className="flex items-center gap-2 min-w-0">
+            <Icon className={`h-3.5 w-3.5 shrink-0 ${iconClass}`} />
+            <div className="min-w-0">
+              <p className="text-sm font-medium truncate">{formatTopicTitle(entry.topic)}</p>
+              {entry.subtopics.length > 0 && (
+                <p className="text-[11px] text-muted-foreground truncate">
+                  {entry.subtopics.slice(0, 2).map(formatTopicTitle).join(' · ')}
+                </p>
+              )}
+            </div>
+          </div>
+        )
+      },
+    },
+    {
+      id: 'weight',
+      header: 'Weight',
+      accessorFn: (e) => e.curriculum_weight ?? -1,
+      cell: ({ row }) => {
+        const w = row.original.curriculum_weight
+        return w !== null
+          ? <span className="text-xs text-muted-foreground tabular-nums">{w.toFixed(0)}%</span>
+          : <span className="text-xs text-muted-foreground/50">—</span>
+      },
+    },
+    {
+      id: 'mastery',
+      header: 'Mastery',
+      accessorFn: (e) => e.student_mastery ?? -1,
+      cell: ({ row }) => {
+        const entry = row.original
+        if (entry.student_mastery !== null) {
+          return (
+            <span className={`text-xs tabular-nums font-medium ${
+              entry.status === 'strong' ? 'text-emerald-600' :
+              entry.status === 'developing' ? 'text-amber-600' : 'text-rose-600'
+            }`}>{entry.student_mastery}%</span>
+          )
+        }
+        return entry.is_due
+          ? <span className="text-xs text-muted-foreground">not studied</span>
+          : <span className="text-xs text-muted-foreground/50">upcoming</span>
+      },
+    },
+    {
+      id: 'actions',
+      header: '',
+      cell: ({ row }) => {
+        const entry = row.original
+        const { ctaLabel } = entryStatus(entry)
+        if (!ctaLabel) return null
+        return (
           <Button
             size="sm"
-            variant={ctaVariant}
+            variant="outline"
             className="h-6 text-[11px] px-2 py-0 gap-1"
-            disabled={loading}
+            disabled={loading(entry.topic)}
             onClick={() => onCatchUp(entry.topic)}
           >
             {ctaLabel}
             <ArrowRight className="h-3 w-3" />
           </Button>
-        )}
-      </div>
-    </div>
+        )
+      },
+    },
+  ]
+
+  return (
+    <DataTable
+      columns={columns}
+      data={entries}
+      filter={{ prompt: 'Search topics...', column: 'topic' }}
+    />
   )
 }
 
@@ -237,27 +280,85 @@ function SchemePanel({ scheme }: { scheme: PacingScheme }) {
       )}
 
       {/* Week-by-week entries */}
-      <Card>
-        <CardContent className="pt-3 pb-1">
-          {scheme.entries.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-8 text-center">
-              <BookOpen className="h-7 w-7 text-muted-foreground/30 mb-2" />
-              <p className="text-sm text-muted-foreground">No topics in this scheme</p>
-            </div>
-          ) : (
-            scheme.entries.map((entry) => (
-              <EntryRow
-                key={entry.id}
-                entry={entry}
-                subject={scheme.subject}
-                onCatchUp={handleCatchUp}
-                loading={pending && activeTopic === entry.topic}
-              />
-            ))
-          )}
-        </CardContent>
-      </Card>
+      {scheme.entries.length === 0 ? (
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-8 text-center">
+            <BookOpen className="h-7 w-7 text-muted-foreground/30 mb-2" />
+            <p className="text-sm text-muted-foreground">No topics in this scheme</p>
+          </CardContent>
+        </Card>
+      ) : (
+        <SchemeEntriesTable
+          entries={scheme.entries}
+          onCatchUp={handleCatchUp}
+          loading={(topic) => pending && activeTopic === topic}
+        />
+      )}
     </div>
+  )
+}
+
+// ── Fallback topics table ────────────────────────────────────────────────────
+
+function FallbackTopicsTable({
+  topics,
+  onStart,
+}: {
+  topics: NonNullable<PacingResponse['fallback_topics']>
+  onStart: (subject: string, topic: string) => void
+}) {
+  const columns: ColumnDef<NonNullable<PacingResponse['fallback_topics']>[number]>[] = [
+    {
+      accessorKey: 'topic',
+      header: 'Topic',
+      cell: ({ row }) => (
+        <div className="min-w-0">
+          <p className="text-sm font-medium truncate">{formatTopicTitle(row.original.topic)}</p>
+          <p className="text-xs text-muted-foreground">{row.original.subject}</p>
+        </div>
+      ),
+    },
+    {
+      id: 'score',
+      header: 'Avg Score',
+      accessorFn: (t) => t.avg_score ?? -1,
+      cell: ({ row }) =>
+        row.original.avg_score !== null
+          ? <span className="text-xs tabular-nums text-muted-foreground">{row.original.avg_score}%</span>
+          : <span className="text-xs text-muted-foreground/50">—</span>,
+    },
+    {
+      id: 'plans',
+      header: 'Plans',
+      accessorFn: (t) => t.plan_count,
+      cell: ({ row }) => (
+        <Badge variant="outline" className="text-[10px]">
+          {row.original.plan_count} plan{row.original.plan_count !== 1 ? 's' : ''}
+        </Badge>
+      ),
+    },
+    {
+      id: 'actions',
+      header: '',
+      cell: ({ row }) => (
+        <Button
+          size="sm"
+          variant="outline"
+          className="h-6 text-[11px] px-2 gap-1"
+          onClick={() => onStart(row.original.subject, row.original.topic)}
+        >
+          Study <ArrowRight className="h-3 w-3" />
+        </Button>
+      ),
+    },
+  ]
+
+  return (
+    <DataTable
+      columns={columns}
+      data={topics}
+      filter={{ prompt: 'Search topics...', column: 'topic' }}
+    />
   )
 }
 
@@ -297,30 +398,7 @@ function FallbackPanel({ topics }: { topics: PacingResponse['fallback_topics'] }
       <p className="text-xs text-muted-foreground">
         Focus on highest-weight topics first to maximise your exam score.
       </p>
-      <Card>
-        <CardContent className="pt-3 pb-1">
-          {topics.map((t, i) => (
-            <div key={i} className="flex items-center gap-3 py-2.5 border-b last:border-0">
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate">{t.topic}</p>
-                <p className="text-xs text-muted-foreground">{t.subject}</p>
-              </div>
-              {t.avg_score !== null && (
-                <span className="text-xs tabular-nums text-muted-foreground">{t.avg_score}%</span>
-              )}
-              <Badge variant="outline" className="text-[10px]">{t.plan_count} plan{t.plan_count !== 1 ? 's' : ''}</Badge>
-              <Button
-                size="sm"
-                variant="outline"
-                className="h-6 text-[11px] px-2 gap-1"
-                onClick={() => handleStart(t.subject, t.topic)}
-              >
-                Study <ArrowRight className="h-3 w-3" />
-              </Button>
-            </div>
-          ))}
-        </CardContent>
-      </Card>
+      <FallbackTopicsTable topics={topics} onStart={handleStart} />
     </div>
   )
 }
@@ -343,7 +421,18 @@ export function SyllabusTab({ data }: { data: PacingResponse }) {
     )
   }
 
-  const allSchemes = [...activeSchemes, ...otherSchemes]
+  // A subject can legitimately have more than one linked scheme (e.g. Term 1
+  // active + Term 2 draft) but should only ever show one chip — dedupe by
+  // subject, preferring the active one, so a duplicate/mis-scoped scheme
+  // (see the 2026-08-10 History and Political Education incident) can't
+  // resurface this as a visible bug even if it recurs in the data.
+  const allSchemesRaw = [...activeSchemes, ...otherSchemes]
+  const seenSubjects = new Set<string>()
+  const allSchemes = allSchemesRaw.filter((s) => {
+    if (seenSubjects.has(s.subject)) return false
+    seenSubjects.add(s.subject)
+    return true
+  })
   const current = allSchemes.find((s) => s.subject === selectedSubject) ?? allSchemes[0]
 
   return (

@@ -33,6 +33,7 @@ export default async function StudyPlansPage() {
       suggestion={suggestion?.entry ? suggestion : null}
       error={error?.message ?? null}
       classId={sowData.classId}
+      sow={sowData.sow}
     />
   )
 }

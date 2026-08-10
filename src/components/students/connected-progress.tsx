@@ -8,6 +8,7 @@
 // renders the existing chain, not a new analytics system.
 
 import { ArrowRight, TrendingDown, TrendingUp, Minus } from 'lucide-react'
+import { formatTopicTitle } from '@/lib/utils'
 
 interface ConnectedProgressProps {
   topic: string
@@ -45,7 +46,7 @@ export function ConnectedProgress({
         How this fits in
       </p>
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 text-sm">
-        <span className="font-medium truncate max-w-[140px]" title={topic}>{topic}</span>
+        <span className="font-medium truncate max-w-[140px]" title={formatTopicTitle(topic)}>{formatTopicTitle(topic)}</span>
         <ArrowRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
         <span className="flex items-center gap-1">
           <span className="font-medium">{subject}</span>

@@ -1,12 +1,78 @@
 'use client'
 
 import { useMemo, useRef, useState, useTransition } from 'react'
-import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import type { ColumnDef } from '@tanstack/react-table'
 import { Search, BookOpenCheck, Target, Sparkles } from 'lucide-react'
-import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
-import { getLearningHistory, type LearningHistoryResult } from '@/lib/actions/learning-history'
+import { Button } from '@/components/ui/button'
+import { DataTable } from '@/components/ui/data-table'
+import {
+  getLearningHistory,
+  type LearningHistoryResult,
+  type LearningHistorySubmission,
+  type LearningHistoryLesson,
+  type LearningHistoryMastery,
+} from '@/lib/actions/learning-history'
+import { formatTopicTitle } from '@/lib/utils'
+
+const submissionColumns: ColumnDef<LearningHistorySubmission>[] = [
+  {
+    accessorKey: 'title',
+    header: 'Assessment',
+    cell: ({ row }) => (
+      <div className="flex items-center gap-2 min-w-0">
+        <BookOpenCheck className="h-4 w-4 text-gold shrink-0" />
+        <span className="font-medium truncate">{row.original.title}</span>
+      </div>
+    ),
+  },
+  { accessorKey: 'subject', header: 'Subject', cell: ({ getValue }) => <span className="text-xs text-muted-foreground">{getValue<string>()}</span> },
+  {
+    id: 'score',
+    header: 'Score',
+    cell: ({ row }) => {
+      const { total_score, max_score } = row.original
+      return total_score != null && max_score != null
+        ? <span className="text-sm font-semibold">{total_score}/{max_score}</span>
+        : <span className="text-xs text-muted-foreground/50">—</span>
+    },
+  },
+  {
+    id: 'graded_at',
+    header: 'Graded',
+    cell: ({ row }) => row.original.graded_at
+      ? <span className="text-xs text-muted-foreground">{new Date(row.original.graded_at).toLocaleDateString()}</span>
+      : null,
+  },
+]
+
+const masteryColumns: ColumnDef<LearningHistoryMastery>[] = [
+  {
+    accessorKey: 'topic',
+    header: 'Topic',
+    cell: ({ row }) => (
+      <div className="flex items-center gap-2 min-w-0">
+        <Target className="h-4 w-4 text-gold shrink-0" />
+        <span className="font-medium truncate">{formatTopicTitle(row.original.topic)}</span>
+      </div>
+    ),
+  },
+  { accessorKey: 'subject', header: 'Subject', cell: ({ getValue }) => <span className="text-xs text-muted-foreground">{getValue<string>()}</span> },
+  {
+    id: 'mastery',
+    header: 'Mastery',
+    cell: ({ row }) => <span className="text-sm font-semibold">{row.original.achieved_count}/{row.original.attempted_count}</span>,
+  },
+  {
+    id: 'last_attempted_at',
+    header: 'Last attempt',
+    cell: ({ row }) => row.original.last_attempted_at
+      ? <span className="text-xs text-muted-foreground">{new Date(row.original.last_attempted_at).toLocaleDateString()}</span>
+      : null,
+  },
+]
 
 export function LearningHistoryClient({
   initial,
@@ -15,6 +81,7 @@ export function LearningHistoryClient({
   initial: LearningHistoryResult
   error: string | null
 }) {
+  const router = useRouter()
   const [result, setResult] = useState(initial)
   const [query, setQuery] = useState('')
   const [subject, setSubject] = useState<string | null>(null)
@@ -28,6 +95,51 @@ export function LearningHistoryClient({
     initial.lessons.forEach((l) => set.add(l.subject))
     return [...set].filter(Boolean).sort()
   }, [initial])
+
+  const lessonColumns = useMemo<ColumnDef<LearningHistoryLesson>[]>(() => [
+    {
+      accessorKey: 'topic',
+      header: 'Lesson',
+      cell: ({ row }) => (
+        <div className="flex items-center gap-2 min-w-0">
+          <Sparkles className="h-4 w-4 text-gold shrink-0" />
+          <div className="min-w-0">
+            <p className="font-medium truncate">{formatTopicTitle(row.original.topic)}</p>
+            <p className="text-xs text-muted-foreground capitalize">{row.original.lesson_type.replace(/_/g, ' ')}</p>
+          </div>
+        </div>
+      ),
+    },
+    { accessorKey: 'subject', header: 'Subject', cell: ({ getValue }) => <span className="text-xs text-muted-foreground">{getValue<string>()}</span> },
+    {
+      id: 'score_after',
+      header: 'Score',
+      cell: ({ row }) => row.original.score_after != null
+        ? <span className="text-sm font-semibold">{row.original.score_after}%</span>
+        : <span className="text-xs text-muted-foreground/50">—</span>,
+    },
+    {
+      id: 'completed_at',
+      header: 'Completed',
+      cell: ({ row }) => row.original.completed_at
+        ? <span className="text-xs text-muted-foreground">{new Date(row.original.completed_at).toLocaleDateString()}</span>
+        : null,
+    },
+    {
+      id: 'actions',
+      header: '',
+      cell: ({ row }) => (
+        <Button
+          size="sm"
+          variant="ghost"
+          className="h-7 gap-1 text-xs text-muted-foreground hover:text-gold"
+          onClick={() => router.push(`/student/study-plans/${row.original.id}/studio?from=history`)}
+        >
+          Review
+        </Button>
+      ),
+    },
+  ], [router])
 
   function runSearch(nextQuery: string, nextSubject: string | null) {
     startTransition(async () => {
@@ -107,31 +219,7 @@ export function LearningHistoryClient({
         {result.submissions.length === 0 ? (
           <p className="text-sm text-muted-foreground">No matching assessments yet.</p>
         ) : (
-          <div className="space-y-2">
-            {result.submissions.map((s) => (
-              <Card key={s.submission_id}>
-                <CardContent className="p-4 flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <BookOpenCheck className="h-4 w-4 text-gold shrink-0" />
-                    <div className="min-w-0">
-                      <p className="font-medium truncate">{s.title}</p>
-                      <p className="text-xs text-muted-foreground">{s.subject}</p>
-                    </div>
-                  </div>
-                  <div className="text-right shrink-0">
-                    {s.total_score != null && s.max_score != null && (
-                      <p className="text-sm font-semibold">{s.total_score}/{s.max_score}</p>
-                    )}
-                    {s.graded_at && (
-                      <p className="text-xs text-muted-foreground">
-                        {new Date(s.graded_at).toLocaleDateString()}
-                      </p>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+          <DataTable columns={submissionColumns} data={result.submissions} />
         )}
       </div>
 
@@ -142,35 +230,7 @@ export function LearningHistoryClient({
         {result.lessons.length === 0 ? (
           <p className="text-sm text-muted-foreground">No completed lessons yet.</p>
         ) : (
-          <div className="space-y-2">
-            {result.lessons.map((l) => (
-              <Link key={l.id} href={`/student/study-plans/${l.id}/studio?from=history`}>
-                <Card className="hover:border-gold/40 transition-colors">
-                  <CardContent className="p-4 flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <Sparkles className="h-4 w-4 text-gold shrink-0" />
-                      <div className="min-w-0">
-                        <p className="font-medium truncate">{l.topic}</p>
-                        <p className="text-xs text-muted-foreground capitalize">
-                          {l.subject} · {l.lesson_type.replace(/_/g, ' ')}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="text-right shrink-0">
-                      {l.score_after != null && (
-                        <p className="text-sm font-semibold">{l.score_after}%</p>
-                      )}
-                      {l.completed_at && (
-                        <p className="text-xs text-muted-foreground">
-                          {new Date(l.completed_at).toLocaleDateString()}
-                        </p>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              </Link>
-            ))}
-          </div>
+          <DataTable columns={lessonColumns} data={result.lessons} />
         )}
       </div>
 
@@ -181,31 +241,7 @@ export function LearningHistoryClient({
         {result.mastery.length === 0 ? (
           <p className="text-sm text-muted-foreground">No topic history yet.</p>
         ) : (
-          <div className="space-y-2">
-            {result.mastery.map((m) => (
-              <Card key={m.id}>
-                <CardContent className="p-4 flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <Target className="h-4 w-4 text-gold shrink-0" />
-                    <div className="min-w-0">
-                      <p className="font-medium truncate">{m.topic}</p>
-                      <p className="text-xs text-muted-foreground">{m.subject}</p>
-                    </div>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <p className="text-sm font-semibold">
-                      {m.achieved_count}/{m.attempted_count}
-                    </p>
-                    {m.last_attempted_at && (
-                      <p className="text-xs text-muted-foreground">
-                        {new Date(m.last_attempted_at).toLocaleDateString()}
-                      </p>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+          <DataTable columns={masteryColumns} data={result.mastery} />
         )}
       </div>
     </div>

@@ -4,14 +4,14 @@
 
 import { useState, useTransition, useEffect, useMemo, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import Link from 'next/link'
+import type { ColumnDef } from '@tanstack/react-table'
 import {
   BookOpen, CheckCircle2, Clock, ChevronRight, Sparkles,
   AlertCircle, Clapperboard, Play, RotateCcw, Target,
   TrendingUp, TrendingDown, Minus, BookOpenCheck, Upload, FileText, Check, Plus, Loader2
 } from 'lucide-react'
 import { toast } from 'sonner'
-import { format, parseISO, isToday, isPast } from 'date-fns'
+import { parseISO, isToday, isPast } from 'date-fns'
 
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge }  from '@/components/ui/badge'
@@ -21,6 +21,9 @@ import { Label }  from '@/components/ui/label'
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
+import { DataTable } from '@/components/ui/data-table'
+import { CompletedPlansTable } from '@/components/students/completed-plans-table'
+import { PendingPlansTable } from '@/components/students/pending-plans-table'
 
 import {
   checkInStudySession, selfInitiateFromEntry,
@@ -29,6 +32,7 @@ import {
 } from '@/lib/actions/study-plans'
 import { initiateFreeStudyPlan, type StudyPlan } from '@/lib/actions/student-dashboard'
 import { uploadStudentDocument } from '@/lib/actions/student-onboarding'
+import { formatTopicTitle, formatEmbeddedCaps, splitTopicHeadline } from '@/lib/utils'
 
 // ── Config ───────────────────────────────────────────────────────────────────
 
@@ -74,12 +78,16 @@ function TodayHero({
 }) {
   if (plan) {
     const cfg = lessonCfg(plan.lesson_type)
+    const { headline, extraCount } = splitTopicHeadline(plan.topic)
     return (
       <div className="rounded-2xl border-2 border-gold/40 bg-gold/5 p-5 space-y-3">
         <div className="flex items-start justify-between gap-3">
           <div className="space-y-0.5">
             <p className="text-xs font-semibold text-gold uppercase tracking-wide">Next Up</p>
-            <h3 className="font-semibold text-base leading-snug">{plan.topic}</h3>
+            <h3 className="font-semibold text-base leading-snug">{headline}</h3>
+            {extraCount > 0 && (
+              <p className="text-[11px] text-muted-foreground">+{extraCount} more topic{extraCount === 1 ? '' : 's'} this week</p>
+            )}
             <p className="text-xs text-muted-foreground">{plan.subject}</p>
           </div>
           <Badge className={`text-[10px] px-1.5 py-0 shrink-0 ${cfg.color}`}>{cfg.icon} {cfg.label}</Badge>
@@ -96,6 +104,7 @@ function TodayHero({
   }
 
   if (suggestion) {
+    const { headline, extraCount } = splitTopicHeadline(suggestion.entry.topic)
     return (
       <div className="rounded-2xl border-2 border-gold/40 bg-gold/5 p-5 space-y-3">
         <div className="flex items-center gap-2">
@@ -103,10 +112,13 @@ function TodayHero({
           <Badge className="text-[10px] bg-gold text-gold-foreground px-2 py-0.5">Suggested for you</Badge>
         </div>
         <div className="space-y-1">
-          <p className="text-lg font-semibold leading-snug">{suggestion.entry.topic}</p>
+          <p className="text-lg font-semibold leading-snug">{headline}</p>
+          {extraCount > 0 && (
+            <p className="text-[11px] text-muted-foreground">+{extraCount} more topic{extraCount === 1 ? '' : 's'} this week</p>
+          )}
           <span className="text-xs text-muted-foreground">{suggestion.entry.subject}</span>
           {suggestion.reason && (
-            <p className="text-sm text-muted-foreground pt-1">{suggestion.reason}</p>
+            <p className="text-sm text-muted-foreground pt-1">{formatEmbeddedCaps(suggestion.reason)}</p>
           )}
         </div>
         <Button
@@ -137,6 +149,39 @@ function ReviewStrip({ plans, onStudio }: { plans: StudyPlan[]; onStudio: (planI
 
   if (due.length === 0) return null
 
+  const columns: ColumnDef<StudyPlan>[] = [
+    {
+      accessorKey: 'topic',
+      header: 'Topic',
+      cell: ({ row }) => <span className="text-sm font-medium line-clamp-1">{formatTopicTitle(row.original.topic)}</span>,
+    },
+    { accessorKey: 'subject', header: 'Subject', cell: ({ getValue }) => <span className="text-xs text-muted-foreground">{getValue<string>()}</span> },
+    {
+      id: 'due',
+      header: 'Due',
+      accessorFn: (p) => p.next_review_date ?? '',
+      cell: ({ row }) => {
+        const d = row.original.next_review_date ? parseISO(row.original.next_review_date) : null
+        if (!d) return null
+        return <span className="text-xs text-muted-foreground">{isToday(d) ? 'Today' : 'Overdue'}</span>
+      },
+    },
+    {
+      id: 'actions',
+      header: '',
+      cell: ({ row }) => (
+        <Button
+          size="sm"
+          variant="ghost"
+          className="h-7 gap-1 text-xs text-purple-700 dark:text-purple-300 hover:text-purple-900"
+          onClick={() => onStudio(row.original.id)}
+        >
+          <RotateCcw className="h-3 w-3" /> Review
+        </Button>
+      ),
+    },
+  ]
+
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-2">
@@ -146,18 +191,11 @@ function ReviewStrip({ plans, onStudio }: { plans: StudyPlan[]; onStudio: (planI
           {due.length}
         </Badge>
       </div>
-      <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
-        {due.map((p) => (
-          <button
-            key={p.id}
-            onClick={() => onStudio(p.id)}
-            className="shrink-0 max-w-[200px] text-left rounded-xl border border-purple-200/60 dark:border-purple-900/50 bg-purple-50/50 dark:bg-purple-950/20 px-3 py-2 hover:bg-purple-100/60 dark:hover:bg-purple-950/40 transition-colors"
-          >
-            <p className="text-xs font-semibold leading-snug line-clamp-1">{p.topic}</p>
-            <p className="text-[10px] text-muted-foreground">{p.subject}</p>
-          </button>
-        ))}
-      </div>
+      <DataTable
+        columns={columns}
+        data={due}
+        filter={{ prompt: 'Search due topics...', column: 'topic' }}
+      />
     </div>
   )
 }
@@ -174,40 +212,75 @@ function SowRibbon({
   if (topics.length === 0) return null
   const ordered = [...topics].sort((a, b) => a.week_number - b.week_number)
 
-  return (
-    <div className="flex flex-wrap gap-1.5">
-      {ordered.map((t) => {
-        const style = ACHIEVEMENT_STYLE[t.achievement] ?? ACHIEVEMENT_STYLE.none
-        const busy = pendingTopicId === t.entry_id
+  const columns: ColumnDef<GradebookTopic>[] = [
+    {
+      id: 'week',
+      header: 'Week',
+      accessorFn: (t) => t.week_number,
+      cell: ({ getValue }) => <span className="text-xs text-muted-foreground tabular-nums">W{getValue<number>()}</span>,
+    },
+    {
+      accessorKey: 'topic',
+      header: 'Topic',
+      cell: ({ row }) => {
+        const style = ACHIEVEMENT_STYLE[row.original.achievement] ?? ACHIEVEMENT_STYLE.none
         return (
-          <button
-            key={t.entry_id}
-            onClick={() => onStartTopic(t)}
-            disabled={busy}
-            title={`Week ${t.week_number} · ${style.label}`}
-            className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs transition-all hover:scale-[1.02] disabled:opacity-60 ${style.ring}`}
-          >
-            <span className={`h-1.5 w-1.5 rounded-full ${style.dot}`} />
-            <span className="font-medium line-clamp-1 max-w-[160px]">{t.topic}</span>
-            {busy
-              ? <Clock className="h-3 w-3 animate-pulse text-muted-foreground" />
-              : <ChevronRight className="h-3 w-3 text-muted-foreground" />}
-          </button>
+          <div className="flex items-center gap-2 min-w-0">
+            <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${style.dot}`} />
+            <span className="text-sm truncate">{formatTopicTitle(row.original.topic)}</span>
+          </div>
         )
-      })}
-    </div>
+      },
+    },
+    {
+      id: 'status',
+      header: 'Status',
+      accessorFn: (t) => t.achievement,
+      cell: ({ row }) => {
+        const style = ACHIEVEMENT_STYLE[row.original.achievement] ?? ACHIEVEMENT_STYLE.none
+        return <span className="text-xs text-muted-foreground">{style.label}</span>
+      },
+    },
+    {
+      id: 'actions',
+      header: '',
+      cell: ({ row }) => {
+        const busy = pendingTopicId === row.original.entry_id
+        return (
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-7 gap-1 text-xs text-muted-foreground hover:text-gold"
+            onClick={() => onStartTopic(row.original)}
+            disabled={busy}
+          >
+            {busy
+              ? <Clock className="h-3 w-3 animate-pulse" />
+              : <ChevronRight className="h-3 w-3" />}
+            {busy ? 'Starting…' : 'Open'}
+          </Button>
+        )
+      },
+    },
+  ]
+
+  return (
+    <DataTable
+      columns={columns}
+      data={ordered}
+      filter={{ prompt: 'Search topics...', column: 'topic' }}
+    />
   )
 }
 
 // ── SubjectSection ────────────────────────────────────────────────────────────
 
 function SubjectSection({
-  subject, passMark, pendingPlans, onStudio, onStartTopic, pendingTopicId,
+  subject, passMark, pendingPlans, onStartTopic, pendingTopicId,
 }: {
   subject: SubjectGradebook
   passMark: string
   pendingPlans: StudyPlan[]
-  onStudio: (planId: string) => void
   onStartTopic: (topic: GradebookTopic) => void
   pendingTopicId: string | null
 }) {
@@ -249,34 +322,7 @@ function SubjectSection({
         </div>
       </div>
 
-      {pendingPlans.length > 0 && (
-        <div className="space-y-2">
-          {pendingPlans.map((p) => {
-            const cfg = lessonCfg(p.lesson_type)
-            return (
-              <button
-                key={p.id}
-                onClick={() => onStudio(p.id)}
-                className="w-full text-left rounded-xl border border-border/60 bg-card hover:border-gold/40 hover:bg-gold/[0.03] transition-colors p-3 flex items-center gap-3"
-              >
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gold/10 text-base">
-                  {cfg.icon}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium leading-snug line-clamp-1">{p.topic}</p>
-                  <div className="flex items-center gap-2 mt-0.5">
-                    <Badge className={`text-[10px] px-1.5 py-0 ${cfg.color}`}>{cfg.label}</Badge>
-                    <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                      <Clock className="h-3 w-3" />{p.content?.estimated_minutes ?? 20} min
-                    </span>
-                  </div>
-                </div>
-                <Clapperboard className="h-4 w-4 text-muted-foreground shrink-0" />
-              </button>
-            )
-          })}
-        </div>
-      )}
+      {pendingPlans.length > 0 && <PendingPlansTable plans={pendingPlans} showSubject={false} />}
 
       <SowRibbon topics={subject.topics} onStartTopic={onStartTopic} pendingTopicId={pendingTopicId} />
 
@@ -288,7 +334,7 @@ function SubjectSection({
               {belowPass
                 ? `Below the ${passMark} pass mark — start with `
                 : `Strengthen `}
-              <span className="font-semibold">{weakestTopic.topic}</span> to close the gap.
+              <span className="font-semibold">{formatTopicTitle(weakestTopic.topic)}</span> to close the gap.
             </p>
           </div>
           <Button
@@ -306,6 +352,7 @@ function SubjectSection({
   )
 }
 
+
 // ── Main client ───────────────────────────────────────────────────────────────
 
 interface Props {
@@ -315,9 +362,10 @@ interface Props {
   suggestion: SuggestedTopicResponse | null
   error: string | null
   classId?: string | null
+  sow?: any | null
 }
 
-export function StudyPlansClient({ user, initialPlans, gradebook, suggestion, error, classId }: Props) {
+export function StudyPlansClient({ user, initialPlans, gradebook, suggestion, error, classId, sow }: Props) {
   const router = useRouter()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const plans = initialPlans
@@ -403,9 +451,35 @@ export function StudyPlansClient({ user, initialPlans, gradebook, suggestion, er
     })
   }, [gradebook])
 
+  // Curriculum-authoritative — matches subjects-client.tsx's pattern. Gradebook
+  // subjects require the student to already have assessment data, so a student
+  // with real enrolled subjects but no grades yet saw an empty list here, which
+  // silently fell through to unconstrained free-text subject/topic entry below
+  // (e.g. a typed "Social Studies" + "Cell Science" that matches no real
+  // curriculum at all — that's what generated the ungrounded, mislabeled plan).
   const subjectOptions = useMemo(
-    () => Array.from(new Set((gradebook?.subjects ?? []).map((s) => s.subject))),
-    [gradebook],
+    () =>
+      sow?.entries?.length
+        ? Array.from(new Set<string>((sow.entries as any[]).map((e) => e.subject).filter(Boolean))).sort()
+        : Array.from(new Set((gradebook?.subjects ?? []).map((s) => s.subject))),
+    [sow, gradebook],
+  )
+
+  // Real topics for the selected subject only — never a free-typed topic that
+  // doesn't exist in this student's actual curriculum.
+  const topicOptions = useMemo(
+    () =>
+      sow?.entries?.length
+        ? Array.from(
+            new Set<string>(
+              (sow.entries as any[])
+                .filter((e) => e.subject === freeSub)
+                .map((e) => e.topic)
+                .filter(Boolean),
+            ),
+          )
+        : [],
+    [sow, freeSub],
   )
 
   // ── Actions ─────────────────────────────────────────────────────────────────
@@ -436,7 +510,14 @@ export function StudyPlansClient({ user, initialPlans, gradebook, suggestion, er
       const { data } = await checkInStudySession()
       setCheckedIn(true)
       localStorage.setItem(`checkin_${new Date().toISOString().slice(0, 10)}`, '1')
-      if (data && !data.already_checked_in) toast.success(`Day ${data.streak_days} streak — keep it up!`)
+      if (data && !data.already_checked_in) {
+        toast.success(`Day ${data.streak_days} streak — keep it up!`)
+        // Backend already incremented students.study_streak — refresh so the
+        // header's StreakBadge (fed from the server-rendered `user` prop,
+        // a snapshot from page load) actually reflects it instead of staying
+        // stuck at whatever it was when the page first loaded.
+        router.refresh()
+      }
     })
   }
 
@@ -718,7 +799,6 @@ export function StudyPlansClient({ user, initialPlans, gradebook, suggestion, er
               subject={s}
               passMark={passMark}
               pendingPlans={pendingBySubject.get(s.subject) ?? []}
-              onStudio={goStudio}
               onStartTopic={handleStartTopic}
               pendingTopicId={pendingTopicId}
             />
@@ -735,7 +815,7 @@ export function StudyPlansClient({ user, initialPlans, gradebook, suggestion, er
           </p>
           <div className="flex gap-2 flex-wrap">
             {subjectOptions.length > 0 ? (
-              <Select value={freeSub} onValueChange={setFreeSub}>
+              <Select value={freeSub} onValueChange={(v) => { setFreeSub(v); setFreeTopic('') }}>
                 <SelectTrigger className="flex-1 min-w-[140px] h-8 text-sm">
                   <SelectValue placeholder="Subject" />
                 </SelectTrigger>
@@ -751,13 +831,32 @@ export function StudyPlansClient({ user, initialPlans, gradebook, suggestion, er
                 className="flex-1 min-w-[140px] h-8 text-sm"
               />
             )}
-            <Input
-              placeholder="Topic (e.g. Quadratic equations)"
-              value={freeTopic}
-              onChange={(e) => setFreeTopic(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleInitiateFree()}
-              className="flex-1 min-w-[200px] h-8 text-sm"
-            />
+            {topicOptions.length > 0 ? (
+              <Select value={freeTopic} onValueChange={setFreeTopic}>
+                <SelectTrigger className="flex-1 min-w-[200px] h-8 text-sm">
+                  {/* Radix only mirrors a SelectItem's formatted label once the
+                      dropdown has been opened at least once — a value set
+                      programmatically (e.g. pre-filled from a suggestion)
+                      shows the raw string until then. Pass the formatted
+                      label explicitly so it's never wrong. */}
+                  <SelectValue placeholder="Topic">
+                    {freeTopic ? formatTopicTitle(freeTopic) : undefined}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {topicOptions.map((t) => <SelectItem key={t} value={t}>{formatTopicTitle(t)}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            ) : (
+              <Input
+                placeholder={freeSub ? `Topic (e.g. from ${freeSub})` : 'Pick a subject first'}
+                value={freeTopic}
+                onChange={(e) => setFreeTopic(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleInitiateFree()}
+                disabled={!freeSub}
+                className="flex-1 min-w-[200px] h-8 text-sm"
+              />
+            )}
             <Button
               size="sm"
               className="h-8 gap-1.5 bg-gold hover:bg-gold/90 text-gold-foreground shrink-0"
@@ -779,38 +878,7 @@ export function StudyPlansClient({ user, initialPlans, gradebook, suggestion, er
             <span className="text-xs text-muted-foreground font-medium">Completed</span>
             <div className="flex-1 h-px bg-border" />
           </div>
-          <div className="space-y-2.5">
-            {completed.map((plan) => {
-              const cfg = lessonCfg(plan.lesson_type)
-              return (
-                <div
-                  key={plan.id}
-                  className="rounded-xl border border-border/60 bg-card opacity-60 hover:opacity-80 transition-opacity p-4 space-y-1"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <p className="text-sm font-medium line-through text-muted-foreground">{plan.topic}</p>
-                    <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" />
-                  </div>
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2">
-                      <Badge className={`text-[10px] px-1.5 py-0 ${cfg.color}`}>{cfg.icon} {cfg.label}</Badge>
-                      {plan.score_after != null && (
-                        <span className={`text-xs font-semibold tabular-nums ${
-                          plan.score_after >= 80 ? 'text-emerald-600' : plan.score_after >= 60 ? 'text-amber-600' : 'text-rose-600'
-                        }`}>{plan.score_after}%</span>
-                      )}
-                    </div>
-                    <Link
-                      href={`/student/study-plans/${plan.id}/studio`}
-                      className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-gold transition-colors"
-                    >
-                      <Clapperboard className="h-3 w-3" /> Review
-                    </Link>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
+          <CompletedPlansTable plans={completed} />
         </>
       )}
 

@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
 import { selfInitiateStudyPlan, type NextAction } from '@/lib/actions/student-dashboard'
 import { AskTracyChip } from '@/components/students/ask-tracy-chip'
+import { formatEmbeddedCaps, splitTopicHeadline } from '@/lib/utils'
 
 /**
  * The Next-Best-Action hero — "total mental clarity".
@@ -20,6 +21,7 @@ export function NextStep({ nextAction }: { nextAction: NextAction | null }) {
 
   if (!nextAction) return null
   const { action, why, outcome_if_done, goal_state, cta } = nextAction
+  const actionHeadline = action ? splitTopicHeadline(action.topic) : null
 
   function start() {
     if (!action || busy) return
@@ -38,7 +40,7 @@ export function NextStep({ nextAction }: { nextAction: NextAction | null }) {
   // Goal-reached celebration state.
   if (goal_state?.goal_reached) {
     return (
-      <div className="rounded-2xl border border-emerald-300 bg-emerald-50 dark:bg-emerald-900/20 p-5">
+      <div data-tour="next-step" className="rounded-2xl border border-emerald-300 bg-emerald-50 dark:bg-emerald-900/20 p-5">
         <div className="flex items-center gap-3">
           <Trophy className="h-6 w-6 text-emerald-600 shrink-0" />
           <div className="min-w-0">
@@ -55,7 +57,7 @@ export function NextStep({ nextAction }: { nextAction: NextAction | null }) {
           <div className="mt-4 flex items-center justify-between gap-3 rounded-xl bg-white/60 dark:bg-black/20 px-4 py-3">
             <div className="min-w-0">
               <p className="text-xs text-muted-foreground">Keep your edge — do this next</p>
-              <p className="text-sm font-medium truncate">{action.subject}: {action.topic}</p>
+              <p className="text-sm font-medium truncate">{action.subject}: {splitTopicHeadline(action.topic).headline}</p>
             </div>
             <Button size="sm" className="shrink-0 gap-1 bg-emerald-600 hover:bg-emerald-700 text-white" onClick={start} disabled={busy || starting}>
               <Sparkles className="h-3.5 w-3.5" />{busy ? 'Starting…' : 'Start'}
@@ -67,7 +69,7 @@ export function NextStep({ nextAction }: { nextAction: NextAction | null }) {
   }
 
   return (
-    <div className="rounded-2xl border border-gold/40 bg-gradient-to-br from-gold/10 to-transparent p-5">
+    <div data-tour="next-step" className="rounded-2xl border border-gold/40 bg-gradient-to-br from-gold/10 to-transparent p-5">
       {/* Goal header — you vs your goal */}
       {goal_state && (
         <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
@@ -97,7 +99,12 @@ export function NextStep({ nextAction }: { nextAction: NextAction | null }) {
         <>
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <p className="text-lg font-bold leading-tight">{action.topic}</p>
+              <p className="text-lg font-bold leading-tight">{actionHeadline!.headline}</p>
+              {actionHeadline!.extraCount > 0 && (
+                <p className="text-[11px] text-muted-foreground mt-0.5">
+                  +{actionHeadline!.extraCount} more topic{actionHeadline!.extraCount === 1 ? '' : 's'} this week
+                </p>
+              )}
               <p className="text-sm text-muted-foreground mt-0.5 flex items-center gap-2 flex-wrap">
                 <span>{action.subject}</span>
                 <span className="inline-flex items-center gap-1"><Clock className="h-3 w-3" />{action.estimated_minutes} min</span>
@@ -109,11 +116,11 @@ export function NextStep({ nextAction }: { nextAction: NextAction | null }) {
           </div>
           {/* Why + outcome */}
           <div className="mt-3 space-y-1.5">
-            {why && <p className="text-xs text-muted-foreground">{why}</p>}
+            {why && <p className="text-xs text-muted-foreground">{formatEmbeddedCaps(why)}</p>}
             {outcome_if_done && (
               <p className="text-xs font-medium text-foreground flex items-start gap-1.5">
                 <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0 mt-0.5" />
-                {outcome_if_done}
+                {formatEmbeddedCaps(outcome_if_done)}
               </p>
             )}
           </div>
