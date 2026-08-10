@@ -88,7 +88,10 @@ export const Navbar = ({ isSchoolSite = false }: { isSchoolSite?: boolean }) => 
             if (route.href === "/login") return { href: "/schools", label: "Apply", cta: "solid" as const };
             return route;
           }),
-        { href: WHATSAPP_GROUP_URL, label: "Contact Us", external: true },
+        // cta: "ghost" so this lands in the button cluster on the right
+        // (next to Apply/Student Portal), not the plain-text nav links in
+        // the middle — it's a call to action, not a content page.
+        { href: WHATSAPP_GROUP_URL, label: "Contact Us", external: true, cta: "ghost" as const },
       ]
     // Ghost "Login" and outline "Partner Portal" both point at "/login" on
     // this list (see comment above baseRouteList) — real duplication on the
@@ -197,17 +200,31 @@ export const Navbar = ({ isSchoolSite = false }: { isSchoolSite?: boolean }) => 
               <Separator className="my-4" />
 
               <div className="flex flex-col gap-2 px-1">
-                {ctaRoutes.map(({ href, label, cta, icon: Icon }) => (
-                  <Link
-                    key={href}
-                    href={href}
-                    onClick={() => setIsOpen(false)}
-                    className={cn("justify-center", ctaClasses[cta!])}
-                  >
-                    {Icon && <Icon className="h-4 w-4" />}
-                    {label}
-                  </Link>
-                ))}
+                {ctaRoutes.map(({ href, label, cta, icon: Icon, external }) =>
+                  external ? (
+                    <a
+                      key={href}
+                      href={href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={() => setIsOpen(false)}
+                      className={cn("justify-center", ctaClasses[cta!])}
+                    >
+                      {Icon && <Icon className="h-4 w-4" />}
+                      {label}
+                    </a>
+                  ) : (
+                    <Link
+                      key={href}
+                      href={href}
+                      onClick={() => setIsOpen(false)}
+                      className={cn("justify-center", ctaClasses[cta!])}
+                    >
+                      {Icon && <Icon className="h-4 w-4" />}
+                      {label}
+                    </Link>
+                  )
+                )}
               </div>
             </div>
 
@@ -253,12 +270,25 @@ export const Navbar = ({ isSchoolSite = false }: { isSchoolSite?: boolean }) => 
       </nav>
 
       <div className="hidden md:flex items-center gap-1.5">
-        {ctaRoutes.map(({ href, label, cta, icon: Icon }) => (
-          <Link key={href} href={href} className={cn("whitespace-nowrap", ctaClasses[cta!])}>
-            {Icon && <Icon className="h-4 w-4" />}
-            {label}
-          </Link>
-        ))}
+        {ctaRoutes.map(({ href, label, cta, icon: Icon, external }) =>
+          external ? (
+            <a
+              key={href}
+              href={href}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={cn("whitespace-nowrap", ctaClasses[cta!])}
+            >
+              {Icon && <Icon className="h-4 w-4" />}
+              {label}
+            </a>
+          ) : (
+            <Link key={href} href={href} className={cn("whitespace-nowrap", ctaClasses[cta!])}>
+              {Icon && <Icon className="h-4 w-4" />}
+              {label}
+            </Link>
+          )
+        )}
         <ThemeToggle />
       </div>
     </header>

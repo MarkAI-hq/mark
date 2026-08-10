@@ -86,7 +86,7 @@ export function ProgramHero() {
               variants={fadeUp}
               className="max-w-xl text-balance text-5xl font-black tracking-tighter leading-[1.03] text-white sm:text-6xl lg:text-7xl"
             >
-              The school that guarantees results for every student.
+              The school that guarantees results.
             </motion.h1>
           </div>
 
@@ -126,7 +126,7 @@ export function ProgramHero() {
                 href="#included"
                 className="inline-flex items-center gap-2 rounded-xl bg-white/15 px-8 py-3.5 text-sm font-semibold text-white transition-all duration-300 hover:bg-white/25 hover:-translate-y-1 active:translate-y-0"
               >
-                See what&apos;s included
+                Details
               </Link>
             </motion.div>
           </div>
