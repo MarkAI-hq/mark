@@ -283,6 +283,19 @@ export async function dispatchManualPlan(data: {
   )
 }
 
+export interface FlaggedStudyPlan extends StudyPlan {
+  student_first_name: string | null
+  student_last_name:  string | null
+}
+
+export async function getReviewQueue() {
+  return fetcher<FlaggedStudyPlan[]>('/study-plans/review-queue')
+}
+
+export async function approveStudyPlan(planId: string) {
+  return fetcher<StudyPlan>(`/study-plans/${planId}/approve`, { method: 'POST' })
+}
+
 export async function getTeacherStudyPlansOverview() {
   return fetcher<{
     dispatched_today: number

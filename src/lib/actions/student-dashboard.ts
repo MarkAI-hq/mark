@@ -494,6 +494,8 @@ export interface StudyPlanContent {
   estimated_minutes:  number
   sources_consulted?: Citation[]
   grounded?:          boolean
+  flagged_for_review?: boolean
+  alignment_score?:    number
 }
 
 export interface StudyPlan {

@@ -14,6 +14,7 @@ import {
   Building2,
   ShoppingBag,
   ShieldCheck,
+  ShieldAlert,
   UserCheck,
   Wallet,
   Megaphone,
@@ -65,6 +66,12 @@ export const dashboardConfig = {
       href:  '/dashboard/overview',
       roles: ['Admin', 'Teacher'],
       icon:  MonitorCheck,
+    },
+    {
+      title: 'Review Queue',
+      href:  '/dashboard/review-queue',
+      roles: ['Admin', 'Teacher'],
+      icon:  ShieldAlert,
     },
     {
       title: 'Classes',
