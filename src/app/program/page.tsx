@@ -4,6 +4,7 @@ import Image from 'next/image'
 import { Spectral, Work_Sans } from 'next/font/google'
 import { ArrowRight, Check, Eye, BellRing, RotateCcw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { ProgramHero } from './_components/program-hero'
 
 const spectral = Spectral({
   subsets: ['latin'],
@@ -50,81 +51,7 @@ function Photo({
 export default function ProgramPage() {
   return (
     <div className={`${spectral.variable} ${workSans.variable} font-[family-name:var(--font-work-sans)]`}>
-      {/* Cover — same structural pattern as the intel.mirror.education hero
-          (eyebrow link, headline left / details+CTA right, bottom-aligned,
-          breathing room under the nav), kept in this page's own navy/rust/
-          cream palette and its own photo rather than reusing Intel's. */}
-      <section className="relative overflow-hidden bg-[#1c2b3a] min-h-[92vh] flex items-center">
-        <Image
-          src="/assets/images/program/student-studying.webp"
-          alt="A Mirror student studying at home"
-          fill
-          priority
-          className="object-cover object-[72%_22%]"
-        />
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-[#1c2b3a] via-[#1c2b3a]/80 to-[#1c2b3a]/45" />
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#1c2b3a] via-transparent to-[#1c2b3a]/40" />
-        {/* Fade into the next section instead of cutting hard */}
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-[#fbf8f2] to-transparent dark:from-[#12181e]" />
-
-        <div className="relative mx-auto w-full max-w-5xl px-6 pb-14 pt-52 sm:px-12">
-          <Link
-            href="/schools"
-            className="group mb-3 inline-flex items-center gap-1.5 text-sm font-bold uppercase tracking-[0.08em]"
-          >
-            <span className="text-[#e8a15c]">Enrolling now:</span>{' '}
-            <span className="text-[#faf6ef]">Uganda · Kenya · Rwanda</span>
-            <ArrowRight className="h-3.5 w-3.5 text-[#faf6ef] transition-transform duration-300 group-hover:translate-x-1" />
-          </Link>
-
-          <div className="gap-8 lg:flex lg:items-end lg:justify-between">
-            <div className="mb-8 lg:mb-0">
-              <div className="mb-5 flex items-center gap-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-[#faf6ef]">
-                  <Image src="/assets/images/program/logo.webp" alt="Mirror Intelligence" width={40} height={40} className="h-full w-full object-contain" />
-                </div>
-                <span className="text-xs font-semibold uppercase tracking-[0.16em] text-[#e8c9a0]">
-                  Mirror Intelligence Online High School
-                </span>
-              </div>
-              <h1 className="max-w-lg text-balance font-[family-name:var(--font-spectral)] text-4xl font-semibold leading-[1.1] text-[#faf6ef] sm:text-6xl">
-                The school that adapts to the learner, not the other way round.
-              </h1>
-            </div>
-
-            <div className="max-w-sm">
-              <div className="mb-6 flex flex-wrap gap-2">
-                {['Available 24/7', 'Repeat exams until mastery', 'Registered UNEB candidate', 'Hear back in 3 hours'].map(
-                  (label) => (
-                    <span
-                      key={label}
-                      className="rounded-full border border-[#faf6ef]/25 bg-[#faf6ef]/[0.08] px-3.5 py-1.5 text-xs font-semibold text-[#faf6ef]"
-                    >
-                      {label}
-                    </span>
-                  ),
-                )}
-              </div>
-
-              <div className="flex flex-wrap items-center gap-3">
-                <Button asChild size="lg" className="gap-2 rounded-xl bg-[#9a4b21] text-white hover:bg-[#7a3a19]">
-                  <Link href="/schools">
-                    Find your school
-                    <ArrowRight className="h-4 w-4" />
-                  </Link>
-                </Button>
-                <Button
-                  asChild
-                  size="lg"
-                  className="gap-2 rounded-xl border-0 bg-[#faf6ef]/15 text-[#faf6ef] hover:bg-[#faf6ef]/25"
-                >
-                  <Link href="#included">See what&apos;s included</Link>
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
+      <ProgramHero />
 
       {/* Bloom's Two Sigma Problem */}
       <section className="bg-[#fbf8f2] px-6 py-20 dark:bg-[#12181e] sm:px-12 sm:py-28">
