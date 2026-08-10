@@ -211,7 +211,7 @@ export default function AcceptInvitationPage() {
         </div>
 
         <p className="text-xs text-slate-500">
-          © {new Date().getFullYear()} Mark. All rights reserved.
+          © {new Date().getFullYear()} MarkAI Labs, Inc. All rights reserved.
         </p>
       </div>
 

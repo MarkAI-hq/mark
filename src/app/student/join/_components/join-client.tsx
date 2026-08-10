@@ -2267,7 +2267,7 @@ export function JoinClient({ schoolCode, schoolName }: { schoolCode: string; sch
           </div>
 
           <p className="text-xs text-muted-foreground">
-            © {new Date().getFullYear()} Mark. All rights reserved.
+            © {new Date().getFullYear()} MarkAI Labs, Inc. All rights reserved.
           </p>
         </div>
 
