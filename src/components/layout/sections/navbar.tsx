@@ -40,7 +40,6 @@ type RouteItem = {
 // mirror.education, where the audience actually is students.
 const baseRouteList: RouteItem[] = [
   { href: "/program", label: "The Program" },
-  { href: "/founders-academy", label: "Founders Academy" },
   { href: "/schools", label: "Explore Schools" },
   { href: "/login", label: "Login", cta: "ghost" },
   { href: "/login", label: "Partner Portal", cta: "outline", icon: GraduationCap },
@@ -91,7 +90,11 @@ export const Navbar = ({ isSchoolSite = false }: { isSchoolSite?: boolean }) => 
           }),
         { href: WHATSAPP_GROUP_URL, label: "Contact Us", external: true },
       ]
-    : baseRouteList;
+    // Ghost "Login" and outline "Partner Portal" both point at "/login" on
+    // this list (see comment above baseRouteList) — real duplication on the
+    // base template specifically, since there's only one account type here.
+    // Drop the ghost one; Partner Portal remains the single login CTA.
+    : baseRouteList.filter((route) => route.label !== "Login");
 
   const contentRoutes = routeList.filter((r) => !r.cta);
   const ctaRoutes = routeList.filter((r) => r.cta);
