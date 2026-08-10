@@ -1,5 +1,6 @@
 import { Metadata } from 'next'
 import Script from 'next/script'
+import { isSchoolDomain } from '@/lib/site-mode'
 import { Navbar } from '../components/layout/sections/navbar'
 import { HeroSection } from '@/components/layout/sections/hero'
 import { StatsBar } from '@/components/layout/sections/stats-bar'
@@ -19,7 +20,8 @@ export const metadata: Metadata = {
   description: 'Teaching Intelligence, Learning Intelligence, and School Insights — in one closed-loop platform.',
 }
 
-export default function HomePage() {
+export default async function HomePage() {
+  const isSchoolSite = await isSchoolDomain()
   return (
     <>
       <Script
@@ -31,7 +33,7 @@ Cal("init", "30min", {origin:"https://app.cal.com"});
 Cal.ns["30min"]("ui", {"hideEventTypeDetails":false,"layout":"month_view"});`,
         }}
       />
-      <Navbar />
+      <Navbar isSchoolSite={isSchoolSite} />
       <HeroSection />
       <StatsBar />
       <OurStory />
@@ -43,7 +45,7 @@ Cal.ns["30min"]("ui", {"hideEventTypeDetails":false,"layout":"month_view"});`,
       <SponsorsSection />
       <Header />
       <FAQSection />
-      <FooterSection />
+      <FooterSection hideSchoolCta={isSchoolSite} />
     </>
   )
 }
