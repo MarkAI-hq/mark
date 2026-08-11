@@ -156,3 +156,82 @@ export async function importStudentsFromFile(
     return { data: null, error: { message } }
   }
 }
+
+// ── Guardians ────────────────────────────────────────────────────────────────
+
+export interface Guardian {
+  id:                        string
+  student_id:                string
+  guardian_name:             string
+  phone:                     string | null
+  email:                     string | null
+  relationship:               string | null
+  is_billing_contact:        boolean
+  guardian_user_id:           string | null
+  notification_preferences: {
+    enrollment?:         boolean
+    certificate?:        boolean
+    streak_at_risk?:      boolean
+    exam_registration?:  boolean
+  } | null
+}
+
+export interface GuardianInput {
+  guardian_name:       string
+  phone?:              string
+  email?:              string
+  relationship?:       string
+  is_billing_contact?: boolean
+}
+
+export async function listGuardians(studentId: string): Promise<ServerActionResponse<Guardian[]>> {
+  return fetcher<Guardian[]>(`/students/${studentId}/guardians`, { cache: 'no-store' })
+}
+
+export async function addGuardian(
+  studentId: string,
+  data:      GuardianInput,
+): Promise<ServerActionResponse<Guardian>> {
+  const response = await fetcher<Guardian>(`/students/${studentId}/guardians`, {
+    method: 'POST',
+    body:   JSON.stringify(data),
+  })
+  if (!response.error) revalidatePath(`/dashboard/students/${studentId}`)
+  return response
+}
+
+export async function updateGuardian(
+  studentId:  string,
+  guardianId: string,
+  data:       Partial<GuardianInput>,
+): Promise<ServerActionResponse<Guardian>> {
+  const response = await fetcher<Guardian>(`/students/${studentId}/guardians/${guardianId}`, {
+    method: 'PATCH',
+    body:   JSON.stringify(data),
+  })
+  if (!response.error) revalidatePath(`/dashboard/students/${studentId}`)
+  return response
+}
+
+export async function removeGuardian(
+  studentId:  string,
+  guardianId: string,
+): Promise<ServerActionResponse<{ message: string }>> {
+  const response = await fetcher<{ message: string }>(`/students/${studentId}/guardians/${guardianId}`, {
+    method: 'DELETE',
+  })
+  if (!response.error) revalidatePath(`/dashboard/students/${studentId}`)
+  return response
+}
+
+export async function inviteGuardian(
+  studentId:  string,
+  guardianId: string,
+): Promise<ServerActionResponse<{ message: string }>> {
+  const response = await fetcher<{ message: string }>(
+    `/students/${studentId}/guardians/${guardianId}/invite`,
+    { method: 'POST' },
+  )
+  if (!response.error) revalidatePath(`/dashboard/students/${studentId}`)
+  return response
+}

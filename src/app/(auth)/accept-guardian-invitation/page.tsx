@@ -1,4 +1,4 @@
-// src/app/(auth)/accept-invitation/page.tsx
+// src/app/(auth)/accept-guardian-invitation/page.tsx
 'use client'
 
 import { useEffect, useState, useTransition } from 'react'
@@ -8,77 +8,73 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import * as z from 'zod'
 import { toast } from 'sonner'
 import {
-  Loader2, MailCheck, XCircle, Eye, EyeOff,
-  ArrowRight, ArrowLeft, ShieldCheck, BookOpen, BarChart2, Chrome, Sparkles,
+  Loader2, MailCheck, XCircle, Eye, EyeOff, ArrowRight, ArrowLeft,
+  Sparkles, LineChart, CalendarCheck, CreditCard,
 } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
 
-import { Button }   from '@/components/ui/button'
-import { Input }    from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { Checkbox } from '@/components/ui/checkbox'
 import {
   Form, FormControl, FormField,
   FormItem, FormLabel, FormMessage,
 } from '@/components/ui/form'
-import { peekInvitation, acceptInvitation, registerInvited } from '@/lib/actions/auth'
+import { peekGuardianInvitation, acceptGuardianInvitation } from '@/lib/actions/guardian'
 
-// ── Types ──────────────────────────────────────────────────────────────────
-type PageStatus = 'validating' | 'form' | 'sso' | 'existing-user' | 'success' | 'error'
+type PageStatus = 'validating' | 'form' | 'existing-user' | 'success' | 'error'
 
 interface InvitationMeta {
-  email:            string
+  email: string
   organizationName: string
-  requiresSignup:   boolean
-  ssoRequired:      boolean
-  token:            string
+  requiresSignup: boolean
+  token: string
 }
 
-// ── Schema ─────────────────────────────────────────────────────────────────
+const HIGHLIGHTS = [
+  {
+    icon:  LineChart,
+    title: "Track your child's progress",
+    desc:  'Real-time grades and mastery scores as new work comes in.',
+  },
+  {
+    icon:  CalendarCheck,
+    title: 'Attendance at a glance',
+    desc:  'See presence, absence, and lateness without asking the school.',
+  },
+  {
+    icon:  CreditCard,
+    title: 'Simple billing',
+    desc:  "View and pay your child's term fees directly from your dashboard.",
+  },
+]
+
 const schema = z.object({
-  firstName:       z.string().min(2, 'At least 2 characters'),
-  lastName:        z.string().min(2, 'At least 2 characters'),
-  password:        z.string().min(8, 'At least 8 characters'),
+  firstName: z.string().min(2, 'At least 2 characters'),
+  lastName: z.string().min(2, 'At least 2 characters'),
+  password: z.string().min(8, 'At least 8 characters'),
   confirmPassword: z.string(),
-  phone:           z.string().optional(),
-  acceptTerms:     z.boolean().refine(v => v === true, { message: 'You must accept the terms' }),
-}).refine(d => d.password === d.confirmPassword, {
+  phone: z.string().optional(),
+  acceptTerms: z.boolean().refine((v) => v === true, { message: 'You must accept the terms' }),
+}).refine((d) => d.password === d.confirmPassword, {
   message: "Passwords don't match",
-  path:    ['confirmPassword'],
+  path: ['confirmPassword'],
 })
 
 type FormData = z.infer<typeof schema>
 
-const FEATURES = [
-  {
-    icon:  ShieldCheck,
-    title: 'Your classes, your way',
-    desc:  'Access and manage your assigned classes and learner profiles.',
-  },
-  {
-    icon:  BookOpen,
-    title: 'Full assessment control',
-    desc:  'Create exams, assessments and marking guides with complete access.',
-  },
-  {
-    icon:  BarChart2,
-    title: 'Learner insights',
-    desc:  'View student performance and analytics across your classes.',
-  },
-]
-
-// ── Page ───────────────────────────────────────────────────────────────────
-export default function AcceptInvitationPage() {
+export default function AcceptGuardianInvitationPage() {
   const searchParams = useSearchParams()
-  const router       = useRouter()
-  const token        = searchParams.get('token') ?? ''
+  const router = useRouter()
+  const token = searchParams.get('token') ?? ''
 
   const [pageStatus, setPageStatus] = useState<PageStatus>('validating')
-  const [statusMsg,  setStatusMsg]  = useState('Validating your invitation…')
-  const [meta,       setMeta]       = useState<InvitationMeta | null>(null)
-  const [showPw,     setShowPw]     = useState(false)
-  const [showCpw,    setShowCpw]    = useState(false)
-  const [isPending,  start]         = useTransition()
+  const [statusMsg, setStatusMsg] = useState('Validating your invitation…')
+  const [meta, setMeta] = useState<InvitationMeta | null>(null)
+  const [showPw, setShowPw] = useState(false)
+  const [showCpw, setShowCpw] = useState(false)
+  const [isPending, start] = useTransition()
 
   const form = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -88,7 +84,6 @@ export default function AcceptInvitationPage() {
     },
   })
 
-  // ── Step 1: peek at invitation metadata ───────────────────────────────
   useEffect(() => {
     if (!token) {
       setStatusMsg('No invitation token found. Please check your link.')
@@ -97,7 +92,7 @@ export default function AcceptInvitationPage() {
     }
 
     const validate = async () => {
-      const { data, error } = await peekInvitation(token)
+      const { data, error } = await peekGuardianInvitation(token)
 
       if (error) {
         setStatusMsg(error.message)
@@ -105,36 +100,24 @@ export default function AcceptInvitationPage() {
         toast.error('Invitation Failed', { description: error.message })
         return
       }
-
       if (!data) return
 
-      setMeta({
-        email:            data.email,
-        organizationName: data.organizationName,
-        requiresSignup:   data.requiresSignup,
-        ssoRequired:      data.ssoRequired,
-        token,
-      })
+      setMeta({ email: data.email, organizationName: data.organizationName, requiresSignup: data.requiresSignup, token })
 
-      if (data.ssoRequired) {
-        // SSO-enforced org → show "Accept with Google" button
-        setPageStatus('sso')
-      } else if (data.requiresSignup) {
-        // New user → show registration form
+      if (data.requiresSignup) {
         setPageStatus('form')
       } else {
-        // Existing user → accept directly then redirect to login
         setPageStatus('existing-user')
-        const result = await acceptInvitation(token)
+        const result = await acceptGuardianInvitation({ token })
         if (result.error) {
           setStatusMsg(result.error.message)
           setPageStatus('error')
           toast.error('Failed', { description: result.error.message })
           return
         }
-        setStatusMsg(`You've been added to ${data.organizationName}. Please log in.`)
+        setStatusMsg(`You've been linked to your child's account. Please log in.`)
         setPageStatus('success')
-        toast.success('Welcome aboard!')
+        toast.success('Welcome to Mirror Intelligence!')
         setTimeout(() => router.push('/login'), 2000)
       }
     }
@@ -142,16 +125,15 @@ export default function AcceptInvitationPage() {
     validate()
   }, [token, router])
 
-  // ── Step 2: register new user ─────────────────────────────────────────
   const onSubmit = (values: FormData) => {
     start(async () => {
-      const { data, error } = await registerInvited({
+      const { data, error } = await acceptGuardianInvitation({
         token,
-        firstName:   values.firstName,
-        lastName:    values.lastName,
-        email:       meta?.email ?? '',
-        password:    values.password,
-        phone:       values.phone || undefined,
+        firstName: values.firstName,
+        lastName: values.lastName,
+        email: meta?.email ?? '',
+        password: values.password,
+        phone: values.phone || undefined,
         acceptTerms: values.acceptTerms,
       })
 
@@ -164,11 +146,6 @@ export default function AcceptInvitationPage() {
       setPageStatus('success')
     })
   }
-
-  // ── Left panel copy ─────────────────────────────────────────────────────
-  const leftPanelCopy = meta
-    ? `Complete your account to join ${meta.organizationName}.`
-    : `Your account is being set up. Here's what you'll have access to as a teacher.`
 
   return (
     <div className="h-screen overflow-hidden grid lg:grid-cols-2">
@@ -206,23 +183,25 @@ export default function AcceptInvitationPage() {
               <Sparkles className="h-3.5 w-3.5 text-[#926C15]" />
               <span className="font-semibold text-[#926C15]">Mirror</span>
               <span className="text-white/30">·</span>
-              <span className="text-white/60 font-medium">Teaching Intelligence</span>
+              <span className="text-white/60 font-medium">Guardian access</span>
             </div>
 
             <div className="space-y-2.5">
               <h1 className="text-3xl font-black leading-tight tracking-tighter">
-                You&apos;ve been{' '}
+                You&apos;ve been invited{' '}
                 <span className="bg-gradient-to-br from-[#926C15] via-[#C09020] to-[#D4AA30] bg-clip-text text-transparent">
-                  invited.
+                  as a guardian.
                 </span>
               </h1>
               <p className="text-white/50 text-base leading-relaxed max-w-sm">
-                {leftPanelCopy}
+                {meta
+                  ? `See ${meta.organizationName}'s reports, attendance and billing for your child.`
+                  : `Set up your account to follow your child's progress on Mirror Intelligence.`}
               </p>
             </div>
 
             <div className="space-y-4">
-              {FEATURES.map(({ icon: Icon, title, desc }) => (
+              {HIGHLIGHTS.map(({ icon: Icon, title, desc }) => (
                 <div key={title} className="flex items-start gap-3">
                   <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#926C15]/15 border border-[#926C15]/25">
                     <Icon className="h-3.5 w-3.5 text-[#926C15]" />
@@ -262,79 +241,32 @@ export default function AcceptInvitationPage() {
           </div>
         </div>
 
-        {/* ── SSO-enforced invitation ── */}
-        {pageStatus === 'sso' && meta && (
-          <div className="w-full max-w-sm">
-            <div className="h-0.5 rounded-t-2xl bg-gradient-to-r from-[#926C15] via-[#C09020] to-[#D4AA30]" />
-            <div className="bg-card rounded-b-2xl border border-t-0 border-border/60 shadow-xl shadow-black/5 px-8 py-8 space-y-6">
-              <div className="space-y-1">
-                <h2 className="text-2xl font-black tracking-tighter text-foreground">Accept Invitation</h2>
-                <p className="text-sm text-muted-foreground">
-                  Joining <span className="font-semibold text-foreground">{meta.organizationName}</span> as a Teacher
-                </p>
-              </div>
-
-              <div className="rounded-lg border border-[#926C15]/30 bg-[#926C15]/8 px-4 py-3 text-sm text-foreground">
-                <p className="font-medium">Google Workspace required</p>
-                <p className="mt-0.5 text-xs text-muted-foreground">
-                  Your school requires all staff to sign in with Google. Password login is disabled.
-                </p>
-              </div>
-
-              <div className="flex items-center gap-2 rounded-lg bg-muted px-3 py-2.5">
-                <MailCheck className="h-4 w-4 text-muted-foreground shrink-0" />
-                <span className="text-sm text-foreground truncate">{meta.email}</span>
-                <span className="ml-auto text-xs text-muted-foreground shrink-0">Invited</span>
-              </div>
-
-              <Link
-                href={`/api/auth/google?invite_token=${encodeURIComponent(meta.token)}&return_url=/dashboard/teacher`}
-                className="flex w-full items-center justify-center gap-2.5 rounded-lg bg-card border border-border/60 px-4 py-2.5 text-sm font-medium text-foreground shadow-sm hover:bg-muted transition-colors"
-              >
-                <Chrome className="h-4 w-4" />
-                Accept with Google
-              </Link>
-            </div>
-          </div>
-        )}
-
-        {/* ── Validating / processing / error / success ── */}
         {(pageStatus === 'validating' || pageStatus === 'existing-user' || pageStatus === 'error' || pageStatus === 'success') && (
           <div className="w-full max-w-sm">
             <div className="h-0.5 rounded-t-2xl bg-gradient-to-r from-[#926C15] via-[#C09020] to-[#D4AA30]" />
             <div className="bg-card rounded-b-2xl border border-t-0 border-border/60 shadow-xl shadow-black/5 px-8 py-10 space-y-8">
               <div className="space-y-1.5 text-center">
-                <h2 className="text-2xl font-black tracking-tighter text-foreground">Accept Invitation</h2>
+                <h2 className="text-2xl font-black tracking-tighter text-foreground">Guardian Invitation</h2>
                 <p className="text-sm text-muted-foreground">{statusMsg}</p>
               </div>
-
               <div className="flex justify-center items-center h-24">
                 {(pageStatus === 'validating' || pageStatus === 'existing-user') && (
                   <Loader2 className="h-10 w-10 animate-spin text-muted-foreground/40" />
                 )}
-                {pageStatus === 'success' && (
-                  <MailCheck className="h-14 w-14 text-green-500" />
-                )}
-                {pageStatus === 'error' && (
-                  <XCircle className="h-14 w-14 text-destructive/70" />
-                )}
+                {pageStatus === 'success' && <MailCheck className="h-14 w-14 text-green-500" />}
+                {pageStatus === 'error' && <XCircle className="h-14 w-14 text-destructive/70" />}
               </div>
-
               {pageStatus === 'success' && (
                 <div className="text-center space-y-1">
-                  <p className="text-sm text-muted-foreground">
-                    Check your inbox and verify your email before logging in.
-                  </p>
                   <Link href="/login" className="text-sm font-semibold text-[#926C15] hover:underline underline-offset-2 block">
                     Go to login →
                   </Link>
                 </div>
               )}
-
               {pageStatus === 'error' && (
                 <div className="text-center space-y-2">
                   <p className="text-xs text-muted-foreground">
-                    Contact your administrator to resend the invitation.
+                    Ask the school to resend your guardian invitation.
                   </p>
                   <Link href="/login" className="text-sm font-semibold text-[#926C15] hover:underline underline-offset-2 block">
                     Back to login
@@ -345,23 +277,22 @@ export default function AcceptInvitationPage() {
           </div>
         )}
 
-        {/* ── Registration form ── */}
         {pageStatus === 'form' && meta && (
           <div className="w-full max-w-sm">
 
+            {/* Heading */}
             <div className="mb-6">
               <h1 className="text-2xl font-black tracking-tighter text-foreground leading-tight">
-                Complete your account.
+                Set up your guardian account.
               </h1>
               <p className="text-sm text-muted-foreground mt-1.5">
-                Joining <span className="font-semibold text-foreground">{meta.organizationName}</span> as a Teacher
+                Joining <span className="font-semibold text-foreground">{meta.organizationName}</span>
               </p>
             </div>
 
             <div className="h-0.5 rounded-t-2xl bg-gradient-to-r from-[#926C15] via-[#C09020] to-[#D4AA30]" />
             <div className="bg-card rounded-b-2xl border border-t-0 border-border/60 shadow-xl shadow-black/5 px-8 py-8 space-y-6">
 
-              {/* Locked email */}
               <div className="flex items-center gap-2 rounded-lg bg-muted px-3 py-2.5">
                 <MailCheck className="h-4 w-4 text-muted-foreground shrink-0" />
                 <span className="text-sm text-foreground truncate">{meta.email}</span>
@@ -370,8 +301,6 @@ export default function AcceptInvitationPage() {
 
               <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-
-                  {/* Name row */}
                   <div className="grid grid-cols-2 gap-3">
                     <FormField control={form.control} name="firstName" render={({ field }) => (
                       <FormItem>
@@ -389,7 +318,6 @@ export default function AcceptInvitationPage() {
                     )} />
                   </div>
 
-                  {/* Password row */}
                   <div className="grid grid-cols-2 gap-3">
                     <FormField control={form.control} name="password" render={({ field }) => (
                       <FormItem>
@@ -397,7 +325,7 @@ export default function AcceptInvitationPage() {
                         <FormControl>
                           <div className="relative">
                             <Input type={showPw ? 'text' : 'password'} placeholder="Min 8 chars" className="pr-9" {...field} />
-                            <button type="button" tabIndex={-1} onClick={() => setShowPw(p => !p)}
+                            <button type="button" tabIndex={-1} onClick={() => setShowPw((p) => !p)}
                               className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
                               {showPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                             </button>
@@ -412,7 +340,7 @@ export default function AcceptInvitationPage() {
                         <FormControl>
                           <div className="relative">
                             <Input type={showCpw ? 'text' : 'password'} placeholder="Repeat" className="pr-9" {...field} />
-                            <button type="button" tabIndex={-1} onClick={() => setShowCpw(p => !p)}
+                            <button type="button" tabIndex={-1} onClick={() => setShowCpw((p) => !p)}
                               className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
                               {showCpw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                             </button>
@@ -423,7 +351,6 @@ export default function AcceptInvitationPage() {
                     )} />
                   </div>
 
-                  {/* Phone */}
                   <FormField control={form.control} name="phone" render={({ field }) => (
                     <FormItem>
                       <FormLabel>
@@ -437,7 +364,6 @@ export default function AcceptInvitationPage() {
                     </FormItem>
                   )} />
 
-                  {/* Terms */}
                   <FormField control={form.control} name="acceptTerms" render={({ field }) => (
                     <FormItem>
                       <div className="flex items-start gap-2.5">
@@ -456,20 +382,14 @@ export default function AcceptInvitationPage() {
                   )} />
 
                   <Button type="submit" className="w-full" size="lg" disabled={isPending}>
-                    {isPending
-                      ? <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      : <ArrowRight className="mr-2 h-4 w-4" />
-                    }
+                    {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ArrowRight className="mr-2 h-4 w-4" />}
                     {isPending ? 'Creating account…' : 'Complete Registration'}
                   </Button>
-
                 </form>
               </Form>
-
             </div>
           </div>
         )}
-
       </div>
     </div>
   )

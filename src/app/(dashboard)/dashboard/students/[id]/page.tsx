@@ -7,7 +7,8 @@ import {
   ShieldCheck, Clock, Trophy,
 } from 'lucide-react'
 
-import { getStudent } from '@/lib/actions/students'
+import { getStudent, listGuardians } from '@/lib/actions/students'
+import { GuardianInviteButton } from './_components/guardian-invite-button'
 import { getStudentEnrollments, getStudentSubmissions, getStudentCognitiveProfiles } from '@/lib/actions/student-details'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -54,11 +55,12 @@ function StatusBadge({ status }: { status: string }) {
 export default async function StudentDetailPage({ params }: Props) {
   const { id } = await params
 
-  const [studentRes, enrollmentsRes, submissionsRes, cognitiveRes] = await Promise.all([
+  const [studentRes, enrollmentsRes, submissionsRes, cognitiveRes, guardiansRes] = await Promise.all([
     getStudent(id),
     getStudentEnrollments(id),
     getStudentSubmissions(id),
     getStudentCognitiveProfiles(id),
+    listGuardians(id),
   ])
 
   if (studentRes.error || !studentRes.data) notFound()
@@ -67,6 +69,7 @@ export default async function StudentDetailPage({ params }: Props) {
   const enrollments = enrollmentsRes.data ?? []
   const submissions = submissionsRes.data ?? []
   const cognitive   = cognitiveRes.data ?? []
+  const guardians   = guardiansRes.data ?? []
 
   const name          = `${student.first_name} ${student.last_name}`.trim()
   const currentProfile = cognitive.find(c => c.is_current)
@@ -173,7 +176,39 @@ export default async function StudentDetailPage({ params }: Props) {
               </div>
             ))}
 
-            {(student.guardian_name || student.guardian_email || student.guardian_phone) && (
+            {guardians.length > 0 ? (
+              <div className="pt-3 mt-3 border-t space-y-3">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Guardians</p>
+                {guardians.map((g) => (
+                  <div key={g.id} className="space-y-1.5 pb-2 border-b last:border-0 last:pb-0">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <User className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                        <span className="font-medium">{g.guardian_name}</span>
+                        {g.relationship && (
+                          <span className="text-xs text-muted-foreground">({g.relationship})</span>
+                        )}
+                      </div>
+                      <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${
+                        g.guardian_user_id
+                          ? 'bg-emerald-100 text-emerald-700'
+                          : 'bg-muted text-muted-foreground'
+                      }`}>
+                        {g.guardian_user_id ? 'Active' : 'No account'}
+                      </span>
+                    </div>
+                    {g.email && (
+                      <div className="flex gap-2 text-muted-foreground">
+                        <Mail className="h-3.5 w-3.5 mt-0.5 shrink-0" /><span>{g.email}</span>
+                      </div>
+                    )}
+                    {!g.guardian_user_id && g.email && (
+                      <GuardianInviteButton studentId={student.id} guardianId={g.id} />
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (student.guardian_name || student.guardian_email || student.guardian_phone) && (
               <div className="pt-3 mt-3 border-t space-y-2">
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Guardian</p>
                 {student.guardian_name  && <div className="flex gap-2"><User className="h-3.5 w-3.5 text-muted-foreground mt-0.5" /><span>{student.guardian_name}</span></div>}

@@ -11,7 +11,13 @@ export interface Citation {
 }
 
 // --- CORE AUTH & USER TYPES ---
-export type UserRole = 'Root' | 'Support' | 'Admin' | 'Teacher' | 'Student';
+export type UserRole =
+  | 'Root'
+  | 'Support'
+  | 'Admin'
+  | 'Teacher'
+  | 'Student'
+  | 'Reviewer';
 
 export interface User {
   id: string;

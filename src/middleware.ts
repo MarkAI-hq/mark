@@ -48,6 +48,7 @@ export async function middleware(request: NextRequest) {
     '/reset-password',
     '/verify-email',
     '/accept-invitation',
+    '/accept-guardian-invitation',
     '/student/login',
     '/student/join',
     '/student/payment-complete',
@@ -74,8 +75,9 @@ export async function middleware(request: NextRequest) {
       if (roles.includes('Root'))    return { role: 'Root',    id: user.id }
       if (roles.includes('Support')) return { role: 'Support', id: user.id }
       if (roles.includes('Student')) return { role: 'Student', id: user.id, onboarding_complete: user.onboarding_complete ?? true, school_code: user.school_code, enrollment_source: user.enrollment_source }
-      if (roles.includes('Admin'))   return { role: 'Admin',   id: user.id, onboarding_complete: user.onboarding_complete ?? true }
-      if (roles.includes('Teacher')) return { role: 'Teacher', id: user.id }
+      if (roles.includes('Admin'))    return { role: 'Admin',    id: user.id, onboarding_complete: user.onboarding_complete ?? true }
+      if (roles.includes('Teacher'))  return { role: 'Teacher',  id: user.id }
+      if (roles.includes('Reviewer')) return { role: 'Reviewer', id: user.id }
       return null
     } catch {
       return null
@@ -88,8 +90,9 @@ export async function middleware(request: NextRequest) {
       if (pathname === '/login' || pathname === '/signup' || pathname === '/register') {
         if (user?.role === 'Root' || user?.role === 'Support') return NextResponse.redirect(new URL('/root', request.url))
         if (user?.role === 'Student') return NextResponse.redirect(new URL(studentDestination(user), request.url))
-        if (user?.role === 'Teacher') return NextResponse.redirect(new URL('/dashboard/teacher', request.url))
-        if (user?.role === 'Admin')   return NextResponse.redirect(new URL('/dashboard',          request.url))
+        if (user?.role === 'Teacher')  return NextResponse.redirect(new URL('/dashboard/teacher',  request.url))
+        if (user?.role === 'Admin')    return NextResponse.redirect(new URL('/dashboard',           request.url))
+        if (user?.role === 'Reviewer') return NextResponse.redirect(new URL('/guardian/dashboard',  request.url))
       }
       // An authenticated Student hitting /student/login (e.g. the "Sign in" link
       // shown mid-signup) must not be bounced straight to the dashboard if they
@@ -155,6 +158,19 @@ export async function middleware(request: NextRequest) {
   }
 
   if (pathname.startsWith('/student') && user?.role !== 'Student') {
+    return NextResponse.redirect(new URL('/dashboard', request.url))
+  }
+
+  // Guardians get their own portal — no access to the Admin/Teacher
+  // dashboard or the Student portal, same exclusivity shape as Student above.
+  if (user?.role === 'Reviewer') {
+    if (!pathname.startsWith('/guardian')) {
+      return NextResponse.redirect(new URL('/guardian/dashboard', request.url))
+    }
+    return NextResponse.next()
+  }
+
+  if (pathname.startsWith('/guardian') && user?.role !== 'Reviewer') {
     return NextResponse.redirect(new URL('/dashboard', request.url))
   }
 
