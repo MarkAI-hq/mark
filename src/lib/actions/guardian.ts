@@ -7,6 +7,7 @@
 
 import { fetcher } from '@/lib/fetch'
 import type { ServerActionResponse } from '@/lib/types'
+import type { OrgQualityScorecard } from '@/lib/actions/quality-eval'
 
 export interface GuardianChild {
   student_id: string
@@ -114,6 +115,15 @@ export async function updateNotificationPreferences(
   return fetcher<GuardianNotificationPreferences>(
     `/guardian/children/${studentId}/notification-preferences`,
     { method: 'PATCH', body: JSON.stringify(prefs), cache: 'no-store' },
+  )
+}
+
+export async function getChildQualityScorecard(
+  studentId: string,
+): Promise<ServerActionResponse<OrgQualityScorecard[]>> {
+  return fetcher<OrgQualityScorecard[]>(
+    `/guardian/children/${studentId}/quality`,
+    { cache: 'no-store' },
   )
 }
 

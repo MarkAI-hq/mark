@@ -7,7 +7,7 @@ import { formatDistanceToNow }                          from 'date-fns'
 import {
   Users, FileText, CheckSquare, BookOpen,
   Clock, TrendingUp, FileEdit, Zap,
-  AlertTriangle, Loader2, ClipboardList,
+  AlertTriangle, Loader2, ClipboardList, ShieldCheck,
 }                                                        from 'lucide-react'
 import Link                                              from 'next/link'
 import { toast }                                         from 'sonner'
@@ -23,6 +23,7 @@ import { publishAssessment }                             from '@/lib/actions/ass
 import { StatCard }                                      from './stat-card'
 import { OverviewChart }                                 from '@/components/charts/overview-chart'
 import { SchoolAnalyticsSection }                        from './school-analytics-section'
+import { TutoringQualitySection }                        from './tutoring-quality-section'
 import { ReteachOrgImpact }                              from '@/components/reteach/reteach-org-impact'
 import {
   Card, CardContent, CardHeader,
@@ -310,6 +311,23 @@ export function DashboardClient({ stats, analytics, learningVelocity, billingSta
         </p>
         <ReteachOrgImpact />
       </div>
+
+      {/* ── Tutoring Quality (Admin only) ───────────────────────────────── */}
+      {user.role === 'Admin' && (
+        <>
+          <Separator />
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <ShieldCheck className="h-5 w-5 text-emerald-500" />
+              <h2 className="text-xl font-semibold tracking-tight">Tutoring Quality</h2>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              How well Tracy teaches the subjects your school uses — sampled with simulated students and scored by an independent judge.
+            </p>
+            <TutoringQualitySection />
+          </div>
+        </>
+      )}
 
       {/* ── Learning Velocity (Admin only) ──────────────────────────────── */}
       {user.role === 'Admin' && learningVelocity && (

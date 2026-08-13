@@ -1,9 +1,11 @@
 import Link from 'next/link'
-import { CreditCard } from 'lucide-react'
+import { CreditCard, ShieldCheck, ShieldAlert, ShieldQuestion } from 'lucide-react'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { getChildOverview } from '@/lib/actions/guardian'
+import { MetricEmptyState } from '@/components/ui/metric-empty-state'
+import { QualityScorecardGrid, computeAverageCleanPass, rateTextColor } from '@/components/quality/scorecard-grid'
+import { getChildOverview, getChildQualityScorecard } from '@/lib/actions/guardian'
 
 export default async function GuardianChildOverviewPage({
   params,
@@ -11,7 +13,10 @@ export default async function GuardianChildOverviewPage({
   params: Promise<{ studentId: string }>
 }) {
   const { studentId } = await params
-  const { data: overview, error } = await getChildOverview(studentId)
+  const [{ data: overview, error }, { data: scorecards }] = await Promise.all([
+    getChildOverview(studentId),
+    getChildQualityScorecard(studentId),
+  ])
 
   if (error || !overview) {
     return (
@@ -22,6 +27,9 @@ export default async function GuardianChildOverviewPage({
   }
 
   const { attendance, submissions, mastery, organization_name } = overview
+  const avgCleanPass = scorecards ? computeAverageCleanPass(scorecards) : null
+  const HeadlineIcon =
+    avgCleanPass === null ? ShieldQuestion : avgCleanPass >= 75 ? ShieldCheck : ShieldAlert
 
   return (
     <div className="space-y-6">
@@ -108,6 +116,38 @@ export default async function GuardianChildOverviewPage({
               </Badge>
             </div>
           ))}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Tutoring Quality</CardTitle>
+          <p className="text-xs text-muted-foreground">
+            How well Tracy teaches this child&apos;s subjects — sampled with simulated students and scored by an independent judge, not self-reported.
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {!scorecards || scorecards.length === 0 ? (
+            <MetricEmptyState
+              label="No quality data yet"
+              reason="Once this child's classes are assigned a curriculum, this section will show how well Tracy teaches each subject."
+            />
+          ) : (
+            <>
+              <div className="flex items-center gap-3">
+                <HeadlineIcon className={`h-8 w-8 shrink-0 ${rateTextColor(avgCleanPass)}`} />
+                <div>
+                  <p className={`text-2xl font-bold ${rateTextColor(avgCleanPass)}`}>
+                    {avgCleanPass === null ? 'Not sampled yet' : `${avgCleanPass}%`}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    average clean pass rate across sampled subjects
+                  </p>
+                </div>
+              </div>
+              <QualityScorecardGrid scorecards={scorecards} />
+            </>
+          )}
         </CardContent>
       </Card>
     </div>

@@ -1224,7 +1224,12 @@ function WidgetRenderer({ html, messageId }: { html: string; messageId: string }
 
     setSrcDoc(
       `<!DOCTYPE html><html><head><meta charset="utf-8"><style>` +
-      `:root{${vars};--brand:#c9a84c;}` +
+      `:root{${vars};--brand:#c9a84c;--brand-10:rgba(201,168,76,0.1);` +
+      `--mi-green-dark:#085041;--mi-green-mid:#1D9E75;--mi-green-light:#E1F5EE;--mi-green-pale:#9FE1CB;` +
+      `--mi-gold-dark:#633806;--mi-gold-mid:#BA7517;--mi-gold-light:#FAEEDA;` +
+      `--mi-purple-dark:#3C3489;--mi-purple-mid:#7F77DD;--mi-purple-light:#EEEDFE;` +
+      `--mi-red-dark:#791F1F;--mi-red-mid:#E24B4A;--mi-red-light:#FCEBEB;` +
+      `--mi-gray-mid:#B4B2A9;--mi-gray-dark:#444441;}` +
       `*{box-sizing:border-box;margin:0;padding:0;}` +
       `html,body{background:hsl(var(--card));color:hsl(var(--foreground));` +
       `font-family:system-ui,-apple-system,BlinkMacSystemFont,sans-serif;` +

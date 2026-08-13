@@ -169,6 +169,11 @@ export async function getBroadcastHistory(limit = 50, offset = 0) {
 
 export interface CurriculumSummary {
   schema_id:        string
+  // 'enriched' = the ~11 hand-authored curricula with real misconceptions.
+  // 'corpus' = the ~90 per-class-year RAG rows behind them — usually has no
+  // curriculum_body/curriculum_level, filter these out unless you actually
+  // want the raw corpus rows.
+  kind?:             string
   subject:          string
   curriculum_body:  string
   curriculum_level: string

@@ -1,15 +1,19 @@
 // src/app/(dashboard)/dashboard/review-queue/page.tsx
 import { Metadata } from 'next'
 import { getReviewQueue } from '@/lib/actions/study-plans'
-import { ReviewQueueClient } from './review-queue-client'
+import { getQualityReviewQueue } from '@/lib/actions/quality-eval'
+import { ReviewQueueTabs } from './review-queue-tabs'
 
 export const metadata: Metadata = {
   title: 'Review queue - Mark',
-  description: 'AI-generated lessons flagged for low curriculum alignment or a failed quality check.',
+  description: 'AI-generated lessons and tutoring conversations flagged for a failed quality check.',
 }
 
 export default async function ReviewQueuePage() {
-  const { data: plans, error } = await getReviewQueue()
+  const [{ data: plans, error }, { data: conversations }] = await Promise.all([
+    getReviewQueue(),
+    getQualityReviewQueue(),
+  ])
 
   if (error) {
     return (
@@ -28,13 +32,14 @@ export default async function ReviewQueuePage() {
         <div className="text-3xl font-bold tracking-tight">
           Review queue
           <h4 className="pt-3 text-lg font-normal text-muted-foreground">
-            Lessons the generation pipeline flagged itself — weak curriculum grounding, low
-            alignment, or a simulation that failed its quality gate. Nothing here was hidden
-            from students; it&apos;s already been delivered and just needs a look.
+            Content the generation pipeline flagged itself — weak curriculum grounding, a
+            failed simulation quality gate, or a tutoring conversation that missed a quality
+            check. Nothing here was hidden from students; it&apos;s already been delivered and
+            just needs a look.
           </h4>
         </div>
       </div>
-      <ReviewQueueClient initial={plans ?? []} />
+      <ReviewQueueTabs lessonPlans={plans ?? []} conversations={conversations ?? []} />
     </div>
   )
 }
