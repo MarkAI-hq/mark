@@ -162,8 +162,8 @@ export default function ProgramPage() {
               },
               {
                 tag: 'Hardware',
-                title: 'Lease-to-own laptop',
-                body: 'Worth $200 / 700,000 UGX, financed across the half-payment plan at no extra interest.',
+                title: 'A free laptop for every student',
+                body: 'Worth $200 / 700,000 UGX, provided free to help every student research, learn, and connect.',
               },
               {
                 tag: 'Resources',
@@ -262,7 +262,7 @@ export default function ProgramPage() {
                   ['1-on-1 career guidance & mentorship', 'Included', false],
                   ['Free coaching with a clinical psychologist', 'Included', false],
                   ['Free holiday program & extra classes (Learning How to Learn, Human Behaviour)', 'Included', false],
-                  ['Lease-to-own laptop (worth $200 / 700,000 UGX)', 'Financed on half-plan', false],
+                  ['Free laptop for every student (worth $200 / 700,000 UGX)', 'Included', false],
                 ].map(([item, status, emphasize], i, arr) => (
                   <tr key={item as string} className={i < arr.length - 1 ? 'border-b border-[#e3ddd0] dark:border-white/10' : ''}>
                     <td className="px-2 py-3.5 text-[#3a3f45] dark:text-[#b8bcc2]">{item}</td>
@@ -311,9 +311,9 @@ export default function ProgramPage() {
               </div>
             </div>
             <p className="text-base leading-relaxed text-[#5a5347] dark:text-[#a39f92] sm:text-lg">
-              Pay in full, or in two halves — the half-payment plan finances a lease-to-own laptop at no
-              extra interest. Because every learner gets true 1-on-1 mentor attention, each intake is capped
-              at 40 students per partner-school center.
+              Every student receives a free laptop worth $200 / 700,000 UGX to research, learn, and connect.
+              Because every learner gets true 1-on-1 mentor attention, each intake is capped at 40 students
+              per partner-school center.
             </p>
           </div>
           <div className="relative flex flex-col justify-center overflow-hidden rounded-2xl bg-[#f2ece0] p-10 dark:bg-[#1c232b]">
@@ -362,7 +362,7 @@ export default function ProgramPage() {
               </h2>
               <ul className="flex flex-col gap-5 text-lg leading-relaxed text-[#3a3f45] dark:text-[#b8bcc2] sm:text-xl">
                 {[
-                  'A laptop — or join the lease-to-own plan and pay it off across the year',
+                  'A free laptop worth $200 / 700,000 UGX',
                   'Reliable internet access',
                   'A weekly time set aside for mentor check-ins',
                 ].map((item) => (
