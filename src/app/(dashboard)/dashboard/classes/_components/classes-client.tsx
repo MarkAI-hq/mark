@@ -46,7 +46,11 @@ export function ClassesClient({ initialClasses }: ClassesClientProps) {
   const handleCreate = (data: ClassData) => {
     startTransition(async () => {
       try {
-        const payload = { ...data, description: data.description || null };
+        const payload = {
+          name: data.name,
+          grade_level: data.grade_level || null,
+          description: data.description || null,
+        };
         const newClass = await createClass(payload);
         setClasses((prev) => [newClass, ...prev]);
         toast.success(`Class "${newClass.name}" created.`);
