@@ -44,6 +44,13 @@ import {
   createAssistantArtifact,
   updateAssistantArtifact,
 } from '@/lib/actions/assistant'
+import { useTracyChatStream } from '@/hooks/use-tracy-chat-stream'
+import {
+  ARTIFACT_RE, CONFIRM_RE, NEXT_RE,
+  extractJson,
+} from '@/components/tracy/tracy-protocol'
+import { TypingDots } from '@/components/tracy/typing-dots'
+import { UsageRemainingBanner } from '@/components/tracy/usage-remaining-banner'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -74,28 +81,6 @@ interface ToolStatus {
   name:   string
   label:  string
   status: 'running' | 'done' | 'failed'
-}
-
-// ── SSE parsing helpers ───────────────────────────────────────────────────────
-
-// Markers are meant to be appended on their own line at the end of a reply,
-// but the model doesn't always emit the leading newline — it sometimes puts
-// the marker right after trailing prose separated only by a space. Matching
-// on `\s` (not just `\n`) as the leading boundary catches both cases so the
-// raw "__NEXT__:{...}" JSON never leaks into the rendered chat bubble.
-const ARTIFACT_RE = /(?:^|\s)(?:__)?ARTIFACT(?:__)?\s*:\s*(\{[\s\S]*)/
-const CONFIRM_RE  = /(?:^|\s)(?:__)?CONFIRM(?:__)?\s*:\s*(\{[\s\S]*)/
-const NEXT_RE     = /(?:^|\s)(?:__)?NEXT(?:__)?\s*:\s*(\{[\s\S]*)/
-
-function extractJson(str: string): string | null {
-  const start = str.indexOf('{')
-  if (start === -1) return null
-  let depth = 0
-  for (let i = start; i < str.length; i++) {
-    if (str[i] === '{') depth++
-    else if (str[i] === '}') { depth--; if (depth === 0) return str.slice(start, i + 1) }
-  }
-  return null
 }
 
 // ── Design tokens (from mockup) ───────────────────────────────────────────────
@@ -659,11 +644,7 @@ function MessageBubble({ message, activeIds, onGenerateChip, toolStatuses }: {
         style={{ borderRadius: '4px 16px 16px 16px' }}>
         {message.isLoading ? (
           <div>
-            <span className="flex gap-1 items-center h-5">
-              <span className="h-1.5 w-1.5 bg-[#938b7c] rounded-full animate-bounce [animation-delay:0ms]" />
-              <span className="h-1.5 w-1.5 bg-[#938b7c] rounded-full animate-bounce [animation-delay:150ms]" />
-              <span className="h-1.5 w-1.5 bg-[#938b7c] rounded-full animate-bounce [animation-delay:300ms]" />
-            </span>
+            <TypingDots dotClassName="bg-[#938b7c]" />
             {toolStatuses && <ToolStatusPanel tools={toolStatuses} />}
           </div>
         ) : (
@@ -726,8 +707,8 @@ export function StudentTracyPage({ user, weakSubjects, currentTopics, initialNot
   const [inputFocused,   setInputFocused]   = useState(false)
   const [mobileTab,      setMobileTab]      = useState<'sources' | 'chat' | 'studio'>('chat')
 
+  const tracyStream = useTracyChatStream()
   const bottomRef   = useRef<HTMLDivElement>(null)
-  const abortRef    = useRef<AbortController | null>(null)
   const audioRef    = useRef<HTMLAudioElement | null>(null)
   const inputRef    = useRef<HTMLInputElement>(null)
   const sessionIdRef = useRef<string>(crypto.randomUUID())
@@ -998,106 +979,87 @@ export function StudentTracyPage({ user, weakSubjects, currentTopics, initialNot
     setMessages(prev => [...prev, userMsg, loadingMsg])
     setStreaming(true)
 
-    abortRef.current?.abort()
-    const abort = new AbortController()
-    abortRef.current = abort
     let accumulated = ''
 
-    try {
-      const res = await fetch('/api/tracy', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: text, sessionId: sessionIdRef.current, mode: 'student', sourceIds: Array.from(activeIds) }),
-        signal: abort.signal,
-      })
-      if (!res.ok) throw new Error('unavailable')
+    const onEvent = (ev: any) => {
+      switch (ev.type) {
+        case 'tool_call':
+          setToolStatuses(prev => {
+            if (prev.find(t => t.name === ev.name && t.status === 'running')) return prev
+            return [...prev, { name: ev.name, label: ev.label, status: 'running' }]
+          })
+          break
+        case 'tool_result':
+          setToolStatuses(prev =>
+            prev.map(t => t.name === ev.name && t.status === 'running'
+              ? { ...t, status: ev.success ? 'done' : 'failed' }
+              : t)
+          )
+          break
+        case 'text_delta':
+          accumulated += ev.delta ?? ''
+          setMessages(p => p.map(m => m.isLoading ? { ...m, content: accumulated } : m))
+          break
+        case 'error': {
+          const msg = ev.message === '__AUTH_PENDING__'
+            ? 'Session expired — please refresh and try again.'
+            : 'Sorry, I had trouble responding. Please try again.'
+          setMessages(p => p.map(m => m.isLoading ? { ...m, content: msg, isLoading: false } : m))
+          setToolStatuses([])
+          break
+        }
+        case 'done': {
+          const reply = (accumulated || ev.reply || '').trim()
 
-      const reader  = res.body!.getReader()
-      const decoder = new TextDecoder()
-      let buffer    = ''
-      while (true) {
-        const { value, done } = await reader.read()
-        if (done) break
-        buffer += decoder.decode(value, { stream: true })
-        const lines = buffer.split('\n'); buffer = lines.pop() ?? ''
-        for (const line of lines) {
-          if (!line.startsWith('data: ')) continue
-          try {
-            const ev = JSON.parse(line.slice(6).trim())
-            switch (ev.type) {
-              case 'tool_call':
-                setToolStatuses(prev => {
-                  if (prev.find(t => t.name === ev.name && t.status === 'running')) return prev
-                  return [...prev, { name: ev.name, label: ev.label, status: 'running' }]
-                })
-                break
-              case 'tool_result':
-                setToolStatuses(prev =>
-                  prev.map(t => t.name === ev.name && t.status === 'running'
-                    ? { ...t, status: ev.success ? 'done' : 'failed' }
-                    : t)
-                )
-                break
-              case 'text_delta':
-                accumulated += ev.delta ?? ''
-                setMessages(p => p.map(m => m.isLoading ? { ...m, content: accumulated } : m))
-                break
-              case 'error': {
-                const msg = ev.message === '__AUTH_PENDING__'
-                  ? 'Session expired — please refresh and try again.'
-                  : 'Sorry, I had trouble responding. Please try again.'
-                setMessages(p => p.map(m => m.isLoading ? { ...m, content: msg, isLoading: false } : m))
-                setToolStatuses([])
-                return
-              }
-              case 'done': {
-                const reply = (accumulated || ev.reply || '').trim()
+          // Strip CONFIRM / NEXT / ARTIFACT markers from displayed text
+          const confirmMatch = reply.match(CONFIRM_RE)
+          const artifactMatch = reply.match(ARTIFACT_RE)
+          const nextMatch = reply.match(NEXT_RE)
 
-                // Strip CONFIRM / NEXT / ARTIFACT markers from displayed text
-                const confirmMatch = reply.match(CONFIRM_RE)
-                const artifactMatch = reply.match(ARTIFACT_RE)
-                const nextMatch = reply.match(NEXT_RE)
-
-                let display = reply
-                if (confirmMatch) display = reply.slice(0, reply.search(CONFIRM_RE)).trim()
-                else if (artifactMatch) {
-                  const prefixEnd = reply.search(ARTIFACT_RE)
-                  const json = extractJson(artifactMatch[1])
-                  const parsed = json ? (() => { try { return JSON.parse(json) } catch { return null } })() : null
-                  display = (prefixEnd > 0 ? reply.slice(0, prefixEnd).trim() : '')
-                    || parsed?.summary
-                    || `Here's what I found — see the details below.`
-                } else if (nextMatch) {
-                  display = reply.slice(0, reply.search(NEXT_RE)).trim()
-                  // Tracy sometimes emits __NEXT__: as the entire reply with no lead-in
-                  // text — fall back to its own "message" field rather than dumping the
-                  // raw "NEXT:{...}" JSON into the chat bubble.
-                  if (!display) {
-                    const json = extractJson(nextMatch[1])
-                    const parsed = json ? (() => { try { return JSON.parse(json) } catch { return null } })() : null
-                    display = parsed?.message || ''
-                  }
-                }
-
-                // Tracy occasionally emits only a bare marker (e.g. "__NEXT__:" with no
-                // payload and nothing before it) — that shape doesn't match any regex
-                // above (they all require a `{` payload), so `display` falls through to
-                // the raw marker text. Strip any leftover bare marker and fall back to a
-                // friendly line rather than a blank bubble or a leaked marker fragment.
-                const BARE_MARKER_RE = /(?:^|\n)\s*(?:__)?(?:NEXT|CONFIRM|ARTIFACT)(?:__)?\s*:\s*$/
-                const cleaned = (display || reply).replace(BARE_MARKER_RE, '').trim()
-                const finalContent = cleaned || "I don't have anything more to add there — what would you like to do next?"
-
-                setMessages(p => p.map(m => m.isLoading ? { ...m, content: finalContent, isLoading: false } : m))
-                setToolStatuses([])
-                if (typeof ev.usageRemaining === 'number') setUsageRemaining(ev.usageRemaining)
-                accumulated = ''
-                break
-              }
+          let display = reply
+          if (confirmMatch) display = reply.slice(0, reply.search(CONFIRM_RE)).trim()
+          else if (artifactMatch) {
+            const prefixEnd = reply.search(ARTIFACT_RE)
+            const json = extractJson(artifactMatch[1])
+            const parsed = json ? (() => { try { return JSON.parse(json) } catch { return null } })() : null
+            display = (prefixEnd > 0 ? reply.slice(0, prefixEnd).trim() : '')
+              || parsed?.summary
+              || `Here's what I found — see the details below.`
+          } else if (nextMatch) {
+            display = reply.slice(0, reply.search(NEXT_RE)).trim()
+            // Tracy sometimes emits __NEXT__: as the entire reply with no lead-in
+            // text — fall back to its own "message" field rather than dumping the
+            // raw "NEXT:{...}" JSON into the chat bubble.
+            if (!display) {
+              const json = extractJson(nextMatch[1])
+              const parsed = json ? (() => { try { return JSON.parse(json) } catch { return null } })() : null
+              display = parsed?.message || ''
             }
-          } catch {}
+          }
+
+          // Tracy occasionally emits only a bare marker (e.g. "__NEXT__:" with no
+          // payload and nothing before it) — that shape doesn't match any regex
+          // above (they all require a `{` payload), so `display` falls through to
+          // the raw marker text. Strip any leftover bare marker and fall back to a
+          // friendly line rather than a blank bubble or a leaked marker fragment.
+          const BARE_MARKER_RE = /(?:^|\n)\s*(?:__)?(?:NEXT|CONFIRM|ARTIFACT)(?:__)?\s*:\s*$/
+          const cleaned = (display || reply).replace(BARE_MARKER_RE, '').trim()
+          const finalContent = cleaned || "I don't have anything more to add there — what would you like to do next?"
+
+          setMessages(p => p.map(m => m.isLoading ? { ...m, content: finalContent, isLoading: false } : m))
+          setToolStatuses([])
+          if (typeof ev.usageRemaining === 'number') setUsageRemaining(ev.usageRemaining)
+          accumulated = ''
+          break
         }
       }
+    }
+
+    try {
+      await tracyStream.stream(
+        { message: text, sessionId: sessionIdRef.current, mode: 'student', sourceIds: Array.from(activeIds) },
+        onEvent,
+      )
     } catch (err: any) {
       if (err?.name === 'AbortError') return
       toast.error('Sorry, I had trouble responding. Please try again.')
@@ -1107,7 +1069,7 @@ export function StudentTracyPage({ user, weakSubjects, currentTopics, initialNot
   }
 
   function newChat() {
-    abortRef.current?.abort()
+    tracyStream.stop()
     sessionIdRef.current = crypto.randomUUID()
     setMessages([]); setInput(''); setStreaming(false); setToolStatuses([])
   }
@@ -1300,11 +1262,7 @@ export function StudentTracyPage({ user, weakSubjects, currentTopics, initialNot
                 <ArrowUp className="h-4 w-4 text-white" strokeWidth={2} />
               </button>
             </div>
-            {usageRemaining !== null && usageRemaining > 0 && usageRemaining <= 3 && (
-              <p className="text-center text-[11px] text-[#b88a1f] dark:text-[#d9ae3d] mt-2.5">
-                {usageRemaining} free message{usageRemaining === 1 ? '' : 's'} left with Tracy.
-              </p>
-            )}
+            <UsageRemainingBanner remaining={usageRemaining} />
             <p className="text-center text-[11px] text-[#938b7c] mt-2.5">Tracy can make mistakes. Always verify with your teacher.</p>
           </div>
         </div>

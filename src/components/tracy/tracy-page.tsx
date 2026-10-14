@@ -17,6 +17,15 @@ import {
   ResizablePanel,
   ResizableHandle,
 } from "@/components/ui/resizable";
+import { useTracyChatStream } from "@/hooks/use-tracy-chat-stream";
+import {
+  ARTIFACT_RE, CONFIRM_RE, NEXT_RE, WIDGET_RE, NEXT_RE_IN_WIDGET,
+  extractJson,
+  type ConfirmationOption, type ConfirmationPayload, type ToolStatus,
+} from "@/components/tracy/tracy-protocol";
+import { TypingDots } from "@/components/tracy/typing-dots";
+import { WidgetRenderer } from "@/components/tracy/widget-renderer";
+import { UsageRemainingBanner } from "@/components/tracy/usage-remaining-banner";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -42,16 +51,6 @@ interface UploadedFile {
   uploadedUrl?: string;
 }
 
-interface ConfirmationOption {
-  label: string;
-  value: string;
-}
-
-interface ConfirmationPayload {
-  message: string;
-  options: ConfirmationOption[];
-}
-
 type ArtifactType = "assessment" | "report" | "reteach_plan" | "results" | "audit" | "generic" | "form";
 
 interface ArtifactPayload {
@@ -60,12 +59,6 @@ interface ArtifactPayload {
   title: string;
   summary?: string;
   data: any;
-}
-
-interface ToolStatus {
-  name: string;
-  label: string;
-  status: "running" | "done" | "failed";
 }
 
 interface StoredConversation {
@@ -104,19 +97,6 @@ const ARTIFACT_ICONS: Record<ArtifactType, React.ReactNode> = {
   generic:     <Brain         className="w-4 h-4" />,
   form:        <ClipboardList className="w-4 h-4" />,
 };
-
-// ── Regex patterns ────────────────────────────────────────────────────────────
-// Markers are meant to be appended on their own line, but the model doesn't
-// always emit the leading newline — it sometimes puts the marker right after
-// trailing prose separated only by a space. Matching on `\s` (not just `\n`)
-// as the leading boundary catches both cases so raw "__NEXT__:{...}" JSON
-// never leaks into the rendered chat bubble.
-
-const ARTIFACT_RE        = /(?:^|\s)(?:__)?ARTIFACT(?:__)?\s*:\s*(\{[\s\S]*)/;
-const CONFIRM_RE         = /(?:^|\s)(?:__)?CONFIRM(?:__)?\s*:\s*(\{[\s\S]*)/;
-const NEXT_RE            = /(?:^|\s)(?:__)?NEXT(?:__)?\s*:\s*(\{[\s\S]*)/;
-const WIDGET_RE          = /(?:^|\s)(?:__)?WIDGET(?:__)?\s*:\s*([\s\S]+)/;
-const NEXT_RE_IN_WIDGET  = /\s(?:__)?NEXT(?:__)?\s*:\s*(\{[\s\S]*)/;
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -176,20 +156,6 @@ async function uploadFile(file: File): Promise<string> {
   return data.url as string;
 }
 
-function extractJson(str: string): string | null {
-  const start = str.indexOf("{");
-  if (start === -1) return null;
-  let depth = 0;
-  for (let i = start; i < str.length; i++) {
-    if (str[i] === "{") depth++;
-    else if (str[i] === "}") {
-      depth--;
-      if (depth === 0) return str.slice(start, i + 1);
-    }
-  }
-  return null;
-}
-
 // ── localStorage helpers ──────────────────────────────────────────────────────
 
 function loadHistory(): StoredConversation[] {
@@ -226,20 +192,6 @@ function serializeMessages(messages: Message[]): Message[] {
 }
 
 // ── Small Components ──────────────────────────────────────────────────────────
-
-function TypingDots() {
-  return (
-    <span className="inline-flex items-center gap-1 h-5">
-      {[0, 1, 2].map((i) => (
-        <span
-          key={i}
-          className="w-1.5 h-1.5 rounded-full bg-muted-foreground/50 animate-bounce"
-          style={{ animationDelay: `${i * 0.15}s`, animationDuration: "0.9s" }}
-        />
-      ))}
-    </span>
-  );
-}
 
 function PendingFileCard({ file, onRemove }: { file: UploadedFile; onRemove?: () => void }) {
   const isImage = file.type.startsWith("image/");
@@ -1145,146 +1097,6 @@ function TracyMarkdown({ content }: { content: string }) {
   );
 }
 
-// ── Widget Renderer ───────────────────────────────────────────────────────────
-
-function WidgetRenderer({ html, messageId }: { html: string; messageId: string }) {
-  const [height, setHeight]   = useState(200);
-  const [srcDoc, setSrcDoc]   = useState("");
-  const lastHeightRef         = useRef(0);
-
-  useEffect(() => {
-    if (typeof document === "undefined") return;
-
-    const cs   = getComputedStyle(document.documentElement);
-    const vars = ["--background","--foreground","--muted","--muted-foreground","--border","--card","--radius"]
-      .map((v) => { const val = cs.getPropertyValue(v).trim(); return val ? `${v}:${val}` : ""; })
-      .filter(Boolean)
-      .join(";");
-
-    // Debounced resize — fires 80 ms after the last layout change settles
-    const resizeScript =
-      `(function(){var t,last=0;` +
-      `function r(){clearTimeout(t);t=setTimeout(function(){` +
-      `var h=document.body.scrollHeight;` +
-      `if(Math.abs(h-last)>2){last=h;` +
-      `window.parent.postMessage({type:"tracy-widget-resize",id:"${messageId}",height:h},"*");}` +
-      `},80);}` +
-      `window.addEventListener("load",r);` +
-      `if(window.ResizeObserver){new ResizeObserver(r).observe(document.body);}` +
-      `})();`;
-
-    // Strip full-document wrapper tags Tracy may have included
-    let clean = html
-      .replace(/<\/body>\s*(<\/html>)?\s*$/i, "")
-      .replace(/<\/html>\s*$/i, "")
-      .replace(/<!DOCTYPE[^>]*>/gi, "")
-      .replace(/<html[^>]*>/gi, "")
-      .replace(/<head>[\s\S]*?<\/head>/gi, "")
-      .replace(/<body[^>]*>/gi, "")
-      // Remove any Chart.js CDN Tracy included — we inject it ourselves below
-      .replace(/<script[^>]*(?:cdnjs\.cloudflare\.com|cdn\.jsdelivr\.net)[^>]*chart[^>]*>\s*<\/script>/gi, "")
-      .trim();
-
-    // Palette: visually distinct, works on both light and dark backgrounds
-    const palette = [
-      "#6366f1","#10b981","#f59e0b","#ef4444",
-      "#3b82f6","#a855f7","#14b8a6","#f97316",
-    ];
-    const paletteAlpha = palette.map((c) => c + "cc");
-
-    // Plugin: assign per-bar colors when Tracy hasn't specified them explicitly
-    const palettePlugin =
-      `Chart.register({id:"tracyPalette",beforeRender:function(chart){` +
-      `var P=${JSON.stringify(palette)},A=${JSON.stringify(paletteAlpha)};` +
-      `chart.data.datasets.forEach(function(ds){` +
-      `var isSingleColor=!Array.isArray(ds.backgroundColor)&&` +
-      `(ds.backgroundColor==null||typeof ds.backgroundColor==="string");` +
-      `if((chart.config.type==="bar"||chart.config.type==="horizontalBar")&&isSingleColor){` +
-      `var n=ds.data.length;` +
-      `ds.backgroundColor=Array.from({length:n},function(_,i){return A[i%A.length];});` +
-      `ds.borderColor=Array.from({length:n},function(_,i){return P[i%P.length];});` +
-      `ds.borderWidth=1;` +
-      `}})}});`;
-
-    // JS that fixes hardcoded light-mode inline colors after Tracy's HTML renders.
-    // Uses raw getAttribute("style") for color checks because browsers normalize hex (#333)
-    // to rgb(51,51,51) before el.style.color is readable, making hex-based regex unreliable.
-    const darkModeFixer =
-      `document.addEventListener("DOMContentLoaded",function(){` +
-      `var LIGHT_BG=/^(#fff(fff)?|white|rgb\\(255,\\s*255,\\s*255\\)|rgba\\(255,\\s*255,\\s*255,\\s*1\\))$/i;` +
-      `document.querySelectorAll("[style]").forEach(function(el){` +
-      `var s=el.style;` +
-      `var raw=el.getAttribute("style")||"";` +
-      `var bg=(s.background||s.backgroundColor||"").trim();` +
-      `if(LIGHT_BG.test(bg)){s.background="hsl(var(--card))";s.backgroundColor="";}` +
-      `if(/(?:^|[;\\s])color\\s*:\\s*(#(?:0{3,6}|1{3,6}|2{3,6}|3{3,6})|black)\\b/i.test(raw)){` +
-      `s.color="hsl(var(--foreground))";}` +
-      `});` +
-      `});`;
-
-    setSrcDoc(
-      `<!DOCTYPE html><html><head><meta charset="utf-8"><style>` +
-      `:root{${vars};--brand:#c9a84c;--brand-10:rgba(201,168,76,0.1);` +
-      `--mi-green-dark:#085041;--mi-green-mid:#1D9E75;--mi-green-light:#E1F5EE;--mi-green-pale:#9FE1CB;` +
-      `--mi-gold-dark:#633806;--mi-gold-mid:#BA7517;--mi-gold-light:#FAEEDA;` +
-      `--mi-purple-dark:#3C3489;--mi-purple-mid:#7F77DD;--mi-purple-light:#EEEDFE;` +
-      `--mi-red-dark:#791F1F;--mi-red-mid:#E24B4A;--mi-red-light:#FCEBEB;` +
-      `--mi-gray-mid:#B4B2A9;--mi-gray-dark:#444441;}` +
-      `*{box-sizing:border-box;margin:0;padding:0;}` +
-      `html,body{background:hsl(var(--card));color:hsl(var(--foreground));` +
-      `font-family:system-ui,-apple-system,BlinkMacSystemFont,sans-serif;` +
-      `font-size:13px;line-height:1.5;}` +
-      // 16 px breathing room on all sides — prevents text running edge-to-edge
-      `body{padding:16px;}` +
-      // Typography resets so Tracy's prose looks clean
-      `p{margin-bottom:8px;}p:last-child{margin-bottom:0;}` +
-      `b,strong{font-weight:600;}` +
-      `h1,h2,h3,h4{font-weight:600;line-height:1.3;margin-bottom:6px;}` +
-      `canvas{max-width:100%;display:block;}` +
-      `</style></head><body>` +
-      `<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>` +
-      `<script>if(window.Chart){` +
-      `Chart.defaults.color="hsl(var(--muted-foreground))";` +
-      `Chart.defaults.borderColor="hsl(var(--border))";` +
-      `Chart.defaults.plugins.legend.labels.color="hsl(var(--foreground))";` +
-      `Chart.defaults.scale.grid.color="hsl(var(--border))";` +
-      `Chart.defaults.scale.ticks.color="hsl(var(--muted-foreground))";` +
-      palettePlugin +
-      `}</script>` +
-      clean +
-      `<scr` + `ipt>${darkModeFixer}${resizeScript}<\/scr` + `ipt>` +
-      `</body></html>`
-    );
-  }, [html, messageId]);
-
-  useEffect(() => {
-    const handler = (e: MessageEvent) => {
-      if (e.data?.type === "tracy-widget-resize" && e.data?.id === messageId) {
-        const h = Math.max(80, Math.min(600, (e.data.height as number) + 16));
-        if (Math.abs(h - lastHeightRef.current) > 2) {
-          lastHeightRef.current = h;
-          setHeight(h);
-        }
-      }
-    };
-    window.addEventListener("message", handler);
-    return () => window.removeEventListener("message", handler);
-  }, [messageId]);
-
-  if (!srcDoc) {
-    return <div style={{ height: "200px" }} className="bg-muted/40 animate-pulse" />;
-  }
-
-  return (
-    <iframe
-      sandbox="allow-scripts"
-      srcDoc={srcDoc}
-      style={{ width: "100%", height: `${height}px`, border: "none", display: "block" }}
-      title="Tracy visualization"
-    />
-  );
-}
-
 // ── Message Bubble ────────────────────────────────────────────────────────────
 
 function MessageBubble({
@@ -1666,6 +1478,7 @@ function ConversationSidebar({
 
 export default function TracyPage({ initialPrompt }: { initialPrompt?: string } = {}) {
   const { user }                                      = useAuth();
+  const tracyStream = useTracyChatStream();
   const firstName = user?.name?.split(" ")[0] || "there";
   const [messages,            setMessages]            = useState<Message[]>([]);
   const [input,               setInput]               = useState("");
@@ -1695,8 +1508,6 @@ export default function TracyPage({ initialPrompt }: { initialPrompt?: string } 
   const inputRef           = useRef<HTMLTextAreaElement>(null);
   const fileInputRef       = useRef<HTMLInputElement>(null);
   const sessionId          = useRef(`session_${Date.now()}`);
-  const readerRef          = useRef<ReadableStreamDefaultReader<Uint8Array> | null>(null);
-  const abortControllerRef = useRef<AbortController | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   // Load history and bootstrap personalised suggestions
@@ -1868,7 +1679,7 @@ export default function TracyPage({ initialPrompt }: { initialPrompt?: string } 
 
   const clearChat = useCallback(() => {
     // Cancel any in-flight stream
-    readerRef.current?.cancel();
+    tracyStream.stop();
     revokeAndClearFiles(pendingFiles);
     setMessages([]);
     setPendingFiles([]);
@@ -1883,13 +1694,10 @@ export default function TracyPage({ initialPrompt }: { initialPrompt?: string } 
     localStorage.removeItem(SUGGESTIONS_CACHE_KEY);
     setSuggestions(STATIC_SUGGESTIONS);
     setTimeout(() => inputRef.current?.focus(), 50);
-  }, [pendingFiles, closePanel, revokeAndClearFiles]);
+  }, [pendingFiles, closePanel, revokeAndClearFiles, tracyStream]);
 
   const stopGeneration = useCallback(() => {
-    abortControllerRef.current?.abort();
-    abortControllerRef.current = null;
-    readerRef.current?.cancel();
-    readerRef.current = null;
+    tracyStream.stop();
     setIsLoading(false);
     setToolStatuses([]);
     setMessages((prev) =>
@@ -1900,7 +1708,7 @@ export default function TracyPage({ initialPrompt }: { initialPrompt?: string } 
       )
     );
     setTimeout(() => inputRef.current?.focus(), 50);
-  }, []);
+  }, [tracyStream]);
 
   const send = useCallback(async (text?: string) => {
     const content = (text ?? input).trim();
@@ -1957,34 +1765,10 @@ export default function TracyPage({ initialPrompt }: { initialPrompt?: string } 
       const finalPayloadMessage = `${userMsg.content}${fileDataContext}${attachedFilesBlock}`;
       const attachmentsMeta     = snapshotFiles.map(({ name, type, size }) => ({ name, type, size }));
 
-      abortControllerRef.current?.abort();
-      const controller = new AbortController();
-      abortControllerRef.current = controller;
-
-      const res = await fetch("/api/tracy", {
-        method:  "POST",
-        headers: { "Content-Type": "application/json" },
-        signal:  controller.signal,
-        body:    JSON.stringify({
-          message:     finalPayloadMessage,
-          sessionId:   sessionId.current,
-          attachments: attachmentsMeta.length > 0 ? attachmentsMeta : undefined,
-        }),
-      });
-
-      if (!res.body) throw new Error("No response body");
-
-      const reader = res.body.getReader();
-      readerRef.current = reader;
-      const decoder = new TextDecoder();
-      let buffer = "";
       let fullReply = "";
       let finalArtifacts = { ...artifacts };
 
-      const processEvent = (raw: string) => {
-        let event: any;
-        try { event = JSON.parse(raw); } catch { return; }
-
+      const processEvent = (event: any) => {
         switch (event.type) {
           case "tool_call": {
             setToolStatuses((prev) => {
@@ -2147,17 +1931,11 @@ export default function TracyPage({ initialPrompt }: { initialPrompt?: string } 
         }
       };
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n");
-        buffer = lines.pop() ?? "";
-        for (const line of lines) {
-          if (!line.startsWith("data: ")) continue;
-          processEvent(line.slice(6).trim());
-        }
-      }
+      await tracyStream.stream({
+        message:     finalPayloadMessage,
+        sessionId:   sessionId.current,
+        attachments: attachmentsMeta.length > 0 ? attachmentsMeta : undefined,
+      }, processEvent);
 
     } catch (err: any) {
       // Ignore abort errors from stop button
@@ -2167,12 +1945,11 @@ export default function TracyPage({ initialPrompt }: { initialPrompt?: string } 
         );
       }
     } finally {
-      readerRef.current = null;
       setIsLoading(false);
       setToolStatuses([]);
       inputRef.current?.focus();
     }
-  }, [input, pendingFiles, pendingFileContents, isLoading, artifacts, openArtifact, revokeAndClearFiles, saveConversation]);
+  }, [input, pendingFiles, pendingFileContents, isLoading, artifacts, openArtifact, revokeAndClearFiles, saveConversation, tracyStream]);
 
   const handleConfirmationSelect = useCallback((value: string) => {
     setConfirmation(null);
@@ -2197,7 +1974,7 @@ export default function TracyPage({ initialPrompt }: { initialPrompt?: string } 
 
   const handleRestoreConversation = useCallback((c: StoredConversation) => {
     // Cancel any in-flight stream
-    readerRef.current?.cancel();
+    tracyStream.stop();
     setMessages(c.messages.map((m) => ({
       ...m,
       timestamp: new Date(m.timestamp),
@@ -2212,7 +1989,7 @@ export default function TracyPage({ initialPrompt }: { initialPrompt?: string } 
     setIsRestoredChat(true);
     sessionId.current = c.id;
     setTimeout(() => inputRef.current?.focus(), 50);
-  }, []);
+  }, [tracyStream]);
 
   const handleDeleteConversation = useCallback((id: string) => {
     setConversations((prev) => {
@@ -2501,11 +2278,7 @@ export default function TracyPage({ initialPrompt }: { initialPrompt?: string } 
                     </div>
                   </div>
 
-                  {usageRemaining !== null && usageRemaining > 0 && usageRemaining <= 3 && (
-                    <p className="text-[11px] text-[#b88a1f] dark:text-[#d9ae3d] text-center mt-3">
-                      {usageRemaining} free message{usageRemaining === 1 ? "" : "s"} left with Tracy.
-                    </p>
-                  )}
+                  <UsageRemainingBanner remaining={usageRemaining} />
                   <p className="text-[10px] text-muted-foreground/40 text-center mt-3 uppercase tracking-widest font-medium">
                     Enter to send · drag &amp; drop files
                   </p>
