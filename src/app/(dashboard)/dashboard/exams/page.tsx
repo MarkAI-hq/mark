@@ -37,7 +37,7 @@ export default async function ExamsPage() {
       getClasses(),
     ])
     subjects = (subjectsRes.data ?? [])
-      .map((s: any) => ({ id: s.subject_id ?? s.id, name: s.name }))
+      .map((s) => ({ id: s.id, name: s.name }))
       .filter((s) => s.id && s.name)
     classes = (classesRes.data ?? [])
       .map((c: any) => ({ class_id: c.class_id, name: c.name }))

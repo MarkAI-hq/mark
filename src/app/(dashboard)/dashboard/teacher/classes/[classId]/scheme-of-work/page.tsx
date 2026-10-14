@@ -23,7 +23,7 @@ export default async function SchemeOfWorkPage({ params }: Props) {
   const isAdmin    = session?.role === 'Admin'
   const className  = classRes.data?.name ?? null
   const gradeLevel = (classRes.data as any)?.grade_level ?? null
-  const subjects   = (subjectsRes.data ?? []).map((s: any) => s.name as string)
+  const subjects   = (subjectsRes.data ?? []).map((s) => s.name)
 
   return (
     <SchemeOfWorkClient
