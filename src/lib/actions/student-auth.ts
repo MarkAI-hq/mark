@@ -141,6 +141,48 @@ export async function completeWhatsappEnrol(verify_id: string) {
   return { data: json }
 }
 
+export async function requestPinReset(data: {
+  school_code:       string
+  student_school_id: string
+}) {
+  const res = await fetch(
+    `${API_BASE}/api/v1/students/pin-reset/request`,
+    {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify(data),
+      cache:   'no-store',
+    },
+  )
+
+  const json = await res.json().catch(() => ({}))
+  if (!res.ok) {
+    return { error: json.message ?? 'Could not start a PIN reset. Please try again.' }
+  }
+  return { data: json as { student_id: string; name: string; contact: string } }
+}
+
+export async function verifyPinReset(data: {
+  student_id: string
+  code:       string
+}) {
+  const res = await fetch(
+    `${API_BASE}/api/v1/students/pin-reset/verify`,
+    {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify(data),
+      cache:   'no-store',
+    },
+  )
+
+  const json = await res.json().catch(() => ({}))
+  if (!res.ok) {
+    return { error: json.message ?? 'Could not verify that code. Please try again.' }
+  }
+  return { data: json as { pin: string; student_school_id: string } }
+}
+
 export async function studentLogout() {
   const cookieStore = await cookies()
   cookieStore.delete('token')
