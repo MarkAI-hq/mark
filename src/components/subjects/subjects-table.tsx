@@ -40,16 +40,15 @@ export function SubjectsTable({ data, onEdit, onDelete, headerSlot, role = 'Admi
   const [selectedSubjectName, setSelectedSubjectName] = useState<string>('')
   const [classes,           setClasses]           = useState<ClassOption[]>([])
 
-  // Normalise Subject[] → { id, name }[] so ExamDialog SelectItems get
-  // a valid value regardless of whether the API returns id or subject_id.
+  // Subject (src/lib/types.ts) only ever has `.id` -- never `.subject_id`.
   const normalisedSubjects: SubjectOption[] = data
-    .map((s: any) => ({ id: s.subject_id ?? s.id, name: s.name }))
+    .map((s) => ({ id: s.id, name: s.name }))
     .filter((s): s is SubjectOption => Boolean(s.id && s.name))
 
   const handleCreateExamClick = async (subjectId: string) => {
-    const subject    = data.find((s: any) => (s.subject_id ?? s.id) === subjectId)
-    const resolvedId = subject ? ((subject as any).subject_id ?? (subject as any).id) : subjectId
-    const name       = (subject as any)?.name ?? ''
+    const subject    = data.find((s) => s.id === subjectId)
+    const resolvedId = subject ? subject.id : subjectId
+    const name        = subject?.name ?? ''
 
     setSelectedSubjectId(resolvedId)
     setSelectedSubjectName(name)
@@ -57,7 +56,7 @@ export function SubjectsTable({ data, onEdit, onDelete, headerSlot, role = 'Admi
 
     const { data: classData } = await getClasses()
     if (classData) {
-      setClasses((classData as any[]).map((c) => ({ class_id: c.class_id, name: c.name })))
+      setClasses(classData.map((c) => ({ class_id: c.class_id, name: c.name })))
     }
   }
 
@@ -72,7 +71,7 @@ export function SubjectsTable({ data, onEdit, onDelete, headerSlot, role = 'Admi
       header: 'Actions',
       cell: ({ row }) => {
         const subject = row.original
-        const subjectId = (subject as any).subject_id ?? (subject as any).id
+        const subjectId = subject.id
 
         return (
           <DropdownMenu>

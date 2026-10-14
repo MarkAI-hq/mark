@@ -32,6 +32,7 @@ import {
 } from '@/lib/actions/study-plans'
 import { initiateFreeStudyPlan, type StudyPlan } from '@/lib/actions/student-dashboard'
 import { uploadStudentDocument } from '@/lib/actions/student-onboarding'
+import type { SchemeOfWork } from '@/lib/actions/scheme-of-work'
 import { formatTopicTitle, formatEmbeddedCaps, splitTopicHeadline } from '@/lib/utils'
 
 // ── Config ───────────────────────────────────────────────────────────────────
@@ -362,7 +363,7 @@ interface Props {
   suggestion: SuggestedTopicResponse | null
   error: string | null
   classId?: string | null
-  sow?: any | null
+  sow?: SchemeOfWork | null
 }
 
 export function StudyPlansClient({ user, initialPlans, gradebook, suggestion, error, classId, sow }: Props) {
@@ -451,33 +452,32 @@ export function StudyPlansClient({ user, initialPlans, gradebook, suggestion, er
     })
   }, [gradebook])
 
-  // Curriculum-authoritative — matches subjects-client.tsx's pattern. Gradebook
-  // subjects require the student to already have assessment data, so a student
-  // with real enrolled subjects but no grades yet saw an empty list here, which
-  // silently fell through to unconstrained free-text subject/topic entry below
-  // (e.g. a typed "Social Studies" + "Cell Science" that matches no real
-  // curriculum at all — that's what generated the ungrounded, mislabeled plan).
+  // Curriculum-authoritative — matches subjects-client.tsx's pattern: prefer
+  // the student's active SchemeOfWork's own subject over a free-typed one,
+  // so a generated plan always matches a subject that actually exists in
+  // the curriculum (a mismatched free-text subject/topic is what produced
+  // ungrounded, mislabeled plans before). Only fall back to gradebook
+  // subjects when there's no active SoW at all. `sow` is a single scheme
+  // (src/lib/actions/scheme-of-work.ts) — its `entries` are per-week topics
+  // with no per-entry `subject` field, so this used to always read an empty
+  // set and silently fall through to the gradebook branch even when a SoW
+  // existed; the real subject lives once, at the top level.
   const subjectOptions = useMemo(
     () =>
-      sow?.entries?.length
-        ? Array.from(new Set<string>((sow.entries as any[]).map((e) => e.subject).filter(Boolean))).sort()
+      sow?.subject
+        ? [sow.subject]
         : Array.from(new Set((gradebook?.subjects ?? []).map((s) => s.subject))),
     [sow, gradebook],
   )
 
   // Real topics for the selected subject only — never a free-typed topic that
-  // doesn't exist in this student's actual curriculum.
+  // doesn't exist in this student's actual curriculum. sow.entries have no
+  // per-entry subject (same as subjectOptions above), so they're only
+  // relevant when freeSub matches the one subject this whole scheme covers.
   const topicOptions = useMemo(
     () =>
-      sow?.entries?.length
-        ? Array.from(
-            new Set<string>(
-              (sow.entries as any[])
-                .filter((e) => e.subject === freeSub)
-                .map((e) => e.topic)
-                .filter(Boolean),
-            ),
-          )
+      sow?.subject === freeSub && sow.entries?.length
+        ? Array.from(new Set(sow.entries.map((e) => e.topic).filter(Boolean)))
         : [],
     [sow, freeSub],
   )

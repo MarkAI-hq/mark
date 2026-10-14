@@ -3,6 +3,7 @@
 
 import { cookies } from 'next/headers'
 import type { Citation } from '@/lib/types'
+import type { SchemeOfWork, SchemeOfWorkEntry } from '@/lib/actions/scheme-of-work'
 
 const API = process.env.API_BASE_URL ?? process.env.NEXT_PUBLIC_API_URL ?? ''
 
@@ -322,8 +323,8 @@ export async function getNextAction(): Promise<NextAction | null> {
 
 // ── Class SoW ─────────────────────────────────────────────────────────────────
 export async function getMyClassSoW(): Promise<{
-  sow: any | null
-  currentWeekEntries: any[]
+  sow: SchemeOfWork | null
+  currentWeekEntries: SchemeOfWorkEntry[]
   classId: string | null
   /** True when the request itself failed (network/server error) rather than
    *  the student genuinely having no class yet — every page gating on

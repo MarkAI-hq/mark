@@ -13,6 +13,7 @@ import { Button }   from '@/components/ui/button'
 import { toast }    from 'sonner'
 import type { SubjectProgress, StudyPlan, StudentPrediction } from '@/lib/actions/student-dashboard'
 import { initiateFreeStudyPlan } from '@/lib/actions/student-dashboard'
+import type { SchemeOfWork, SchemeOfWorkEntry } from '@/lib/actions/scheme-of-work'
 import { formatTopicTitle } from '@/lib/utils'
 import { AskTracyChip } from '@/components/students/ask-tracy-chip'
 import { ClassConfirmationUploadWidget } from '@/components/students/class-confirmation-upload-widget'
@@ -21,8 +22,8 @@ interface Props {
   user:                any
   subjectProgress:     SubjectProgress[]
   studyPlans:          StudyPlan[]
-  sow:                 any | null
-  currentWeekEntries:  any[]
+  sow:                 SchemeOfWork | null
+  currentWeekEntries:  SchemeOfWorkEntry[]
   predictions:         StudentPrediction[]
   classId?:            string | null
   classFetchFailed?:   boolean
@@ -64,22 +65,22 @@ export function SubjectsClient({
       return acc
     }, {})
 
-  const weekEntriesBySubject = currentWeekEntries.reduce<Record<string, any[]>>((acc, e) => {
-    const key = e.subject ?? 'General'
-    acc[key] = acc[key] ?? []
-    acc[key].push(e)
-    return acc
-  }, {})
+  // currentWeekEntries are all this week's entries from the one active `sow`
+  // -- SchemeOfWorkEntry has no per-entry subject, they all belong to
+  // sow.subject by construction.
+  const weekEntriesBySubject: Record<string, SchemeOfWorkEntry[]> =
+    sow?.subject ? { [sow.subject]: currentWeekEntries } : {}
 
   const predictionBySubject = predictions.reduce<Record<string, StudentPrediction>>((acc, p) => {
     acc[p.subject] = p
     return acc
   }, {})
 
-  // Primary source: ALL SoW entries (curriculum authority)
-  const sowSubjects: string[] = sow?.entries
-    ? Array.from(new Set<string>((sow.entries as any[]).map((e) => e.subject).filter(Boolean)))
-    : []
+  // Primary source: the active SchemeOfWork's own subject (curriculum
+  // authority). `sow` is one scheme — its entries are per-week topics with
+  // no per-entry `subject` field, so mapping over entries here always read
+  // an empty set; the real subject lives once, at the top level.
+  const sowSubjects: string[] = sow?.subject ? [sow.subject] : []
 
   // Fallback: subjects from assessments / study plans
   const allSubjects = Array.from(new Set([
@@ -89,7 +90,11 @@ export function SubjectsClient({
   ])).sort()
 
   function handleStudyNow(subject: string) {
-    const firstEntry = sow?.entries?.find((e: any) => e.subject === subject)
+    // sow.entries have no per-entry subject -- they're only relevant here
+    // when `subject` matches the one subject this whole scheme belongs to.
+    const firstEntry = sow?.subject === subject
+      ? [...(sow.entries ?? [])].sort((a, b) => a.week_number - b.week_number)[0]
+      : undefined
     const topic = firstEntry?.topic ?? `Introduction to ${subject}`
     setInitiatingSubject(subject)
     startInitiate(async () => {
@@ -234,7 +239,7 @@ export function SubjectsClient({
                 {/* This week's SoW topics */}
                 {weekTopics.length > 0 && (
                   <div className="mb-2.5">
-                    {weekTopics.slice(0, 2).map((entry: any, i: number) => (
+                    {weekTopics.slice(0, 2).map((entry, i) => (
                       <div key={i} className="flex items-center gap-2 text-xs text-muted-foreground">
                         {entry.is_delivered
                           ? <CheckCircle2 className="h-3 w-3 text-emerald-500 shrink-0" />

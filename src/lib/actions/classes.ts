@@ -250,10 +250,10 @@ export async function getMyCoursesAsSubjects(): Promise<ServerActionResponse<{ i
   for (const res of courseArrays) {
     if (!res.data) continue
     for (const course of res.data) {
-      const id = course.course_id ?? (course as any).id
+      const id = course.course_id
       if (id && !seen.has(id)) {
         seen.add(id)
-        subjects.push({ id, name: course.course_title ?? (course as any).name ?? id })
+        subjects.push({ id, name: course.course_title })
       }
     }
   }

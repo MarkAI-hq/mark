@@ -670,9 +670,9 @@ function CommandWordsTab({ words }: { words: any[] }) {
 // ── Thresholds tab ────────────────────────────────────────────────────────────
 
 function ThresholdsTab({ schema }: { schema: CurriculumSchema }) {
-  const th      = schema.audit_thresholds as any
-  const gr      = schema.grading_instructions as any
-  const weights = th?.scoring_weights as Record<string, number> | undefined
+  const th      = schema.audit_thresholds
+  const gr      = schema.grading_instructions
+  const weights = th?.scoring_weights
   return (
     <div className="space-y-8">
       <div>
@@ -746,12 +746,16 @@ const TABS = [
 ]
 
 export function CurriculumDetailClient({ schema }: { schema: CurriculumSchema }) {
-  const m            = schema.metadata as any
+  const m            = schema.metadata
+  // schema.topics relies on CurriculumSchema's own `[key: string]: unknown`
+  // passthrough -- curriculum bodies genuinely differ in shape between the
+  // "enriched" (flat topics) and "corpus" (per-year) schema kinds, so this
+  // one stays a cast rather than a forced, possibly-wrong specific type.
   const topics: any[] = (schema.topics as any[]) ?? []
-  const papers        = (schema.paper_structure as any)?.papers ?? []
+  const papers        = schema.paper_structure?.papers ?? []
   const commandWords  = [
-    ...((schema.command_words as any)?.overrides        ?? []),
-    ...((schema.command_words as any)?.subject_specific ?? []),
+    ...(schema.command_words?.overrides        ?? []),
+    ...(schema.command_words?.subject_specific ?? []),
   ]
 
   const [tab,         setTab]         = useState('topics')
@@ -845,7 +849,7 @@ export function CurriculumDetailClient({ schema }: { schema: CurriculumSchema })
           )}
           <span style={{
             fontSize: 12, fontWeight: 600, padding: '2px 10px', borderRadius: 999,
-            ...(m.status === 'final'
+            ...(m.status === 'active'
               ? { background: 'rgba(16,185,129,0.12)', color: '#34d399' }
               : { background: V.muted, color: V.fgMute }),
           }}>

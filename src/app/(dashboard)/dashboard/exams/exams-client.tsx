@@ -14,6 +14,7 @@ import { ConfirmDialog } from '@/components/common/confirm-dialog'
 import { ExamDialog }    from '@/components/exams/exam-dialog'
 import { Assessment, deleteAssessment, publishAssessment } from '@/lib/actions/assessments'
 import { getSubjects } from '@/lib/actions/subjects'
+import type { Subject } from '@/lib/types'
 
 type SubjectOption = { id: string; name: string }
 
@@ -24,9 +25,10 @@ interface ExamsClientProps {
   role?:       'Admin' | 'Teacher'
 }
 
-function normaliseSubjects(raw: any[]): SubjectOption[] {
+// Subject (src/lib/types.ts) only ever has `.id` -- never `.subject_id`.
+function normaliseSubjects(raw: Subject[]): SubjectOption[] {
   return raw
-    .map((s) => ({ id: s.subject_id ?? s.id, name: s.name }))
+    .map((s) => ({ id: s.id, name: s.name }))
     .filter((s): s is SubjectOption => Boolean(s.id && s.name))
 }
 
@@ -58,7 +60,7 @@ export function ExamsClient({ assessments, subjects, classes, role = 'Admin' }: 
 
   const refreshSubjects = async () => {
     const { data } = await getSubjects()
-    if (data) setSubjectList(normaliseSubjects(data as any[]))
+    if (data) setSubjectList(normaliseSubjects(data))
   }
 
   const handleOpenNewDialog = async () => {

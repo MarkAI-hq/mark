@@ -115,7 +115,7 @@ export function TimetableClient({
 
   useEffect(() => {
     getSubjects().then(({ data }) => {
-      if (data?.length) setSubjectOptions((data as any[]).map((s: any) => s.name as string))
+      if (data?.length) setSubjectOptions(data.map((s) => s.name))
     })
   }, [])
 
