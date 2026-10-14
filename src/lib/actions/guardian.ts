@@ -5,9 +5,12 @@
 // (Role.PARENT / 'Reviewer'), unlike the tokenized /pay/[token] flow in
 // term-billing.ts. See mark-api/src/modules/guardian for the backend.
 
+import { cookies } from 'next/headers'
+
 import { fetcher } from '@/lib/fetch'
-import type { ServerActionResponse } from '@/lib/types'
+import type { ServerActionResponse, BackendUser } from '@/lib/types'
 import type { OrgQualityScorecard } from '@/lib/actions/quality-eval'
+import { setAuthCookies } from '@/lib/actions/auth'
 
 export interface GuardianChild {
   student_id: string
@@ -97,6 +100,7 @@ export interface GuardianNotificationPreferences {
   certificate?: boolean
   streak_at_risk?: boolean
   exam_registration?: boolean
+  digest?: boolean
 }
 
 export async function getNotificationPreferences(
@@ -153,11 +157,35 @@ export interface AcceptGuardianInvitationPayload {
   acceptTerms?: boolean
 }
 
+interface AcceptGuardianInvitationResponse {
+  message:        string
+  requiresLogin?: boolean
+  accessToken?:   string
+  refreshToken?:  string
+  user?:          BackendUser
+}
+
 export async function acceptGuardianInvitation(
   payload: AcceptGuardianInvitationPayload,
-): Promise<ServerActionResponse<{ message: string; requiresLogin?: boolean }>> {
-  return fetcher<{ message: string; requiresLogin?: boolean }>(
+): Promise<ServerActionResponse<AcceptGuardianInvitationResponse>> {
+  const response = await fetcher<AcceptGuardianInvitationResponse>(
     '/auth/accept-guardian-invitation',
     { method: 'POST', body: JSON.stringify(payload), cache: 'no-store' },
   )
+
+  const { data } = response
+
+  // Clicking the invite link already proved email ownership, so a newly
+  // created guardian account logs straight in instead of requiring a
+  // second "verify your email" round trip.
+  if (data?.accessToken && data.refreshToken && data.user) {
+    const cookieStore = await cookies()
+    await setAuthCookies(cookieStore, {
+      accessToken:  data.accessToken,
+      refreshToken: data.refreshToken,
+      user:         data.user,
+    })
+  }
+
+  return response
 }

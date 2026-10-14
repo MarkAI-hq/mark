@@ -17,6 +17,19 @@ const PREFERENCE_LABELS: Record<keyof GuardianNotificationPreferences, string> =
   certificate: 'Certificates earned',
   streak_at_risk: 'Study streak at risk',
   exam_registration: 'Exam registration updates',
+  digest: 'Weekly summary',
+}
+
+// Every preference above defaults to ON (opt-out) except `digest`, a new
+// recurring summary that defaults to OFF (opt-in) until a guardian turns it
+// on themselves.
+const OPT_IN_KEYS = new Set<keyof GuardianNotificationPreferences>(['digest'])
+
+function isChecked(
+  prefs: GuardianNotificationPreferences,
+  key: keyof GuardianNotificationPreferences,
+): boolean {
+  return OPT_IN_KEYS.has(key) ? prefs[key] === true : prefs[key] !== false
 }
 
 function ChildNotificationCard({ child }: { child: GuardianChild }) {
@@ -68,7 +81,7 @@ function ChildNotificationCard({ child }: { child: GuardianChild }) {
                 </Label>
                 <Switch
                   id={`${child.student_id}-${key}`}
-                  checked={prefs[key] !== false}
+                  checked={isChecked(prefs, key)}
                   disabled={saving === key}
                   onCheckedChange={(checked) => handleToggle(key, checked)}
                 />

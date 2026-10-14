@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { redirect } from 'next/navigation'
 import { GraduationCap, ChevronRight } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -6,6 +7,10 @@ import { getMyChildren } from '@/lib/actions/guardian'
 
 export default async function GuardianDashboardPage() {
   const { data: children, error } = await getMyChildren()
+
+  if (!error && children?.length === 1) {
+    redirect(`/guardian/children/${children[0].student_id}`)
+  }
 
   return (
     <div className="space-y-6">
