@@ -8,6 +8,11 @@ export const metadata = {
   description: "Your AI teaching assistant powered by Mirror",
 };
 
-export default function Tracy() {
-  return <TracyPage />;
+interface Props {
+  searchParams: Promise<{ prompt?: string }>;
+}
+
+export default async function Tracy({ searchParams }: Props) {
+  const { prompt } = await searchParams;
+  return <TracyPage initialPrompt={prompt} />;
 }

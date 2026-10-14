@@ -707,6 +707,11 @@ export function StudentTracyPage({ user, weakSubjects, currentTopics, initialNot
   const [streaming,    setStreaming]    = useState(false)
   const [toolStatuses, setToolStatuses] = useState<ToolStatus[]>([])
 
+  // Free-tier messages left, surfaced from Tracy's `done` event. null means
+  // "unknown yet" (no reply received) — distinct from a paid user, who never
+  // gets this field at all and so never sees the banner below.
+  const [usageRemaining, setUsageRemaining] = useState<number | null>(null)
+
   const [notes,     setNotes]     = useState<StudentNote[]>(initialNotes)
   const [activeIds, setActiveIds] = useState<Set<string>>(new Set())
   const [addOpen,   setAddOpen]   = useState(false)
@@ -1085,6 +1090,7 @@ export function StudentTracyPage({ user, weakSubjects, currentTopics, initialNot
 
                 setMessages(p => p.map(m => m.isLoading ? { ...m, content: finalContent, isLoading: false } : m))
                 setToolStatuses([])
+                if (typeof ev.usageRemaining === 'number') setUsageRemaining(ev.usageRemaining)
                 accumulated = ''
                 break
               }
@@ -1294,6 +1300,11 @@ export function StudentTracyPage({ user, weakSubjects, currentTopics, initialNot
                 <ArrowUp className="h-4 w-4 text-white" strokeWidth={2} />
               </button>
             </div>
+            {usageRemaining !== null && usageRemaining > 0 && usageRemaining <= 3 && (
+              <p className="text-center text-[11px] text-[#b88a1f] dark:text-[#d9ae3d] mt-2.5">
+                {usageRemaining} free message{usageRemaining === 1 ? '' : 's'} left with Tracy.
+              </p>
+            )}
             <p className="text-center text-[11px] text-[#938b7c] mt-2.5">Tracy can make mistakes. Always verify with your teacher.</p>
           </div>
         </div>

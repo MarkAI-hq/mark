@@ -12,6 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { AlertCircle, CheckCircle2, RefreshCw } from 'lucide-react';
 import { getLatestAudit, triggerAudit as triggerAuditAction } from '@/lib/actions/audit';
+import { AskTracyChip } from '@/components/tracy/ask-tracy-chip';
 
 interface AuditFinding {
   dimension: 'cognitive_coverage' | 'topics' | 'command_words' | 'marks' | 'structure';
@@ -97,9 +98,17 @@ export const AuditResultsDisplay: React.FC<AuditResultsDisplayProps> = ({ assess
           <CardTitle>Audit Results</CardTitle>
           <CardDescription>Overall Score: {auditResult?.overall_score.toFixed(0)}%</CardDescription>
         </div>
-        <Badge variant={status === 'passed' ? 'default' : 'destructive'}>
-          {status.toUpperCase()}
-        </Badge>
+        <div className="flex items-center gap-2">
+          <Badge variant={status === 'passed' ? 'default' : 'destructive'}>
+            {status.toUpperCase()}
+          </Badge>
+          {status !== 'passed' && auditResult && (
+            <AskTracyChip
+              label="Ask Tracy why this failed"
+              prompt={`My assessment's audit came back "${status}" with an overall score of ${auditResult.overall_score.toFixed(0)}%. Here are the flagged findings: ${auditResult.findings.filter(f => f.status === 'flagged').map(f => `${f.dimension.replace(/_/g, ' ')}: ${f.description}`).join('; ')}. Can you help me understand why and how to fix it?`}
+            />
+          )}
+        </div>
       </CardHeader>
       <CardContent className="pt-4">
         <div className="space-y-4">

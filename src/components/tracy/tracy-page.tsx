@@ -1664,11 +1664,14 @@ function ConversationSidebar({
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
-export default function TracyPage() {
+export default function TracyPage({ initialPrompt }: { initialPrompt?: string } = {}) {
   const { user }                                      = useAuth();
   const firstName = user?.name?.split(" ")[0] || "there";
   const [messages,            setMessages]            = useState<Message[]>([]);
   const [input,               setInput]               = useState("");
+  // Free-tier messages left, surfaced from Tracy's `done` event. null means
+  // "unknown yet" or paid tier — either way, the banner below stays hidden.
+  const [usageRemaining,      setUsageRemaining]      = useState<number | null>(null);
   const [isLoading,           setIsLoading]           = useState(false);
   const [pendingFiles,        setPendingFiles]        = useState<UploadedFile[]>([]);
   const [pendingFileContents, setPendingFileContents] = useState<Record<string, string>>({});
@@ -1722,6 +1725,13 @@ export default function TracyPage() {
       })
       .catch(() => { /* fail silently — static suggestions stay */ });
   }, []);
+
+  // Pre-fill the composer when arriving via a contextual "Ask Tracy" deep
+  // link (e.g. from an audit result or an at-risk attendance list) instead
+  // of landing on a blank chat.
+  useEffect(() => {
+    if (initialPrompt) setInput(initialPrompt);
+  }, [initialPrompt]);
 
   // Scroll listener for scroll-to-bottom button
   useEffect(() => {
@@ -2013,6 +2023,8 @@ export default function TracyPage() {
           case "done": {
             const reply = fullReply || event.reply || "";
             const trimmed = reply.trim();
+
+            if (typeof event.usageRemaining === "number") setUsageRemaining(event.usageRemaining);
 
             // Parse __CONFIRM__
             const confirmMatch = trimmed.match(CONFIRM_RE);
@@ -2489,6 +2501,11 @@ export default function TracyPage() {
                     </div>
                   </div>
 
+                  {usageRemaining !== null && usageRemaining > 0 && usageRemaining <= 3 && (
+                    <p className="text-[11px] text-[#b88a1f] dark:text-[#d9ae3d] text-center mt-3">
+                      {usageRemaining} free message{usageRemaining === 1 ? "" : "s"} left with Tracy.
+                    </p>
+                  )}
                   <p className="text-[10px] text-muted-foreground/40 text-center mt-3 uppercase tracking-widest font-medium">
                     Enter to send · drag &amp; drop files
                   </p>

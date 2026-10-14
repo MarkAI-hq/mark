@@ -17,6 +17,7 @@ import { Badge }   from '@/components/ui/badge'
 import { Button }  from '@/components/ui/button'
 import { Input }   from '@/components/ui/input'
 import { cn }      from '@/lib/utils'
+import { AskTracyChip } from '@/components/tracy/ask-tracy-chip'
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -388,12 +389,20 @@ export function SubmissionsListClient({
 
       {/* ── Summary ──────────────────────────────────────────────────────── */}
       {allGroups.length > 0 && (
-        <p className="text-xs text-muted-foreground px-0.5">
-          {gradedCount} graded
-          {pendingCount > 0 && ` · ${pendingCount} processing`}
-          {failedCount  > 0 && ` · ${failedCount} failed`}
-          {withHistory  > 0 && ` · ${withHistory} student${withHistory !== 1 ? 's' : ''} with previous attempts`}
-        </p>
+        <div className="flex items-center justify-between gap-3 px-0.5">
+          <p className="text-xs text-muted-foreground">
+            {gradedCount} graded
+            {pendingCount > 0 && ` · ${pendingCount} processing`}
+            {failedCount  > 0 && ` · ${failedCount} failed`}
+            {withHistory  > 0 && ` · ${withHistory} student${withHistory !== 1 ? 's' : ''} with previous attempts`}
+          </p>
+          {gradedCount > 0 && (
+            <AskTracyChip
+              label="Ask Tracy which students need help"
+              prompt={`I just finished grading this assessment — ${gradedCount} graded${failedCount > 0 ? `, ${failedCount} failed` : ''}. Which students scored lowest and need help first, and what should I do about it?`}
+            />
+          )}
+        </div>
       )}
     </div>
   )
