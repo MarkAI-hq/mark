@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect }  from 'react'
+import { useSearchParams }      from 'next/navigation'
 import { 
   BrainCircuit, 
   Users, 
@@ -90,6 +91,8 @@ export function AssessmentClient({
   const hasSavedItems = savedRedesignItems.length > 0
   const hasAudit      = auditStatus === 'passed' || auditStatus === 'flagged' || auditStatus === 'failed' || auditStatus === 'overridden'
 
+  const searchParams = useSearchParams()
+
   const openGrading = (view: GradingDialogView) => {
     setInitialGradingView(view)
     setIsGradingDialogOpen(true)
@@ -99,6 +102,16 @@ export function AssessmentClient({
     setInitialAuditView(view)
     setIsAuditDialogOpen(true)
   }
+
+  // Deep-link from the grading dialog's "Close & View Audit Details" button
+  // (?openAudit=1) — opens the audit dialog immediately instead of making
+  // the teacher find and click the status badge again.
+  useEffect(() => {
+    if (searchParams.get('openAudit') && hasAudit) {
+      openAudit(auditStatus === 'passed' ? 'audit_passed' : 'audit_flagged')
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const handleDownloadReport = async () => {
     setIsDownloading(true)

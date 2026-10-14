@@ -1,10 +1,11 @@
 // src/hooks/use-exam-generation.ts
 'use client'
 
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { generateExam, getExamJobStatus, ExamJobStatus } from '@/lib/actions/exam-builder'
+import { generateExam, getExamJobStatus } from '@/lib/actions/exam-builder'
 import type { GenerateExamPayload } from '@/lib/types'
+import { useAiJobProgress, type AiJobEvent } from '@/hooks/use-ai-job-progress'
 
 export type GenerationState =
   | 'idle'
@@ -21,126 +22,78 @@ interface UseExamGenerationReturn {
   reset:     () => void
 }
 
-const POLL_INTERVAL_MS  = 3000   // poll every 3 seconds
-const MAX_POLL_ATTEMPTS = 120    // 6 minutes max before giving up
-
 export function useExamGeneration(): UseExamGenerationReturn {
-  const router = useRouter()
-
-  const [state,    setState]    = useState<GenerationState>('idle')
-  const [progress, setProgress] = useState(0)
-  const [error,    setError]    = useState<string | null>(null)
-
-  const pollRef     = useRef<ReturnType<typeof setInterval> | null>(null)
-  const attemptsRef = useRef(0)
-  const jobIdRef    = useRef<string | number | null>(null)
-
-  useEffect(() => {
-    return () => {
-      if (pollRef.current) clearInterval(pollRef.current)
-    }
-  }, [])
-
-  const stopPolling = useCallback(() => {
-    if (pollRef.current) {
-      clearInterval(pollRef.current)
-      pollRef.current = null
-    }
-    attemptsRef.current = 0
-  }, [])
+  const router   = useRouter()
+  const retryRef = useRef<string | null>(null) // exam_id pending the Bull-returnvalue-lag retry below
 
   const redirectToExam = useCallback((examId: string) => {
     router.push(`/dashboard/exam-builder/preview/${examId}`)
   }, [router])
 
-  const startPolling = useCallback((jobId: string | number) => {
-    jobIdRef.current    = jobId
-    attemptsRef.current = 0
+  const handleDone = useCallback((evt: AiJobEvent) => {
+    const examId = typeof evt.exam_id === 'string' ? evt.exam_id : undefined
+    if (evt.status === 'FAILED' || evt.error) return // surfaced via hook's own error state
+    if (examId) {
+      redirectToExam(examId)
+      return
+    }
+    // Bull occasionally persists returnvalue slightly after marking the job
+    // complete — retry the status fetch once after 1 second, same as before.
+    const jobId = retryRef.current
+    if (!jobId) return
+    setTimeout(async () => {
+      const { data: retry } = await getExamJobStatus(jobId)
+      if (retry?.exam_id) redirectToExam(retry.exam_id)
+    }, 1000)
+  }, [redirectToExam])
 
-    pollRef.current = setInterval(async () => {
-      attemptsRef.current += 1
-
-      if (attemptsRef.current > MAX_POLL_ATTEMPTS) {
-        stopPolling()
-        setState('failed')
-        setError('Generation timed out. Please try again.')
-        return
+  const job = useAiJobProgress({
+    sseUrl: (jobId) => `/api/v1/exam-builder/jobs/${jobId}/stream`,
+    poll: async (jobId) => {
+      const { data, error } = await getExamJobStatus(jobId)
+      if (error) return null // transient — the interval just tries again
+      if (!data) return null
+      return {
+        progress: data.progress,
+        status:   data.status,
+        done:     data.status === 'COMPLETED' || data.status === 'FAILED',
+        error:    data.error,
+        exam_id:  data.exam_id,
       }
+    },
+    maxPollAttempts: 120, // 6 minutes, same ceiling as before
+    onDone: handleDone,
+  })
 
-      const { data: status, error: statusError } = await getExamJobStatus(jobId)
-
-      if (statusError) {
-        console.warn('Status poll error (will retry):', statusError.message)
-        return
-      }
-
-      if (!status) return
-
-      setProgress(status.progress)
-
-      switch (status.status) {
-        case 'QUEUED':
-          setState('queued')
-          break
-
-        case 'PROCESSING':
-          setState('processing')
-          break
-
-        case 'COMPLETED':
-          stopPolling()
-          setState('completed')
-          setProgress(100)
-          if (status.exam_id) {
-            redirectToExam(status.exam_id)
-          } else {
-            // Bull occasionally persists returnvalue slightly after marking
-            // the job complete — retry once after 1 second
-            setTimeout(async () => {
-              const { data: retry } = await getExamJobStatus(jobId)
-              if (retry?.exam_id) {
-                redirectToExam(retry.exam_id)
-              } else {
-                setState('failed')
-                setError('Exam was generated but could not be located. Please check your assessments list.')
-              }
-            }, 1000)
-          }
-          break
-
-        case 'FAILED':
-          stopPolling()
-          setState('failed')
-          setError(status.error ?? 'Exam generation failed. Please try again.')
-          break
-      }
-    }, POLL_INTERVAL_MS)
-  }, [redirectToExam, stopPolling])
+  // Immediate "queued" feedback on click, before the enqueue POST resolves —
+  // the shared hook has no job id yet at that point, so this is tracked
+  // alongside it rather than inside it.
+  const [submitting, setSubmitting] = useState(false)
 
   const generate = useCallback(async (dto: GenerateExamPayload) => {
-    setState('queued')
-    setProgress(0)
-    setError(null)
-    stopPolling()
+    job.reset()
+    setSubmitting(true)
 
     const { data: enqueued, error: enqueueError } = await generateExam(dto)
 
+    setSubmitting(false)
     if (enqueueError || !enqueued) {
-      setState('failed')
-      setError(enqueueError?.message ?? 'Failed to start generation.')
+      job.reset()
       return
     }
 
-    startPolling(enqueued.job_id)
-  }, [startPolling, stopPolling])
+    retryRef.current = String(enqueued.job_id)
+    job.start(enqueued.job_id)
+  }, [job])
+
+  // Map the shared hook's generic AiJobStatus 1:1 onto the existing
+  // GenerationState the rest of the exam-builder UI already expects.
+  const state: GenerationState = submitting ? 'queued' : job.status
 
   const reset = useCallback(() => {
-    stopPolling()
-    setState('idle')
-    setProgress(0)
-    setError(null)
-    jobIdRef.current = null
-  }, [stopPolling])
+    setSubmitting(false)
+    job.reset()
+  }, [job])
 
-  return { generate, state, progress, error, reset }
+  return { generate, state, progress: job.progress, error: job.error, reset }
 }

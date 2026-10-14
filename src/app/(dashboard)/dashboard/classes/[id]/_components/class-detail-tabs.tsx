@@ -26,6 +26,8 @@ import { ClassAttendanceTab }    from './class-attendance-tab'
 import { ClassSowTab }           from './class-sow-tab'
 import { ClassStudyPlansTab }    from './class-study-plans-tab'
 import { ReteachClassButton }    from '@/components/reteach/reteach-class-button'
+import { getReteachQuota } from '@/lib/actions/subscriptions'
+import type { ReteachQuota } from '@/lib/actions/subscriptions'
 import { ClassInterventionsTab } from '@/components/classes/class-interventions-tab'
 import { ClassGroupsTab }        from '@/components/classes/class-groups-tab'
 import type { Class, AssignedCourse }         from '@/lib/types'
@@ -87,10 +89,17 @@ export function ClassDetailTabs({
   initialSchemes, initialAttendanceSummary, initialAttendanceSessions, initialStudyPlanStudents,
 }: ClassDetailTabsProps) {
   const [courses, setCourses] = useState<AssignedCourse[]>(initialCourses)
+  const [reteachQuota, setReteachQuota] = useState<ReteachQuota | null>(null)
 
   const searchParams = useSearchParams()
   const router       = useRouter()
   const [activeTab, setActiveTab] = useState(searchParams.get('tab') ?? 'overview')
+
+  // Fetched once here and shared across every ReteachClassButton on this
+  // page, rather than each error-pattern row re-fetching its own copy.
+  useEffect(() => {
+    getReteachQuota().then(({ data }) => { if (data) setReteachQuota(data) })
+  }, [])
 
   useEffect(() => {
     const tab = searchParams.get('tab') ?? 'overview'
@@ -299,6 +308,7 @@ export function ClassDetailTabs({
                                     <ReteachClassButton
                                       classId={classId}
                                       assessmentId={latestAssessmentId}
+                                      quota={reteachQuota}
                                       errorType={err.error_name}
                                       className={classDetails.name}
                                       assessmentTitle="Latest Assessment"

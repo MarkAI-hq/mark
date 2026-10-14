@@ -2,6 +2,8 @@
 'use client'
 
 import { useState } from 'react'
+import { ArrowLeft } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import { ArchetypeDetectionCard } from './archetype-detection-card'
 import { GenerationConfigForm } from './generation-config-form'
 import { ExamDetectionResult } from '@/lib/types'
@@ -25,12 +27,15 @@ export function ExamBuilderWizard() {
 
   return (
     <div className="max-w-2xl mx-auto">
-      <button 
-        onClick={() => setStep(1)} 
-        className="mb-4 text-sm text-blue-600 hover:underline"
+      <Button
+        variant="link"
+        size="sm"
+        className="mb-4 h-auto gap-1.5 p-0 text-primary"
+        onClick={() => setStep(1)}
       >
-        &larr; Start over / Upload different file
-      </button>
+        <ArrowLeft className="h-3.5 w-3.5" />
+        Start over / Upload different file
+      </Button>
       {detection && (
         <GenerationConfigForm 
           detection={detection} 

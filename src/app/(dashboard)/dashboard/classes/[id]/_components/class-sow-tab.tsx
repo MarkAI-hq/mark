@@ -33,6 +33,7 @@ import {
 } from '@/lib/actions/scheme-of-work'
 import { getCurricula } from '@/lib/actions/curricula'
 import { getSubjects }  from '@/lib/actions/subjects'
+import { SowGenerationProgress } from '@/components/scheme-of-work/sow-generation-progress'
 
 interface ClassSowTabProps {
   classId: string
@@ -233,7 +234,10 @@ function CreateSowDialog({
   onCreated: () => void
 }) {
   const [isPending, startT] = useTransition()
-  const [curricula,       setCurricula]       = useState<{ id: string; subject: string; grade_level: string; title: string }[]>([])
+  // Which AI-driven method is in flight — isPending alone can't tell the
+  // progress panel which milestone copy / label to show.
+  const [pendingMethod, setPendingMethod] = useState<'curriculum' | 'notes' | 'pdf' | null>(null)
+  const [curricula,       setCurricula]       = useState<{ id: string; subject: string; curriculum_level: string; display_name: string }[]>([])
   const [subjectOptions,  setSubjectOptions]  = useState<string[]>([])
   const fileRef = useRef<HTMLInputElement>(null)
 
@@ -248,27 +252,47 @@ function CreateSowDialog({
 
   useEffect(() => {
     if (!open) return
-    getCurricula().then((res) => { if (res.data) setCurricula(res.data as any) })
+    getCurricula().then((res) => {
+      if (res.data) {
+        setCurricula(res.data.map((c) => ({
+          id:               c.id,
+          subject:          c.subject,
+          curriculum_level: c.curriculum_level,
+          display_name:     c.display_name,
+        })))
+      }
+    })
     getSubjects().then(({ data }) => {
-      if (data?.length) setSubjectOptions((data as any[]).map((s: any) => s.name as string))
+      if (data?.length) setSubjectOptions((data as { name: string }[]).map((s) => s.name))
     })
   }, [open])
+
+  // Grade Level on the curriculum tab is derived from the curriculum picked,
+  // not typed — a mismatch here previously had no cross-validation, which is
+  // the exact scoping bug class this codebase has already been burned by
+  // once (a scheme silently scoped to the wrong year / whole-cycle schema).
+  const selectedCurriculum = curricula.find((c) => c.id === curriculumId)
+  useEffect(() => {
+    if (selectedCurriculum) setGradeLevel(selectedCurriculum.curriculum_level || 'All')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [curriculumId])
 
   async function handleCreate(method: 'curriculum' | 'notes' | 'manual' | 'pdf') {
     if (!termStartDate) { toast.error('Term start date is required'); return }
 
     startT(async () => {
+      setPendingMethod(method === 'manual' ? null : method)
       let res: { data?: SchemeOfWork | null; error?: { message: string } | null }
 
       if (method === 'curriculum') {
-        if (!curriculumId) { toast.error('Select a curriculum'); return }
+        if (!curriculumId) { toast.error('Select a curriculum'); setPendingMethod(null); return }
         res = await generateSchemeOfWork({ curriculum_id: curriculumId, grade_level: gradeLevel || 'All', term, academic_year: academicYear, term_start_date: termStartDate })
       } else if (method === 'notes') {
-        if (!notes.trim()) { toast.error('Enter notes'); return }
+        if (!notes.trim()) { toast.error('Enter notes'); setPendingMethod(null); return }
         res = await generateSchemeFromNotes({ subject: subject || 'General', grade_level: gradeLevel || 'All', term, academic_year: academicYear, term_start_date: termStartDate, notes })
       } else if (method === 'pdf') {
         const file = fileRef.current?.files?.[0]
-        if (!file) { toast.error('Select a PDF file'); return }
+        if (!file) { toast.error('Select a PDF file'); setPendingMethod(null); return }
         const fd = new FormData()
         fd.append('file', file)
         fd.append('subject',         subject || 'General')
@@ -282,12 +306,13 @@ function CreateSowDialog({
         res = await createSchemeOfWork({ subject, grade_level: gradeLevel || 'All', title, academic_year: academicYear, term, term_start_date: termStartDate })
       }
 
-      if (res.error || !res.data) { toast.error(res.error?.message ?? 'Failed to create SoW'); return }
+      if (res.error || !res.data) { toast.error(res.error?.message ?? 'Failed to create SoW'); setPendingMethod(null); return }
 
       const assignRes = await assignSchemeToClass(res.data.id, classId)
-      if (assignRes.error) { toast.error('SoW created but could not assign to class: ' + assignRes.error.message); return }
+      if (assignRes.error) { toast.error('SoW created but could not assign to class: ' + assignRes.error.message); setPendingMethod(null); return }
 
       toast.success('Scheme of work created and assigned')
+      setPendingMethod(null)
       onCreated()
     })
   }
@@ -329,6 +354,34 @@ function CreateSowDialog({
     </div>
   )
 
+  // Curriculum tab variant — Grade Level is derived from the curriculum
+  // selected above (setGradeLevel effect), not freely typed, so the two
+  // can't drift apart.
+  const curriculumSharedFields = (
+    <div className="grid grid-cols-2 gap-3">
+      <div className="space-y-1">
+        <Label className="text-xs">Term</Label>
+        <Input placeholder="Term 1, Semester 2…" value={term} onChange={(e) => setTerm(e.target.value)} className="h-8 text-xs" />
+      </div>
+      <div className="space-y-1">
+        <Label className="text-xs">Academic Year</Label>
+        <Input value={academicYear} onChange={(e) => setAcademicYear(e.target.value)} className="h-8 text-xs" />
+      </div>
+      <div className="space-y-1">
+        <Label className="text-xs">Term Start Date</Label>
+        <Input type="date" value={termStartDate} onChange={(e) => setTermStartDate(e.target.value)} className="h-8 text-xs" />
+      </div>
+      <div className="space-y-1">
+        <Label className="text-xs">Grade Level</Label>
+        <Input
+          value={gradeLevel || 'Select a curriculum above'}
+          disabled
+          className="h-8 text-xs text-muted-foreground"
+        />
+      </div>
+    </div>
+  )
+
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-lg">
@@ -352,19 +405,20 @@ function CreateSowDialog({
                   <SelectValue placeholder="Select curriculum…" />
                 </SelectTrigger>
                 <SelectContent>
-                  {curricula.map((c: any) => (
+                  {curricula.map((c) => (
                     <SelectItem key={c.id} value={c.id} className="text-xs">
-                      {c.title ?? c.subject} {c.grade_level ? `· ${c.grade_level}` : ''}
+                      {c.display_name ?? c.subject} {c.curriculum_level ? `· ${c.curriculum_level}` : ''}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
-            {sharedFields}
-            <Button onClick={() => handleCreate('curriculum')} disabled={isPending} className="w-full gap-1.5">
+            {curriculumSharedFields}
+            <Button onClick={() => handleCreate('curriculum')} disabled={isPending || !curriculumId} className="w-full gap-1.5">
               <Sparkles className="h-4 w-4" />
               {isPending ? 'Generating…' : 'Generate from Curriculum'}
             </Button>
+            {pendingMethod === 'curriculum' && <SowGenerationProgress method="curriculum" />}
           </TabsContent>
 
           <TabsContent value="notes" className="space-y-3 mt-4">
@@ -384,6 +438,7 @@ function CreateSowDialog({
               <Sparkles className="h-4 w-4" />
               {isPending ? 'Generating…' : 'Generate from Notes'}
             </Button>
+            {pendingMethod === 'notes' && <SowGenerationProgress method="notes" />}
           </TabsContent>
 
           <TabsContent value="pdf" className="space-y-3 mt-4">
@@ -397,6 +452,7 @@ function CreateSowDialog({
               <FileUp className="h-4 w-4" />
               {isPending ? 'Uploading…' : 'Extract from PDF'}
             </Button>
+            {pendingMethod === 'pdf' && <SowGenerationProgress method="pdf" />}
           </TabsContent>
 
           <TabsContent value="manual" className="space-y-3 mt-4">
@@ -477,14 +533,16 @@ function AssignSowDialog({
                 <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground px-1 mb-1">{subject}</p>
                 <div className="divide-y border rounded-lg overflow-hidden">
                   {bySubject[subject].map((s) => (
-                    <button
+                    <Button
                       key={s.id}
+                      type="button"
+                      variant="ghost"
                       onClick={() => setSelected(s.id)}
-                      className={`w-full text-left px-3 py-2.5 hover:bg-muted/50 transition-colors ${selected === s.id ? 'bg-primary/5 border-l-2 border-primary' : ''}`}
+                      className={`h-auto w-full flex-col items-start rounded-none px-3 py-2.5 text-left hover:bg-muted/50 ${selected === s.id ? 'bg-primary/5 border-l-2 border-primary' : ''}`}
                     >
                       <p className="text-sm font-medium">{s.title}</p>
                       <p className="text-xs text-muted-foreground mt-0.5">{s.grade_level} · {s.term} · {s.academic_year}</p>
-                    </button>
+                    </Button>
                   ))}
                 </div>
               </div>

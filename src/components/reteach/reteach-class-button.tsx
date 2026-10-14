@@ -7,6 +7,7 @@ import { useRouter }               from 'next/navigation'
 import { Loader2, Zap, CheckCircle2 } from 'lucide-react'
 import { Button }                  from '@/components/ui/button'
 import { ReteachGenerationConfirmDialog } from '@/components/reteach/reteach-generation-confirm-dialog'
+import type { ReteachQuota } from '@/lib/actions/subscriptions'
 
 interface ReteachClassButtonProps {
   classId:             string
@@ -18,6 +19,8 @@ interface ReteachClassButtonProps {
   affected:            number
   total:               number
   hasExistingSession?: boolean
+  /** Fetched once by the parent (e.g. per class page) and shared across every button instance, rather than each row re-fetching its own copy. */
+  quota?:              ReteachQuota | null
 }
 
 export function ReteachClassButton({
@@ -30,6 +33,7 @@ export function ReteachClassButton({
   affected,
   total,
   hasExistingSession = false,
+  quota = null,
 }: ReteachClassButtonProps) {
   const router                       = useRouter()
   const [isPending, startTransition] = useTransition()
@@ -93,19 +97,31 @@ export function ReteachClassButton({
         isLoading={isPending}
       />
 
-      <Button
-        size="sm"
-        variant="outline"
-        className="h-7 gap-1.5 text-xs border-amber-200 text-amber-700 hover:bg-amber-50 shrink-0"
-        onClick={handleGenerate}
-        disabled={isPending}
-      >
-        {isPending
-          ? <Loader2 className="h-3 w-3 animate-spin" />
-          : <Zap className="h-3 w-3" />
-        }
-        {isPending ? 'Loading...' : 'Get Intervention'}
-      </Button>
+      <div className="flex items-center gap-1.5 shrink-0">
+        <Button
+          size="sm"
+          variant="outline"
+          className="h-7 gap-1.5 text-xs border-amber-200 text-amber-700 hover:bg-amber-50 shrink-0"
+          onClick={handleGenerate}
+          disabled={isPending}
+        >
+          {isPending
+            ? <Loader2 className="h-3 w-3 animate-spin" />
+            : <Zap className="h-3 w-3" />
+          }
+          {isPending ? 'Loading...' : 'Get Intervention'}
+        </Button>
+        {quota && !quota.unlimited && quota.limit !== null && (
+          <span
+            className={`text-[11px] ${quota.remaining === 0 ? 'text-destructive' : 'text-muted-foreground'}`}
+            title="Reteach generations remaining this month on your plan"
+          >
+            {quota.remaining === 0
+              ? 'Monthly limit reached'
+              : `${quota.remaining} of ${quota.limit} left this month`}
+          </span>
+        )}
+      </div>
     </>
   )
 }

@@ -18,6 +18,7 @@ import {
   UserCheck,
   Wallet,
   Megaphone,
+  Activity,
   LucideIcon,
 } from 'lucide-react'
 
@@ -29,6 +30,8 @@ export interface NavItem {
   icon:                   LucideIcon
   roleHref?:              Partial<Record<UserRole, string>>
   requiresPublicListing?: boolean
+  /** Section label rendered above this item when it differs from the previous item's group. Omit for ungrouped/pinned items (e.g. Tracy). */
+  group?:                 string
 }
 
 export const dashboardConfig = {
@@ -48,30 +51,35 @@ export const dashboardConfig = {
         Admin:   '/dashboard',
         Teacher: '/dashboard/teacher',
       },
+      group: 'Teaching',
+    },
+    {
+      title: 'Class Monitor',
+      href:  '/dashboard/overview',
+      roles: ['Admin', 'Teacher'],
+      icon:  MonitorCheck,
+      group: 'Teaching',
     },
     {
       title: 'Curriculum',
       href:  '/dashboard/curricula',
       roles: ['Admin', 'Teacher'],
       icon:  Library,
+      group: 'Teaching',
     },
     {
       title: 'Knowledge Base',
       href:  '/dashboard/knowledge-base',
       roles: ['Admin', 'Teacher'],
       icon:  BookOpen,
-    },
-    {
-      title: 'Monitor',
-      href:  '/dashboard/overview',
-      roles: ['Admin', 'Teacher'],
-      icon:  MonitorCheck,
+      group: 'Teaching',
     },
     {
       title: 'Review Queue',
       href:  '/dashboard/review-queue',
       roles: ['Admin', 'Teacher'],
       icon:  ShieldAlert,
+      group: 'Teaching',
     },
     {
       title: 'Classes',
@@ -82,30 +90,35 @@ export const dashboardConfig = {
         Admin:   '/dashboard/classes',
         Teacher: '/dashboard/teacher/classes',
       },
+      group: 'Teaching',
     },
     {
       title: 'Examination Centre',
       href:  '/dashboard/exam-builder',
       roles: ['Admin', 'Teacher'],
       icon:  FileSignature,
+      group: 'Teaching',
     },
     {
       title: 'Certificates',
       href:  '/dashboard/certificates',
       roles: ['Admin'],
       icon:  Award,
+      group: 'School Operations',
     },
     {
       title: 'Notices & Calendar',
       href:  '/dashboard/notices',
       roles: ['Admin', 'Teacher'],
       icon:  Megaphone,
+      group: 'School Operations',
     },
     {
       title: 'Term Billing',
       href:  '/dashboard/term-billing',
       roles: ['Admin'],
       icon:  Wallet,
+      group: 'School Operations',
     },
     {
       title:                 'Approvals',
@@ -113,6 +126,7 @@ export const dashboardConfig = {
       roles:                 ['Admin'],
       icon:                  UserCheck,
       requiresPublicListing: true,
+      group:                 'School Operations',
     },
     {
       title:                 'School Hub',
@@ -120,12 +134,21 @@ export const dashboardConfig = {
       roles:                 ['Admin'],
       icon:                  Building2,
       requiresPublicListing: true,
+      group:                 'School Operations',
     },
     {
       title: 'Extras',
       href:  '/dashboard/extras',
       roles: ['Admin'],
       icon:  ShoppingBag,
+      group: 'School Operations',
+    },
+    {
+      title: 'Content Health',
+      href:  '/dashboard/content-health',
+      roles: ['Admin'],
+      icon:  Activity,
+      group: 'School Operations',
     },
     {
       title:                 'Verification',
@@ -133,12 +156,14 @@ export const dashboardConfig = {
       roles:                 ['Admin'],
       icon:                  ShieldCheck,
       requiresPublicListing: true,
+      group:                 'School Operations',
     },
     {
       title: 'Get Help',
       href:  '/dashboard/help',
       roles: ['Admin', 'Teacher', 'Student'],
       icon:  HelpCircle,
+      group: 'Account',
     },
     {
       title: 'Settings',
@@ -149,6 +174,7 @@ export const dashboardConfig = {
         Admin:   '/dashboard/settings/organization',
         Teacher: '/dashboard/teacher/settings',
       },
+      group: 'Account',
     },
   ] as NavItem[],
 }

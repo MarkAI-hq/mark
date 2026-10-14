@@ -1,7 +1,8 @@
 import Link from "next/link"
-import { ChevronRight } from "lucide-react"
+import { BookOpen, ChevronRight, FileUp } from "lucide-react"
 import { ExamBuilderWizard } from "@/components/exams/exam-builder-wizard"
 import { ExamPathSelector } from "@/components/exams/exam-path-selector"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 export default function NewExamPage() {
   return (
@@ -18,13 +19,30 @@ export default function NewExamPage() {
 
           <h1 className="text-3xl font-bold tracking-tight mt-4">Mirror Exam Studio</h1>
           <p className="text-muted-foreground mt-2">
-            Upload your content and let Mirror Intelligence detect the curriculum and generate your new assessment.
+            Generate straight from a curriculum you already teach — no upload needed — or build one from your own notes or past papers.
           </p>
         </div>
 
-        <ExamPathSelector />
+        <Tabs defaultValue="curriculum">
+          <TabsList className="grid w-full max-w-md grid-cols-2">
+            <TabsTrigger value="curriculum" className="gap-1.5">
+              <BookOpen className="h-3.5 w-3.5" />
+              From Curriculum
+            </TabsTrigger>
+            <TabsTrigger value="upload" className="gap-1.5">
+              <FileUp className="h-3.5 w-3.5" />
+              Upload Document
+            </TabsTrigger>
+          </TabsList>
 
-        <ExamBuilderWizard />
+          <TabsContent value="curriculum" className="mt-6">
+            <ExamPathSelector autoStart />
+          </TabsContent>
+
+          <TabsContent value="upload" className="mt-6">
+            <ExamBuilderWizard />
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   )

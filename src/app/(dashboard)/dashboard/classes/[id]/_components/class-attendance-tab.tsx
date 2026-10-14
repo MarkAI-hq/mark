@@ -12,6 +12,7 @@ import {
   type AttendanceSession,
   type AttendanceSummary,
 } from '@/lib/actions/attendance'
+import { AskTracyChip } from '@/components/tracy/ask-tracy-chip'
 
 interface ClassAttendanceTabProps {
   classId: string
@@ -169,8 +170,12 @@ export function ClassAttendanceTab({ classId, initialSummary, initialSessions }:
       {/* At-risk students */}
       {summary && summary.at_risk_students.length > 0 && (
         <Card className="border-amber-200 bg-amber-50">
-          <CardHeader className="pb-2">
+          <CardHeader className="pb-2 flex flex-row items-center justify-between gap-2 space-y-0">
             <CardTitle className="text-sm text-amber-800">At-Risk Students (below 80%)</CardTitle>
+            <AskTracyChip
+              label="Ask Tracy what to do about at-risk students"
+              prompt={`These students are below 80% attendance: ${summary.at_risk_students.map((s) => `${s.name} (${s.attendance_rate != null ? `${Math.round(s.attendance_rate)}%` : 'no data'})`).join(', ')}. What should I do about it?`}
+            />
           </CardHeader>
           <CardContent>
             <div className="flex flex-wrap gap-2">

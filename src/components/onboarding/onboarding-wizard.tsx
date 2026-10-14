@@ -14,7 +14,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { getAvailableSubjects, getAvailableClassLevels, type AvailableSubject } from '@/lib/actions/curricula'
-import { deriveCountry, deriveClassKeyPrefix } from '@/lib/curriculum-defaults'
+import { deriveCountry, deriveCountryCode, deriveClassKeyPrefix } from '@/lib/curriculum-defaults'
 import { cn } from '@/lib/utils'
 import { createClass } from '@/lib/actions/classes'
 import { createSubjects } from '@/lib/actions/subjects'
@@ -130,7 +130,7 @@ const WIZARD_STEPS = [
 ]
 
 const FEATURES = [
-  { icon: Brain,     title: 'AI-Powered Grading',      sub: 'Grade entire classes in minutes with 97%+ accuracy.'           },
+  { icon: Brain,     title: 'AI-Powered Grading',      sub: 'Grade entire classes in minutes, with feedback for every student.' },
   { icon: BarChart2, title: 'Deep Learning Analytics',  sub: "Track every student's Bloom's taxonomy progression."           },
   { icon: FileText,  title: 'Instant PDF Reports',      sub: 'Generate and export student performance reports in one click.' },
 ]
@@ -227,6 +227,7 @@ export function OnboardingWizard({ adminName, schoolName }: OnboardingWizardProp
       const { error: orgError } = await saveOrganizationSetup({
         type:             schoolType,
         education_system: educationSystem,
+        country_code:     deriveCountryCode(educationSystem) ?? undefined,
       })
       if (orgError) { toast.error(orgError.message); return }
 
@@ -706,7 +707,11 @@ function StepStudents({
                   ) : (
                     <div className="h-4 w-4 rounded-full border-2 border-border shrink-0" />
                   )}
-                  <span className="text-sm font-medium text-foreground">{cls.name}</span>
+                  {/* Explicit dark text, not the theme-aware text-foreground token — this
+                      card is hardcoded bg-white regardless of theme, so in dark mode
+                      text-foreground resolves to a light color and becomes near-invisible
+                      here (confirmed: class names like "S1" were barely legible). */}
+                  <span className="text-sm font-medium text-zinc-900">{cls.name}</span>
                   {imported[cls.class_id] && (
                     <span className="text-xs text-emerald-600">Students added</span>
                   )}

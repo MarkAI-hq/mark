@@ -419,7 +419,14 @@ export function BatchGradingDialog({
                   </div>
                 ) : (
                   <div className="flex items-center justify-between gap-3">
-                    <Button variant="outline" size="sm" onClick={() => handleClose(false)}>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        handleClose(false)
+                        router.push(`/dashboard/assessments/${assessmentId}?openAudit=1`)
+                      }}
+                    >
                       Close & View Audit Details
                     </Button>
                     <div className="flex gap-2">

@@ -159,13 +159,19 @@ function NavContent({
 
       {/* Nav links */}
       <div className="flex flex-col space-y-1 px-3 flex-1 overflow-y-auto">
-        {accessibleNavItems.map((item) => {
+        {accessibleNavItems.map((item, index) => {
           const href     = item.roleHref?.[userRole] ?? item.href
           const isActive =
             pathname === href ||
             (pathname?.startsWith(href) && href !== '/dashboard' && href !== '/dashboard/teacher')
 
           const Icon = item.icon
+
+          // Render a section label whenever this item's group differs from
+          // the previous item's — groups are contiguous in dashboardConfig,
+          // so this is enough to draw each boundary exactly once.
+          const previousGroup = index > 0 ? accessibleNavItems[index - 1].group : undefined
+          const showGroupLabel = !collapsed && !!item.group && item.group !== previousGroup
 
           if (collapsed) {
             return (
@@ -194,24 +200,33 @@ function NavContent({
           }
 
           return (
-            <Link
-              key={item.href}
-              href={href}
-              className={cn(
-                'group relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200',
-                'text-muted-foreground hover:text-foreground hover:bg-surface-overlay',
-                isActive && 'bg-primary/8 text-foreground font-semibold'
+            <div key={item.href}>
+              {showGroupLabel && (
+                <p className={cn(
+                  'px-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70',
+                  index === 0 ? 'mb-1.5' : 'mt-4 mb-1.5',
+                )}>
+                  {item.group}
+                </p>
               )}
-            >
-              <Icon className={cn(
-                'h-4 w-4 shrink-0 transition-colors',
-                isActive ? 'text-gold' : 'text-muted-foreground group-hover:text-foreground'
-              )} />
-              <span className="truncate">{item.title}</span>
-              {isActive && (
-                <div className="ml-auto flex h-1.5 w-1.5 rounded-full bg-gold" />
-              )}
-            </Link>
+              <Link
+                href={href}
+                className={cn(
+                  'group relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200',
+                  'text-muted-foreground hover:text-foreground hover:bg-surface-overlay',
+                  isActive && 'bg-primary/8 text-foreground font-semibold'
+                )}
+              >
+                <Icon className={cn(
+                  'h-4 w-4 shrink-0 transition-colors',
+                  isActive ? 'text-gold' : 'text-muted-foreground group-hover:text-foreground'
+                )} />
+                <span className="truncate">{item.title}</span>
+                {isActive && (
+                  <div className="ml-auto flex h-1.5 w-1.5 rounded-full bg-gold" />
+                )}
+              </Link>
+            </div>
           )
         })}
       </div>

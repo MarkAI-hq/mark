@@ -1,8 +1,14 @@
 // src/app/(dashboard)/dashboard/exam-builder/page.tsx
 import Link from 'next/link'
 import { FileText, Sparkles, ScrollText, ArrowRight, BookOpen, Clock, Zap } from 'lucide-react'
+import { getOrgQualityScorecards } from '@/lib/actions/quality-eval'
+import { computeAverageCleanPass } from '@/components/quality/scorecard-grid'
 
-export default function ExamBuilderLandingPage() {
+export default async function ExamBuilderLandingPage() {
+  const { data: scorecards } = await getOrgQualityScorecards()
+  const avgCleanPass = scorecards ? computeAverageCleanPass(scorecards) : null
+  const qualityStatValue = avgCleanPass === null ? 'Not sampled yet' : `${avgCleanPass}%`
+
   return (
     <div className="min-h-[calc(100vh-4rem)] bg-gradient-to-br from-background via-background to-amber-500/5">
       <div className="max-w-5xl mx-auto px-6 py-12 space-y-12">
@@ -140,8 +146,8 @@ export default function ExamBuilderLandingPage() {
         {/* ── Quick stats strip ─────────────────────────────────────────── */}
         <div className="flex flex-wrap gap-6 px-1">
           {[
-            { icon: <Clock className="h-4 w-4" />, label: 'Avg. grading time', value: '< 2 min' },
-            { icon: <Zap className="h-4 w-4" />, label: 'AI accuracy', value: '97%+' },
+            { icon: <Clock className="h-4 w-4" />, label: 'Grading turnaround', value: 'Minutes, not days' },
+            { icon: <Zap className="h-4 w-4" />, label: 'Tutoring quality (sampled)', value: qualityStatValue },
             { icon: <FileText className="h-4 w-4" />, label: "Bloom's levels tracked", value: '6' },
           ].map(({ icon, label, value }) => (
             <div key={label} className="flex items-center gap-3">
@@ -155,6 +161,9 @@ export default function ExamBuilderLandingPage() {
             </div>
           ))}
         </div>
+        <p className="px-1 -mt-4 text-xs text-muted-foreground">
+          Tutoring quality is sampled with simulated students and scored by an independent judge — not self-reported.
+        </p>
 
       </div>
     </div>

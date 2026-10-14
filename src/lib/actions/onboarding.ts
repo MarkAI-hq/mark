@@ -11,6 +11,7 @@ import type { ServerActionResponse } from '@/lib/types'
 export async function saveOrganizationSetup(data: {
   type?:             string
   education_system?: string
+  country_code?:     string
 }): Promise<ServerActionResponse<{ message: string }>> {
   const user = await getSession()
   if (!user) return { data: null, error: { message: 'Unauthenticated' } }

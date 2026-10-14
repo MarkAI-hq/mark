@@ -59,6 +59,19 @@ export async function getGradingQuota(): Promise<ServerActionResponse<GradingQuo
   return fetcher<GradingQuota>('/subscriptions/grading-quota', { cache: 'no-store' })
 }
 
+export interface ReteachQuota {
+  plan:      PlanTier
+  limit:     number | null
+  used:      number | null
+  remaining: number | null
+  unlimited: boolean
+  resets_at: string | null
+}
+
+export async function getReteachQuota(): Promise<ServerActionResponse<ReteachQuota>> {
+  return fetcher<ReteachQuota>('/subscriptions/reteach-quota', { cache: 'no-store' })
+}
+
 export async function initializePayment(
   plan:     'pro' | 'enterprise',
   interval: 'monthly' | 'annual',
