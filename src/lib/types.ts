@@ -505,8 +505,11 @@ export type PeekInvitationResponse = {
 
 
 export type RegisterInvitedResponse = {
-  message:       string
+  message:        string
   requiresLogin?: boolean
+  accessToken?:   string
+  refreshToken?:  string
+  user?:          BackendUser
 }
 export type Role = typeof Role[keyof typeof Role]
 

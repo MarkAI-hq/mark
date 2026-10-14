@@ -23,14 +23,14 @@ export default function RegisterPage() {
         <div className="absolute top-6 left-6 right-6 flex items-center justify-between">
           <Link
             href="/"
-            className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-[#926C15] transition-colors"
+            className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-gold transition-colors"
           >
             <ArrowLeft className="h-3.5 w-3.5" />
             Back to home
           </Link>
           <p className="text-sm text-muted-foreground">
             Have an account?{' '}
-            <Link href="/login" className="font-semibold text-[#926C15] hover:underline underline-offset-2">
+            <Link href="/login" className="font-semibold text-gold hover:underline underline-offset-2">
               Sign in
             </Link>
           </p>
@@ -41,7 +41,7 @@ export default function RegisterPage() {
 
           {/* Heading */}
           <div className="mb-8">
-            <div className="inline-flex items-center gap-2 rounded-full border border-[#926C15]/30 bg-[#926C15]/6 px-3.5 py-1 text-xs font-semibold text-[#926C15] mb-5">
+            <div className="inline-flex items-center gap-2 rounded-full border border-gold/30 bg-gold/6 px-3.5 py-1 text-xs font-semibold text-gold mb-5">
               <Sparkles className="h-3 w-3" />
               Free to start · No credit card required
             </div>
@@ -55,7 +55,7 @@ export default function RegisterPage() {
 
           {/* Card with gold top accent */}
           <div>
-            <div className="h-0.5 rounded-t-2xl bg-gradient-to-r from-[#926C15] via-[#C09020] to-[#D4AA30]" />
+            <div className="h-0.5 rounded-t-2xl bg-gradient-to-r from-gold via-[#C09020] to-[#D4AA30]" />
             <div className="bg-card rounded-b-2xl border border-t-0 border-border/60 shadow-xl shadow-black/5 px-8 py-8">
               <SignupForm />
             </div>

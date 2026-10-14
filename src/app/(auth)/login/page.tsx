@@ -45,8 +45,8 @@ export default function LoginPage() {
           }}
         />
         {/* Gold atmospheric glows */}
-        <div className="pointer-events-none absolute left-1/3 top-1/4 -translate-x-1/2 -translate-y-1/2 h-[500px] w-[700px] rounded-full bg-[#926C15]/18 blur-[130px]" />
-        <div className="pointer-events-none absolute right-0 bottom-1/3 h-[300px] w-[400px] rounded-full bg-[#926C15]/10 blur-[100px]" />
+        <div className="pointer-events-none absolute left-1/3 top-1/4 -translate-x-1/2 -translate-y-1/2 h-[500px] w-[700px] rounded-full bg-gold/18 blur-[130px]" />
+        <div className="pointer-events-none absolute right-0 bottom-1/3 h-[300px] w-[400px] rounded-full bg-gold/10 blur-[100px]" />
 
         {/* Logo + Body grouped */}
         <div className="relative z-10 space-y-8">
@@ -63,9 +63,9 @@ export default function LoginPage() {
         <div className="space-y-7">
 
           {/* Badge */}
-          <div className="inline-flex items-center gap-2 rounded-full border border-[#926C15]/40 bg-[#926C15]/10 px-4 py-1.5 text-sm w-fit">
-            <Sparkles className="h-3.5 w-3.5 text-[#926C15]" />
-            <span className="font-semibold text-[#926C15]">Mirror</span>
+          <div className="inline-flex items-center gap-2 rounded-full border border-gold/40 bg-gold/10 px-4 py-1.5 text-sm w-fit">
+            <Sparkles className="h-3.5 w-3.5 text-gold" />
+            <span className="font-semibold text-gold">Mirror</span>
             <span className="text-white/30">·</span>
             <span className="text-white/60 font-medium">Teaching Intelligence</span>
           </div>
@@ -73,7 +73,7 @@ export default function LoginPage() {
           <div className="space-y-2.5">
             <h1 className="text-3xl font-black leading-tight tracking-tighter">
               Good to have{' '}
-              <span className="bg-gradient-to-br from-[#926C15] via-[#C09020] to-[#D4AA30] bg-clip-text text-transparent">
+              <span className="bg-gradient-to-br from-gold via-[#C09020] to-[#D4AA30] bg-clip-text text-transparent">
                 you back.
               </span>
             </h1>
@@ -86,8 +86,8 @@ export default function LoginPage() {
           <div className="space-y-4">
             {HIGHLIGHTS.map(({ icon: Icon, title, desc }) => (
               <div key={title} className="flex items-start gap-3">
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#926C15]/15 border border-[#926C15]/25">
-                  <Icon className="h-3.5 w-3.5 text-[#926C15]" />
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gold/15 border border-gold/25">
+                  <Icon className="h-3.5 w-3.5 text-gold" />
                 </div>
                 <div>
                   <p className="text-sm font-semibold">{title}</p>
@@ -112,14 +112,14 @@ export default function LoginPage() {
         <div className="absolute top-6 left-6 right-6 flex items-center justify-between">
           <Link
             href="/"
-            className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-[#926C15] transition-colors"
+            className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-gold transition-colors"
           >
             <ArrowLeft className="h-3.5 w-3.5" />
             Back to home
           </Link>
           <p className="text-sm text-muted-foreground">
             New here?{' '}
-            <Link href="/register" className="font-semibold text-[#926C15] hover:underline underline-offset-2">
+            <Link href="/register" className="font-semibold text-gold hover:underline underline-offset-2">
               Create account
             </Link>
           </p>
@@ -140,7 +140,7 @@ export default function LoginPage() {
 
           {/* Card with gold top accent */}
           <div>
-            <div className="h-0.5 rounded-t-2xl bg-gradient-to-r from-[#926C15] via-[#C09020] to-[#D4AA30]" />
+            <div className="h-0.5 rounded-t-2xl bg-gradient-to-r from-gold via-[#C09020] to-[#D4AA30]" />
             <div className="bg-card rounded-b-2xl border border-t-0 border-border/60 shadow-xl shadow-black/5 px-8 py-8">
               <LoginForm />
             </div>

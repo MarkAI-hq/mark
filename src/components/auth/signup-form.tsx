@@ -83,8 +83,8 @@ export function SignupForm() {
   if (done) {
     return (
       <div className="flex flex-col items-center gap-4 py-6 text-center">
-        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#926C15]/10 border border-[#926C15]/25">
-          <CheckCircle2 className="h-7 w-7 text-[#926C15]" />
+        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-gold/10 border border-gold/25">
+          <CheckCircle2 className="h-7 w-7 text-gold" />
         </div>
         <div className="space-y-1">
           <h2 className="text-lg font-bold text-foreground">Check your email</h2>
@@ -106,8 +106,8 @@ export function SignupForm() {
 
       {/* Progress bar */}
       <div className="flex items-center gap-2 mb-6">
-        <div className="h-1 flex-1 rounded-full bg-[#926C15]" />
-        <div className={`h-1 flex-1 rounded-full transition-colors duration-300 ${step === 2 ? 'bg-[#926C15]' : 'bg-border'}`} />
+        <div className="h-1 flex-1 rounded-full bg-gold" />
+        <div className={`h-1 flex-1 rounded-full transition-colors duration-300 ${step === 2 ? 'bg-gold' : 'bg-border'}`} />
       </div>
 
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
@@ -116,7 +116,7 @@ export function SignupForm() {
         {step === 1 && (
           <>
             <div className="space-y-0.5 mb-2">
-              <p className="text-[11px] font-bold uppercase tracking-widest text-[#926C15]">Step 1 of 2</p>
+              <p className="text-[11px] font-bold uppercase tracking-widest text-gold">Step 1 of 2</p>
               <p className="text-sm font-semibold text-foreground">About your school</p>
             </div>
 
@@ -164,7 +164,7 @@ export function SignupForm() {
 
             <Button
               type="button"
-              className="w-full bg-[#926C15] hover:bg-[#7A5A10] text-white shadow-lg shadow-[#926C15]/25"
+              className="w-full bg-gold hover:bg-gold/90 text-white shadow-lg shadow-gold/25"
               size="lg"
               onClick={handleNext}
             >
@@ -174,7 +174,7 @@ export function SignupForm() {
 
             <p className="text-center text-sm text-muted-foreground">
               Already have an account?{' '}
-              <Link href="/login" className="font-medium text-[#926C15] hover:underline">
+              <Link href="/login" className="font-medium text-gold hover:underline">
                 Sign in
               </Link>
             </p>
@@ -185,7 +185,7 @@ export function SignupForm() {
         {step === 2 && (
           <>
             <div className="space-y-0.5 mb-2">
-              <p className="text-[11px] font-bold uppercase tracking-widest text-[#926C15]">Step 2 of 2</p>
+              <p className="text-[11px] font-bold uppercase tracking-widest text-gold">Step 2 of 2</p>
               <p className="text-sm font-semibold text-foreground">Your account credentials</p>
             </div>
 
@@ -277,11 +277,11 @@ export function SignupForm() {
                     </FormControl>
                     <FormLabel className="text-sm font-normal leading-snug cursor-pointer">
                       I agree to the{' '}
-                      <Link href="/terms" target="_blank" className="underline underline-offset-2 hover:text-[#926C15]">
+                      <Link href="/terms" target="_blank" className="underline underline-offset-2 hover:text-gold">
                         Terms of Service
                       </Link>
                       {' '}and{' '}
-                      <Link href="/privacy" target="_blank" className="underline underline-offset-2 hover:text-[#926C15]">
+                      <Link href="/privacy" target="_blank" className="underline underline-offset-2 hover:text-gold">
                         Privacy Policy
                       </Link>
                     </FormLabel>
@@ -302,7 +302,7 @@ export function SignupForm() {
               </Button>
               <Button
                 type="submit"
-                className="flex-1 bg-[#926C15] hover:bg-[#7A5A10] text-white shadow-lg shadow-[#926C15]/25"
+                className="flex-1 bg-gold hover:bg-gold/90 text-white shadow-lg shadow-gold/25"
                 size="lg"
                 disabled={isPending}
               >

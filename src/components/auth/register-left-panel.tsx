@@ -121,8 +121,8 @@ export function RegisterLeftPanel() {
         }}
       />
       {/* Gold atmospheric glows */}
-      <div className="pointer-events-none absolute -left-20 top-1/3 h-[600px] w-[600px] rounded-full bg-[#926C15]/14 blur-[140px]" />
-      <div className="pointer-events-none absolute right-0 bottom-0 h-[350px] w-[350px] rounded-full bg-[#926C15]/8 blur-[100px]" />
+      <div className="pointer-events-none absolute -left-20 top-1/3 h-[600px] w-[600px] rounded-full bg-gold/14 blur-[140px]" />
+      <div className="pointer-events-none absolute right-0 bottom-0 h-[350px] w-[350px] rounded-full bg-gold/8 blur-[100px]" />
 
       {/* Logo */}
       <div className="relative z-10 mb-10">
@@ -159,7 +159,7 @@ export function RegisterLeftPanel() {
             visible ? 'testimonial-visible' : 'testimonial-hidden'
           }`}
         >
-          <span className="block text-5xl font-black leading-none text-[#926C15]/60 mb-3 -mt-1">&ldquo;</span>
+          <span className="block text-5xl font-black leading-none text-gold/60 mb-3 -mt-1">&ldquo;</span>
 
           <p className="text-white/85 text-base leading-relaxed font-medium min-h-[96px]">
             {t.quote}
@@ -167,7 +167,7 @@ export function RegisterLeftPanel() {
 
           <div className="mt-5 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="h-9 w-9 rounded-full bg-gradient-to-br from-[#926C15] to-[#D4AA30] flex items-center justify-center text-xs font-black text-white shrink-0">
+              <div className="h-9 w-9 rounded-full bg-gradient-to-br from-gold to-[#D4AA30] flex items-center justify-center text-xs font-black text-white shrink-0">
                 {t.initials}
               </div>
               <div>
@@ -190,7 +190,7 @@ export function RegisterLeftPanel() {
               key={i}
               onClick={() => { setVisible(false); setTimeout(() => { setIndex(i); setVisible(true) }, 450) }}
               className={`h-1 rounded-full transition-all duration-300 ${
-                i === index ? 'w-6 bg-[#926C15]' : 'w-1.5 bg-white/20'
+                i === index ? 'w-6 bg-gold' : 'w-1.5 bg-white/20'
               }`}
             />
           ))}

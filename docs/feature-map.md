@@ -19,7 +19,7 @@ An index of Mark frontend features: routes, Server Actions, and key components.
 
 | Item | Detail |
 |---|---|
-| Routes | `/dashboard/assessments/[id]/review` |
+| Rendered from | `src/components/exams/exam-dialog.tsx` (not a standalone route — opens inline as a dialog) |
 | Server Actions | `src/lib/actions/assessments.ts` |
 | Key components | `src/components/editor/` (TipTap-based) |
 | Key hooks | `useSuggestions`, `useApplyDiff` |

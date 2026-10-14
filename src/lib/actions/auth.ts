@@ -313,6 +313,8 @@ export async function registerInvited(payload: {
   phone?:      string
   acceptTerms: boolean
 }) {
+  const cookieStore = await cookies()
+
   try {
     const response = await fetcher<RegisterInvitedResponse>('/auth/register-invited', {
       method:  'POST',
@@ -321,7 +323,22 @@ export async function registerInvited(payload: {
     })
 
     if (response.error) throw new Error(response.error.message)
-    return { data: response.data, error: null }
+    if (!response.data)  throw new Error('Registration failed: No data returned.')
+
+    const { data } = response
+
+    // Clicking the invite link already proved email ownership, so a
+    // successful registration logs the user straight in instead of
+    // sending a second "verify your email" round trip.
+    if (data.accessToken && data.refreshToken && data.user) {
+      await setAuthCookies(cookieStore, {
+        accessToken:  data.accessToken,
+        refreshToken: data.refreshToken,
+        user:         data.user,
+      })
+    }
+
+    return { data, error: null }
   } catch (err) {
     return {
       data:  null,

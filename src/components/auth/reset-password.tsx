@@ -74,7 +74,7 @@ export default function ResetPasswordForm() {
       <div className="absolute top-6 left-6">
         <Link
           href="/login"
-          className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-[#926C15] transition-colors"
+          className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-gold transition-colors"
         >
           <ArrowLeft className="h-3.5 w-3.5" />
           Back to login
@@ -85,8 +85,8 @@ export default function ResetPasswordForm() {
 
         {/* Wordmark */}
         <div className="flex items-center gap-2 mb-8">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#926C15]/15 border border-[#926C15]/25">
-            <Sparkles className="h-4 w-4 text-[#926C15]" />
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gold/15 border border-gold/25">
+            <Sparkles className="h-4 w-4 text-gold" />
           </div>
           <span className="font-bold text-foreground">Mirror Intelligence</span>
         </div>
@@ -103,7 +103,7 @@ export default function ResetPasswordForm() {
 
         {/* Card */}
         <div>
-          <div className="h-0.5 rounded-t-2xl bg-gradient-to-r from-[#926C15] via-[#C09020] to-[#D4AA30]" />
+          <div className="h-0.5 rounded-t-2xl bg-gradient-to-r from-gold via-[#C09020] to-[#D4AA30]" />
           <div className="bg-card rounded-b-2xl border border-t-0 border-border/60 shadow-xl shadow-black/5 px-8 py-8">
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -176,7 +176,7 @@ export default function ResetPasswordForm() {
 
                 <Button
                   type="submit"
-                  className="w-full bg-[#926C15] hover:bg-[#7A5A10] text-white shadow-lg shadow-[#926C15]/25 mt-2"
+                  className="w-full bg-gold hover:bg-gold/90 text-white shadow-lg shadow-gold/25 mt-2"
                   disabled={form.formState.isSubmitting}
                 >
                   {form.formState.isSubmitting ? 'Resetting...' : 'Reset Password'}

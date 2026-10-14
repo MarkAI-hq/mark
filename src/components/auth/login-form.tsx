@@ -21,7 +21,7 @@ import { login, resendVerificationEmail } from '@/lib/actions/auth'
 import { ServerActionResponse, LoginResponse }  from '@/lib/types'
 
 // ── Role → default landing page ───────────────────────────────────────────
-function getDefaultRedirect(roles: string[]): string {
+export function getDefaultRedirect(roles: string[]): string {
   if (roles.includes('Root'))    return '/root'
   if (roles.includes('Support')) return '/root'
   if (roles.includes('Admin'))   return '/dashboard'
@@ -227,7 +227,7 @@ export function LoginForm() {
                 <FormLabel className="text-foreground">Password</FormLabel>
                 <Link
                   href="/forgot-password"
-                  className="text-xs text-muted-foreground hover:text-[#926C15] transition-colors"
+                  className="text-xs text-muted-foreground hover:text-gold transition-colors"
                 >
                   Forgot password?
                 </Link>
@@ -252,7 +252,7 @@ export function LoginForm() {
 
         <Button
           type="submit"
-          className="w-full bg-[#926C15] hover:bg-[#7A5A10] text-white shadow-lg shadow-[#926C15]/25 mt-2"
+          className="w-full bg-gold hover:bg-gold/90 text-white shadow-lg shadow-gold/25 mt-2"
           disabled={form.formState.isSubmitting}
         >
           {form.formState.isSubmitting ? 'Signing in...' : 'Sign in'}
@@ -260,7 +260,7 @@ export function LoginForm() {
 
         <p className="text-center text-sm text-muted-foreground">
           Don&apos;t have an account?{' '}
-          <Link href="/register" className="font-medium text-[#926C15] hover:underline">
+          <Link href="/register" className="font-medium text-gold hover:underline">
             Get started
           </Link>
         </p>

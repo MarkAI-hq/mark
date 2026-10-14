@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
+import { Eye, EyeOff } from 'lucide-react'
 
 import { toast } from '@/hooks/use-toast'
 import {
@@ -19,6 +20,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { studentLogin } from '@/lib/actions/student-auth'
+import { PinResetDialog } from '@/components/auth/pin-reset-dialog'
 
 const formSchema = z.object({
   school_code:       z.string().min(1, { message: 'School code is required.' }),
@@ -36,7 +38,9 @@ export function StudentLoginForm() {
     defaultValues: { school_code: '', student_school_id: '', pin: '' },
   })
 
-  const [formError, setFormError] = useState<string | null>(null)
+  const [formError, setFormError]     = useState<string | null>(null)
+  const [showPin,   setShowPin]       = useState(false)
+  const [resetOpen, setResetOpen]     = useState(false)
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setFormError(null)
@@ -115,12 +119,25 @@ export function StudentLoginForm() {
             <FormItem>
               <FormLabel className="text-foreground">PIN</FormLabel>
               <FormControl>
-                <Input
-                  type="password"
-                  placeholder="••••••"
-                  maxLength={10}
-                  {...field}
-                />
+                <div className="relative">
+                  <Input
+                    type={showPin ? 'text' : 'password'}
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    placeholder="••••••"
+                    maxLength={10}
+                    className="pr-9"
+                    {...field}
+                  />
+                  <button
+                    type="button"
+                    tabIndex={-1}
+                    onClick={() => setShowPin((p) => !p)}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  >
+                    {showPin ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -129,17 +146,31 @@ export function StudentLoginForm() {
 
         <Button
           type="submit"
-          className="w-full mt-2 bg-[#926C15] hover:bg-[#7A5A10] text-white shadow-lg shadow-[#926C15]/25 font-bold"
+          className="w-full mt-2 bg-gold hover:bg-gold/90 text-gold-foreground shadow-lg shadow-gold/25 font-bold"
           disabled={form.formState.isSubmitting}
         >
           {form.formState.isSubmitting ? 'Signing in...' : 'Sign in'}
         </Button>
 
         <p className="text-center text-xs text-muted-foreground">
-          Lost your details? Ask your teacher to reset your PIN.
+          <button
+            type="button"
+            className="font-medium text-gold hover:underline"
+            onClick={() => setResetOpen(true)}
+          >
+            Forgot your PIN?
+          </button>
+          {' '}Or ask your teacher to reset it.
         </p>
 
       </form>
+
+      <PinResetDialog
+        open={resetOpen}
+        onOpenChange={setResetOpen}
+        initialSchoolCode={form.watch('school_code')}
+        initialStudentId={form.watch('student_school_id')}
+      />
     </Form>
   )
 }

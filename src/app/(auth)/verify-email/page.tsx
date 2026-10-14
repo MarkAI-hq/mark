@@ -6,6 +6,7 @@ import { useEffect, useState, useRef } from 'react'
 import { useSearchParams, useRouter }   from 'next/navigation'
 import { toast }                        from 'sonner'
 import { verifyEmail }                  from '@/lib/actions/auth'
+import { getDefaultRedirect }           from '@/components/auth/login-form'
 import { Loader2, CheckCircle2, XCircle } from 'lucide-react'
 
 import {
@@ -48,12 +49,23 @@ export default function VerifyEmailPage() {
             : 'Email verified! Redirecting to login…'
         )
         setStatus('success')
+        // Fixed id so a duplicate fire (React Strict Mode's dev-only double-invoke
+        // of this effect re-runs handleVerification a second time) replaces the
+        // existing toast and restarts its own timer, instead of sonner stacking a
+        // second independent toast that reads as "this toast won't go away" while
+        // the user is a step or two further into onboarding.
         toast.success('Email Verified', {
+          id: 'email-verified',
           description: data.message || 'Your email has been verified.',
         })
 
         setTimeout(() => {
-          router.push(isAuthenticated ? '/onboarding' : '/login')
+          // Route by role, not just auth state — an invited Teacher
+          // verifying their email shouldn't flash through the Admin-only
+          // onboarding wizard before being bounced to their own dashboard.
+          // Middleware still catches an Admin with onboarding left to do
+          // and redirects /dashboard → /onboarding from there.
+          router.push(isAuthenticated ? getDefaultRedirect(data.user?.roles ?? []) : '/login')
         }, 1500)
       } else {
         setMessage(`Verification failed: ${error?.message || 'An unknown error occurred.'}`)
