@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useState } from 'react'
-import { LayoutDashboard, Settings, LogOut, GraduationCap, Menu } from 'lucide-react'
+import { LayoutDashboard, Settings, LogOut, GraduationCap, Menu, Sparkles } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { cn } from '@/lib/utils'
@@ -17,6 +17,7 @@ import type { User } from '@/lib/types'
 
 const navItems = [
   { href: '/guardian/dashboard', label: 'My children', icon: LayoutDashboard },
+  { href: '/guardian/tracy', label: 'Ask Tracy', icon: Sparkles },
   { href: '/guardian/settings', label: 'Settings', icon: Settings },
 ]
 
