@@ -7,6 +7,15 @@ export function deriveCountry(educationSystem: string): string | null {
   return educationSystem === 'uneb' ? 'uganda' : null
 }
 
+// ISO country code for `organizations.country_code` — distinct from deriveCountry()
+// above, which returns the lowercase full name the curriculum-catalog endpoints
+// (getAvailableSubjects/getAvailableClassLevels) expect. RAG grounding filters on
+// country_code (normalized 'ug'/'uga' -> 'uganda' in curriculum-corpus.resolver.ts),
+// so leaving this unset silently zeroes out curriculum grounding for the org.
+export function deriveCountryCode(educationSystem: string): string | null {
+  return educationSystem === 'uneb' ? 'UG' : null
+}
+
 export function deriveClassKeyPrefix(schoolType: string): string | undefined {
   if (schoolType === 'primary') return 'P'
   if (schoolType === 'o-level' || schoolType === 'a-level') return 'S'
