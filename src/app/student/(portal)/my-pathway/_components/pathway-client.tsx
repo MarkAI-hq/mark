@@ -229,7 +229,11 @@ export function PathwayClient({ user, hasClass, predictions, prediction, curricu
         <div className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 dark:bg-amber-900/20 dark:border-amber-800 px-4 py-3">
           <Info className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
           <p className="text-xs text-amber-800 dark:text-amber-200 leading-relaxed">
-            <span className="font-semibold">Prediction based on {prediction.based_on_submissions} assessment.</span>{' '}
+            <span className="font-semibold">
+              {prediction.based_on_submissions === 0
+                ? 'Early estimate — based on your lesson activity so far, not yet a graded assessment.'
+                : `Prediction based on ${prediction.based_on_submissions} graded assessment${prediction.based_on_submissions === 1 ? '' : 's'}.`}
+            </span>{' '}
             Complete at least 2 graded assessments to unlock trajectory tracking and see how you&apos;re improving over time.
           </p>
         </div>
