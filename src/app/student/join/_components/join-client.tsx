@@ -1078,7 +1078,7 @@ export function JoinClient({ schoolCode, schoolName }: { schoolCode: string; sch
     <>
       <div className="flex items-center gap-2 mb-6 justify-center">
         <Sparkles className="h-5 w-5 text-gold" />
-        <span className="font-semibold tracking-tight">Mirror Intelligence Online High School</span>
+        <span className="font-semibold tracking-tight">{schoolName || schoolCode}</span>
       </div>
 
       {resumedFromStorage && step !== 'details' && (
@@ -1197,7 +1197,7 @@ export function JoinClient({ schoolCode, schoolName }: { schoolCode: string; sch
               </div>
             </div>
             <p className="text-xs text-muted-foreground -mt-2">
-              We&apos;ll verify your account contact. Mirror Intelligence Online High School is live in Uganda and expanding soon.
+              We&apos;ll verify your account contact.
             </p>
 
             {/* ── Notice: What you will need — collapsed by default. ─────────── */}
