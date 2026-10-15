@@ -1,12 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { randomUUID } from "crypto";
 import { refreshAccessToken } from "@/lib/actions/auth";
 
-// One-shot AI grading for free-response scenes (currently: peer_teach). Reuses
-// Tracy's existing non-streaming /chat endpoint with a fresh, throwaway
-// sessionId so this never pollutes the student's real Tracy conversation —
-// it's a scoped grading call, not a chat turn.
+// One-shot AI grading for free-response scenes (currently: peer_teach). Calls
+// Tracy's dedicated /grade endpoint — NOT /chat — since the agentic loop (tool
+// access + the Socratic-withholding system prompt) isn't appropriate for "score
+// this against a rubric", and routing through /chat was observed taking the
+// grading prompt as a normal turn (calling list_submissions_for_student instead
+// of returning JSON) while also burning one of the student's free-tier chat
+// requests just for finishing a lesson scene.
 
 const TRACY_URL = process.env.TRACY_URL ?? "http://localhost:4001";
 
@@ -36,46 +38,28 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "explanation is required" }, { status: 400 });
     }
 
-    const message =
-      `You are grading a student's own-words explanation for a "peer teaching" exercise. ` +
-      `Be encouraging but honest — this is for the student's learning, not a test.\n\n` +
-      `Original prompt the student was explaining: ${body.prompt}\n\n` +
-      (body.rubricPoints?.length
-        ? `A complete answer should cover:\n${body.rubricPoints.map((p) => `- ${p}`).join('\n')}\n\n`
-        : '') +
-      `Student's explanation:\n"""${body.explanation}"""\n\n` +
-      `Return ONLY a valid JSON object, no other text:\n` +
-      `{"score": <0-100 integer>, "feedback": "<one short encouraging sentence on what to improve or confirm they nailed it>", "met_points": ["<rubric points they actually covered, verbatim from the list above>"]}`;
-
-    const tracyRes = await fetch(`${TRACY_URL}/chat`, {
+    const tracyRes = await fetch(`${TRACY_URL}/grade`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${jwt}`,
       },
-      body: JSON.stringify({ message, sessionId: `grade-${randomUUID()}` }),
+      body: JSON.stringify({
+        prompt: body.prompt,
+        explanation: body.explanation,
+        rubricPoints: body.rubricPoints,
+      }),
     });
 
-    if (!tracyRes.ok) return NextResponse.json({ result: null });
+    if (!tracyRes.ok) {
+      console.error("[tracy/grade] tracy responded", tracyRes.status, await tracyRes.text());
+      return NextResponse.json({ result: null });
+    }
 
     const data = await tracyRes.json();
-    const raw: string = data?.reply ?? "";
-    const jsonStart = raw.indexOf("{");
-    const jsonEnd = raw.lastIndexOf("}");
-    if (jsonStart === -1 || jsonEnd === -1) return NextResponse.json({ result: null });
-
-    const parsed = JSON.parse(raw.slice(jsonStart, jsonEnd + 1));
-    const score = Number(parsed.score);
-    if (!Number.isFinite(score)) return NextResponse.json({ result: null });
-
-    return NextResponse.json({
-      result: {
-        score: Math.max(0, Math.min(100, Math.round(score))),
-        feedback: String(parsed.feedback ?? ""),
-        met_points: Array.isArray(parsed.met_points) ? parsed.met_points.map(String) : [],
-      },
-    });
-  } catch {
+    return NextResponse.json({ result: data?.result ?? null });
+  } catch (err) {
+    console.error("[tracy/grade] failed", err);
     return NextResponse.json({ result: null });
   }
 }
