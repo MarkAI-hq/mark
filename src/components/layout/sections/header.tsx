@@ -2,7 +2,7 @@
 
 import { useRef } from "react";
 import Image from "next/image";
-import { ArrowRight, Users } from "lucide-react";
+import { ArrowRight, TrendingUp } from "lucide-react";
 import { motion, useInView } from "framer-motion";
 
 const ease = [0.22, 1, 0.36, 1] as const;
@@ -71,28 +71,28 @@ export default function Header() {
             className="space-y-6"
           >
             <div className="inline-flex items-center gap-2 rounded-full border border-[#926C15]/40 bg-[#926C15]/6 px-4 py-1.5 text-sm font-medium text-[#926C15]">
-              <Users className="h-3.5 w-3.5" />
-              Built with and for educators
+              <TrendingUp className="h-3.5 w-3.5" />
+              The AI-native school
             </div>
 
             <h2 className="text-4xl font-black tracking-tight leading-[1.08] sm:text-5xl">
-              Will you help us{" "}
+              Lower costs.{" "}
               <span className="bg-gradient-to-br from-[#926C15] via-[#C09020] to-[#D4AA30] bg-clip-text text-transparent">
-                close the loop
+                Higher revenue.
               </span>{" "}
-              in every classroom?
+              Better results.
             </h2>
 
             <p className="text-base leading-relaxed text-muted-foreground">
-              Mirror is built on teaching science, not just language models. We partner
-              with expert educators, curriculum designers, and learning scientists to
-              encode real pedagogical intelligence into every part of the platform.
+              Mirror replaces the grading, diagnosis, and reporting work that eats teacher
+              hours and inflates staffing costs — cutting the real cost of running a school
+              while freeing your teachers to actually teach.
             </p>
 
             <p className="text-base leading-relaxed text-muted-foreground">
-              If you have a framework for diagnosing student thinking, a marking methodology
-              that works, or a unique approach to intervention — we want to build it into Mirror
-              so every teacher on the platform benefits from your expertise.
+              Lower costs and clearer, earlier diagnosis of every learning gap mean schools
+              can grow enrollment per teacher and compete on real outcomes — while every
+              student&apos;s performance keeps improving, term over term.
             </p>
 
             <button
@@ -101,7 +101,7 @@ export default function Header() {
               data-cal-config='{"layout":"month_view","useSlotsViewOnSmallScreen":"true"}'
               className="group inline-flex items-center gap-2.5 rounded-xl bg-[#926C15] px-8 py-3.5 text-sm font-bold text-white shadow-lg shadow-[#926C15]/25 transition-all duration-300 hover:bg-[#7A5A10] hover:shadow-xl hover:shadow-[#926C15]/35 hover:-translate-y-1 active:translate-y-0"
             >
-              Join Us
+              Book a Call
               <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
             </button>
           </motion.div>

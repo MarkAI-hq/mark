@@ -15,7 +15,7 @@ const FAQList = [
   {
     question: "What exactly is Mirror — how would you describe it?",
     answer:
-      "Mirror is Teaching Intelligence. It's a closed-loop system that turns every assessment into a full cycle of insight and action — quality-auditing the exam before grading begins, grading with schema-enriched AI, diagnosing root-cause errors by Bloom's taxonomy, generating targeted intervention recommendations, and auto-tracking impact over time. That's not a grading upgrade. It's a fundamentally different relationship between assessment and teaching.",
+      "Mirror is learning intelligence infrastructure, not a grading tool. It's a closed-loop system that turns every assessment into a full cycle of insight and action — quality-auditing the exam before grading begins, grading with schema-enriched AI, diagnosing root-cause errors by Bloom's taxonomy, generating targeted intervention recommendations, and auto-tracking impact over time. That's not a grading upgrade. It's a fundamentally different relationship between assessment and teaching.",
     value: "item-1",
   },
   {

@@ -171,10 +171,10 @@ export function ValueCalculator() {
               <div className="mb-4 flex h-9 w-9 items-center justify-center rounded-xl bg-[#926C15]/10">
                 <TrendingUp className="h-4 w-4 text-[#926C15]" />
               </div>
-              <p className="text-4xl font-black text-foreground">+10%</p>
-              <p className="text-sm font-semibold text-foreground">annual score improvement</p>
+              <p className="text-4xl font-black text-foreground">B → A</p>
+              <p className="text-sm font-semibold text-foreground">grade-band jump in 6 weeks</p>
               <p className="text-xs leading-relaxed text-muted-foreground">
-                Average across Mirror schools, year on year. Not from harder work —
+                Average across Mirror schools, one term in. Not from harder work —
                 from{" "}
                 <span className="font-semibold text-foreground">smarter, closed-loop feedback.</span>
               </p>
@@ -185,8 +185,8 @@ export function ValueCalculator() {
           {/* CTA strip */}
           <div className="flex flex-col items-center justify-between gap-4 border-t border-border bg-muted/20 px-7 py-5 sm:flex-row">
             <p className="text-sm font-semibold text-foreground text-center sm:text-left">
-              Mirror doesn&apos;t cost money.{" "}
-              <span className="text-[#926C15]">Not using Mirror does.</span>
+              Mirror isn&apos;t free.{" "}
+              <span className="text-[#926C15]">But it costs far less than what you&apos;re losing without it.</span>
             </p>
             <button
               data-cal-link="tusii-mirror/30min"

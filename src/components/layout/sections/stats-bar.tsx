@@ -13,10 +13,10 @@ const stats = [
     sub: "Time your teachers spend grading — returned to teaching.",
   },
   {
-    value: "10%",
+    value: "B → A",
     suffix: "",
-    label: "average annual score improvement",
-    sub: "Measured across Mirror schools from first term to last.",
+    label: "in just 6 weeks",
+    sub: "One full grade-band jump — measured across Mirror schools, start of term to end.",
   },
   {
     value: "100%",

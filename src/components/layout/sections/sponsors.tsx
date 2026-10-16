@@ -18,7 +18,7 @@ const sponsors = [
 // Same two claims StatsBar makes further down the page — reused here for
 // tile variety in the grid, not new numbers invented for this section.
 const stats = [
-  { value: "10%", label: "average annual score improvement" },
+  { value: "B → A", label: "grade-band jump in 6 weeks" },
   { value: "480 hrs", label: "freed per school, per term" },
 ];
 

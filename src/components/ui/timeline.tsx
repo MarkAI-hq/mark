@@ -41,10 +41,10 @@ export const Timeline = ({ data }: { data: TimelineEntry[] }) => {
           A genius assistant in every teacher&apos;s pocket anywhere!
         </h1>
         <h3 className="text-neutral-600 dark:text-neutral-400 text-sm md:text-xl max-w-xl">
-          Teachers know every student learns differently, but lack the time to personalize instruction. Instead, they spend countless hours grading papers and analyzing student work. Understanding how each student thinks and learns requires insights into educational psychology and data analysis that most teachers don't have time to develop. Mirror Intelligence reveals exactly how teachers should support every learner best with every assessment.
+          Teachers know every student learns differently, but lack the time to personalize instruction. Instead, they spend countless hours grading papers and analyzing student work. Understanding how each student thinks and learns requires insights into educational psychology and data analysis that most teachers don't have time to develop. Mirror is learning intelligence infrastructure — it reveals exactly how every learner thinks, so teachers know exactly how to support them, every day.
         </h3>
         <h3 className="text-[#926C15] dark:text-neutral-400 font-bold text-sm md:text-xl max-w-xl pt-4  bg-gradient-to-r from-[#926C15] to-primary bg-clip-text text-transparent dark:text-transparent">
-           Schools using Mirror Intelligence improve test scores by 10% annually.
+           Schools using Mirror move students a full grade band — B to A — in six weeks.
         </h3>
       </div>
 
