@@ -36,7 +36,7 @@ export function ConnectedProgress({
   predictedGrade,
   trajectory,
   weeksToExam,
-  examLabel = 'UNEB',
+  examLabel,
 }: ConnectedProgressProps) {
   const TrendIcon = trajectory === 'improving' ? TrendingUp : trajectory === 'declining' ? TrendingDown : Minus
 
@@ -61,7 +61,7 @@ export function ConnectedProgress({
             <ArrowRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
             <span className="inline-flex items-center gap-1 rounded-full bg-gold/10 border border-gold/30 px-2 py-0.5 text-xs font-medium text-gold">
               <TrendIcon className="h-3 w-3" />
-              {examLabel} predicted: {predictedGrade}
+              {examLabel ? `${examLabel} predicted` : 'Predicted'}: {predictedGrade}
               {weeksToExam != null ? ` · ${weeksToExam}wk${weeksToExam === 1 ? '' : 's'}` : ''}
             </span>
           </>

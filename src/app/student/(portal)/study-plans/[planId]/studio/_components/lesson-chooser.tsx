@@ -25,7 +25,7 @@ export function LessonChooser({ plan, user, from }: Props) {
   const fromQuery = from ? `&from=${encodeURIComponent(from)}` : ''
   const closeHref = from === 'history' ? '/student/learning-history' : '/student/study-plans'
   const [progress, setProgress] = useState<{ masteryLabel?: string | null; masteryPct?: number | null } | null>(null)
-  const [prediction, setPrediction] = useState<{ predicted_grade?: string | null; trajectory?: string | null; weeks_to_exam?: number | null } | null>(null)
+  const [prediction, setPrediction] = useState<{ predicted_grade?: string | null; trajectory?: string | null; weeks_to_exam?: number | null; exam_body?: string | null } | null>(null)
 
   useEffect(() => {
     const studentId = user?.user_id ?? user?.id
@@ -66,6 +66,7 @@ export function LessonChooser({ plan, user, from }: Props) {
           predictedGrade={prediction?.predicted_grade}
           trajectory={prediction?.trajectory}
           weeksToExam={prediction?.weeks_to_exam}
+          examLabel={prediction?.exam_body?.toUpperCase()}
         />
 
         <p className="text-sm text-muted-foreground">

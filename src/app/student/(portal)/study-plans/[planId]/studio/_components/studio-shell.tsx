@@ -55,6 +55,7 @@ export function StudioShell({ plan, scenes, user, isPractice }: Props) {
     masteryLabel?: string | null
     masteryPct?: number | null
     weeksToExam?: number | null
+    examBody?: string | null
     next: NextAction | null
   } | null>(null)
 
@@ -139,6 +140,7 @@ export function StudioShell({ plan, scenes, user, isPractice }: Props) {
           masteryLabel: progressEntry?.mastery_label ?? null,
           masteryPct: progressEntry?.avg_percentage ?? null,
           weeksToExam: predictionEntry?.weeks_to_exam ?? null,
+          examBody: predictionEntry?.exam_body ?? null,
           next,
         })
       } catch {
@@ -221,6 +223,7 @@ export function StudioShell({ plan, scenes, user, isPractice }: Props) {
             predictedGrade={done.predicted_grade}
             trajectory={done.trajectory}
             weeksToExam={done.weeksToExam}
+            examLabel={done.examBody?.toUpperCase()}
           />
 
           {/* Same-session auto-advance / daily assessment (item 7) — takes

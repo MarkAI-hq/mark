@@ -89,7 +89,7 @@ export function ScenePeerTeach({ scene, onReady, onResponse }: Props) {
               {wordCount} / {min_words} words minimum
             </span>
             <Button size="sm" disabled={!canSubmit} onClick={handleSubmit}>
-              Submit to Tendo
+              Submit my explanation
             </Button>
           </div>
           {validationError && (
