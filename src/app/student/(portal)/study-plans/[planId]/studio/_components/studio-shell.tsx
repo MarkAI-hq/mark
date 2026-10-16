@@ -13,11 +13,11 @@ import {
   getNextAction, getStudentSubjectProgress, getStudentPredictions, type NextAction,
 } from '@/lib/actions/student-dashboard'
 import {
-  markStudyPlanComplete, resolveNextInSequence, selfInitiateFromEntry,
+  markStudyPlanComplete, saveLessonProgress, resolveNextInSequence, selfInitiateFromEntry,
   type NextInSequenceResult,
 } from '@/lib/actions/study-plans'
 import { submitStudentNote } from '@/lib/actions/student-notes'
-import { LessonPlayer, type SceneResponse } from './lesson-player'
+import { LessonPlayer, clearProgress, type SceneResponse } from './lesson-player'
 import { splitTopicHeadline } from '@/lib/utils'
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -64,6 +64,9 @@ export function StudioShell({ plan, scenes, user, isPractice }: Props) {
   const [summary, setSummary] = useState('')
   const [savingSummary, setSavingSummary] = useState(false)
   const [summarySaved, setSummarySaved] = useState(false)
+  // Collapsed by default: right after a lesson the one thing we want is the next
+  // action, not a form competing with it.
+  const [summaryOpen, setSummaryOpen] = useState(false)
 
   // Same-session auto-advance / daily assessment (item 7). Resolved right
   // alongside the other completion-screen data — never blocks completion if
@@ -102,6 +105,9 @@ export function StudioShell({ plan, scenes, user, isPractice }: Props) {
           outcomes_achieved: data.achievedRefs,
           practice: isPractice,
         })
+
+        // Saved scene-progress is only discarded once the server accepted completion.
+        if (!(res as any)?.error) clearProgress(plan.id)
 
         if (isPractice) {
           // Nothing was recorded — show the practice score and stop. Fetching
@@ -217,33 +223,6 @@ export function StudioShell({ plan, scenes, user, isPractice }: Props) {
             weeksToExam={done.weeksToExam}
           />
 
-          {/* Auto-prompt for a quick summary — saved straight to the Knowledge Base */}
-          {!summarySaved ? (
-            <div className="rounded-xl border bg-card p-4 space-y-2">
-              <p className="text-sm font-medium">Write a quick summary of what you learned</p>
-              <p className="text-xs text-muted-foreground">2–3 sentences, in your own words — this gets added to your notes.</p>
-              <Textarea
-                value={summary}
-                onChange={(e) => setSummary(e.target.value)}
-                placeholder={`Summarize ${plan.topic ?? 'this lesson'}…`}
-                rows={3}
-                className="text-sm resize-none"
-              />
-              <div className="flex justify-end gap-2">
-                <Button size="sm" variant="ghost" onClick={() => setSummarySaved(true)}>Skip</Button>
-                <Button size="sm" onClick={handleSaveSummary} disabled={!summary.trim() || savingSummary} className="gap-1.5 bg-gold hover:bg-gold/90 text-gold-foreground">
-                  {savingSummary ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
-                  {savingSummary ? 'Saving…' : 'Save to notes'}
-                </Button>
-              </div>
-            </div>
-          ) : summary.trim() && (
-            <div className="flex items-center gap-2 rounded-xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/20 px-4 py-2.5 text-sm text-emerald-800 dark:text-emerald-300">
-              <Check className="h-4 w-4 shrink-0" />
-              Summary saved to your Knowledge Base
-            </div>
-          )}
-
           {/* Same-session auto-advance / daily assessment (item 7) — takes
               priority over the generic NextStep when there's a real next
               step in today's own sequence. */}
@@ -289,6 +268,39 @@ export function StudioShell({ plan, scenes, user, isPractice }: Props) {
 
           {/* The immediate next action — no dead air */}
           {(!sequence || sequence.mode === 'none') && <NextStep nextAction={done.next} />}
+
+          {/* Auto-prompt for a quick summary — saved straight to the Knowledge Base */}
+          {!summarySaved && !summaryOpen ? (
+            <div className="flex justify-center">
+              <Button size="sm" variant="ghost" className="text-muted-foreground" onClick={() => setSummaryOpen(true)}>
+                Add a quick note about what you learned
+              </Button>
+            </div>
+          ) : !summarySaved ? (
+            <div className="rounded-xl border bg-card p-4 space-y-2">
+              <p className="text-sm font-medium">Write a quick summary of what you learned</p>
+              <p className="text-xs text-muted-foreground">2–3 sentences, in your own words — this gets added to your notes.</p>
+              <Textarea
+                value={summary}
+                onChange={(e) => setSummary(e.target.value)}
+                placeholder={`Summarize ${plan.topic ?? 'this lesson'}…`}
+                rows={3}
+                className="text-sm resize-none"
+              />
+              <div className="flex justify-end gap-2">
+                <Button size="sm" variant="ghost" onClick={() => setSummarySaved(true)}>Skip</Button>
+                <Button size="sm" onClick={handleSaveSummary} disabled={!summary.trim() || savingSummary} className="gap-1.5 bg-gold hover:bg-gold/90 text-gold-foreground">
+                  {savingSummary ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+                  {savingSummary ? 'Saving…' : 'Save to notes'}
+                </Button>
+              </div>
+            </div>
+          ) : summary.trim() && (
+            <div className="flex items-center gap-2 rounded-xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/20 px-4 py-2.5 text-sm text-emerald-800 dark:text-emerald-300">
+              <Check className="h-4 w-4 shrink-0" />
+              Summary saved to your Knowledge Base
+            </div>
+          )}
 
           <div className="flex items-center justify-center gap-2">
             <Button asChild variant="outline" size="sm">
@@ -339,6 +351,8 @@ export function StudioShell({ plan, scenes, user, isPractice }: Props) {
       onComplete={handleComplete}
       onExit={() => router.back()}
       sessionHint={sessionHint}
+      serverProgress={isPractice ? null : (plan as any).progress_snapshot}
+      onSaveProgress={isPractice ? undefined : (p) => { void saveLessonProgress(plan.id, p).catch(() => {}) }}
     />
   )
 }

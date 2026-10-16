@@ -78,7 +78,7 @@ export function SceneOutcomesCheck({ scene, onReady, onOutcomesAchieved }: Props
             {/* Outcome label */}
             <div className="px-5 py-3 border-b bg-muted/40">
               <div className="flex items-start gap-2">
-                <span className="shrink-0 mt-0.5 h-5 w-5 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 flex items-center justify-center text-[11px] font-bold">
+                <span className="shrink-0 mt-0.5 h-5 w-5 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 flex items-center justify-center text-xs font-bold">
                   {itemIdx + 1}
                 </span>
                 <p className="text-xs text-muted-foreground leading-snug">

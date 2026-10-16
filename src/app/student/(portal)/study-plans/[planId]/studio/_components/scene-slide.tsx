@@ -58,7 +58,7 @@ export function SceneSlide({ scene, imageUrl }: Props) {
         )}
 
         {/* Two-column when image loaded; single-column fallback when image fails */}
-        <div className={showImage ? 'grid grid-cols-2 gap-5 items-start' : ''}>
+        <div className={showImage ? 'grid grid-cols-1 sm:grid-cols-2 gap-5 items-start' : ''}>
           {showImage && (
             <button
               onClick={() => setLightboxOpen(true)}

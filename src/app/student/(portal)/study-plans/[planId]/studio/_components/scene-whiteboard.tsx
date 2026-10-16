@@ -84,7 +84,7 @@ export function SceneWhiteboard({ scene, planId, subject, topic, onReady }: Prop
         <PenLine className="h-4 w-4 text-gold shrink-0 mt-0.5" />
         <h2 className="font-semibold text-base leading-tight">{title}</h2>
         {bloom_level && (
-          <Badge variant="outline" className="text-[10px] ml-auto shrink-0 capitalize border-gold/30 text-gold">
+          <Badge variant="outline" className="text-xs ml-auto shrink-0 capitalize border-gold/30 text-gold">
             {bloom_level}
           </Badge>
         )}

@@ -104,7 +104,7 @@ export function LessonSidebar({ scenes, currentIndex, maxReached, onNavigate, su
             <button
               key={t.id}
               onClick={() => setTab(t.id)}
-              className={`flex-1 px-2 py-2.5 text-[11px] font-semibold border-b-2 transition-colors ${
+              className={`flex-1 px-2 py-2.5 text-xs font-semibold border-b-2 transition-colors ${
                 tab === t.id ? 'border-gold text-gold' : 'border-transparent text-muted-foreground hover:text-foreground'
               }`}
             >
@@ -192,7 +192,7 @@ export function LessonSidebar({ scenes, currentIndex, maxReached, onNavigate, su
             </div>
             {notes && notes.length > 0 && (
               <div className="space-y-2 pt-1 border-t">
-                <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Your notes on this topic</p>
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Your notes on this topic</p>
                 {notes.map((n) => (
                   <button
                     key={n.id}

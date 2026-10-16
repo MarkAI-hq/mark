@@ -50,7 +50,7 @@ export function ScenePbl({ scene, onReady, onResponse }: Props) {
           <h2 className="font-semibold text-base leading-tight">{title}</h2>
         </div>
         {bloom_level && (
-          <Badge variant="outline" className="text-[10px] ml-auto shrink-0 capitalize border-gold/30 text-gold">
+          <Badge variant="outline" className="text-xs ml-auto shrink-0 capitalize border-gold/30 text-gold">
             {bloom_level}
           </Badge>
         )}

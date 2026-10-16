@@ -22,6 +22,45 @@ import { SceneOutcomesIntro }           from './scene-outcomes-intro'
 import { SceneOutcomesCheck }           from './scene-outcomes-check'
 import { LessonSidebar }                from './lesson-sidebar'
 import { formatTopicTitle }             from '@/lib/utils'
+import { AskTracyChip }                 from '@/components/students/ask-tracy-chip'
+import type { LessonProgressPayload }   from '@/lib/actions/study-plans'
+
+// ── Resume-where-you-left-off ────────────────────────────────────────────────
+// Progress is mirrored to localStorage per plan so an accidental exit, refresh,
+// dropped connection or phone call never costs the student the whole lesson.
+// Always wrapped in try/catch — storage can be blocked or full.
+const PROGRESS_TTL_MS = 7 * 24 * 60 * 60 * 1000
+
+interface SavedProgress {
+  index: number
+  maxReached: number
+  sceneResponses: SceneResponse[]
+  probeCorrectAt: number[]
+  initialMisconception: string | null
+  achievedRefs: string[]
+  total: number
+  ts: number
+}
+
+const progressKey = (planId: string) => `lesson_progress:${planId}`
+
+function readProgress(planId: string, total: number): SavedProgress | null {
+  if (!planId) return null
+  try {
+    const raw = localStorage.getItem(progressKey(planId))
+    if (!raw) return null
+    const p = JSON.parse(raw) as SavedProgress
+    if (!p || p.total !== total || Date.now() - p.ts > PROGRESS_TTL_MS) return null
+    if (typeof p.index !== 'number' || p.index < 0 || p.index >= total) return null
+    return p
+  } catch { return null }
+}
+
+/** Call once the server has accepted completion — never before, or a failed save loses the student's place. */
+export function clearProgress(planId: string) {
+  if (!planId) return
+  try { localStorage.removeItem(progressKey(planId)) } catch {}
+}
 
 // ── 5E Stage config ───────────────────────────────────────────────────────────
 
@@ -114,6 +153,28 @@ interface LessonPlayerProps {
   }) => void | Promise<void>
   onExit?: () => void
   sessionHint?: { index: number; of_estimate: number }
+  /** Server-side snapshot (plan.progress_snapshot) — enables resuming on another device. */
+  serverProgress?: any | null
+  /** Debounced best-effort persist of progress to the server. Omit for practice retakes. */
+  onSaveProgress?: (payload: LessonProgressPayload) => void
+}
+
+// Server snapshots are snake_case; normalise to the local shape.
+function fromServer(sp: any, total: number): SavedProgress | null {
+  if (!sp || sp.total !== total) return null
+  const ts = Date.parse(sp.saved_at ?? '')
+  if (!Number.isFinite(ts) || Date.now() - ts > PROGRESS_TTL_MS) return null
+  if (typeof sp.index !== 'number' || sp.index < 0 || sp.index >= total) return null
+  return {
+    index: sp.index,
+    maxReached: sp.max_reached ?? sp.index,
+    sceneResponses: Array.isArray(sp.scene_responses) ? sp.scene_responses : [],
+    probeCorrectAt: Array.isArray(sp.probe_correct_at) ? sp.probe_correct_at : [],
+    initialMisconception: sp.initial_misconception ?? null,
+    achievedRefs: Array.isArray(sp.achieved_refs) ? sp.achieved_refs : [],
+    total,
+    ts,
+  }
 }
 
 export function LessonPlayer({
@@ -125,6 +186,8 @@ export function LessonPlayer({
   onComplete,
   onExit,
   sessionHint,
+  serverProgress,
+  onSaveProgress,
 }: LessonPlayerProps) {
   const topic = formatTopicTitle(topicProp)
   const [currentIndex, setCurrentIndex] = useState(0)
@@ -179,6 +242,82 @@ export function LessonPlayer({
   const stageCfg = STAGE_CONFIG[stage]
   const progressPct = total > 0 ? ((currentIndex + 1) / total) * 100 : 100
 
+  const [resumed, setResumed] = useState(false)
+  const [progressLoaded, setProgressLoaded] = useState(false)
+  const [autoplay, setAutoplay] = useState(true)
+
+  // Restore saved progress once on mount (client-only, avoids hydration drift).
+  useEffect(() => {
+    // Whichever of the device-local and server snapshots is newer wins, so
+    // resuming works both after a refresh here and after switching devices.
+    const local  = readProgress(planId, scenes.length)
+    const remote = fromServer(serverProgress, scenes.length)
+    const saved  = local && remote ? (remote.ts > local.ts ? remote : local) : (local ?? remote)
+    if (saved && saved.index > 0) {
+      setCurrentIndex(saved.index)
+      setMaxReached(Math.max(saved.maxReached, saved.index))
+      // The scene we land on is re-attempted from scratch, so drop its old
+      // response to avoid double-counting it when the student answers again.
+      setSceneResponses(saved.sceneResponses.filter((r) => r.sceneIndex !== saved.index))
+      setProbeCorrectAt(new Set(saved.probeCorrectAt))
+      setInitialMisconception(saved.initialMisconception)
+      setAchievedRefs(saved.achievedRefs)
+      setSceneReady(!requiresGate(scenes[saved.index]))
+      setResumed(true)
+    }
+    try { if (localStorage.getItem('lesson_autoplay') === 'off') setAutoplay(false) } catch {}
+    setProgressLoaded(true)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Persist after every meaningful change (but never before restore has run,
+  // or the fresh initial state would overwrite what we're about to restore).
+  useEffect(() => {
+    if (!progressLoaded || !planId) return
+    try {
+      const snapshot: SavedProgress = {
+        index: currentIndex,
+        maxReached,
+        sceneResponses,
+        probeCorrectAt: Array.from(probeCorrectAt),
+        initialMisconception,
+        achievedRefs,
+        total: scenes.length,
+        ts: Date.now(),
+      }
+      localStorage.setItem(progressKey(planId), JSON.stringify(snapshot))
+    } catch {}
+  }, [progressLoaded, planId, currentIndex, maxReached, sceneResponses, probeCorrectAt, initialMisconception, achievedRefs, scenes.length])
+
+  // Mirror to the server (debounced) so the position follows the student across
+  // devices. Skipped until restore has run, and while still on step 0 with no
+  // answers (nothing worth resuming). Failures are silent — local save still works.
+  useEffect(() => {
+    if (!progressLoaded || !onSaveProgress) return
+    if (currentIndex === 0 && sceneResponses.length === 0) return
+    const t = setTimeout(() => {
+      onSaveProgress({
+        index: currentIndex,
+        max_reached: maxReached,
+        total: scenes.length,
+        scene_responses: sceneResponses,
+        probe_correct_at: Array.from(probeCorrectAt),
+        initial_misconception: initialMisconception,
+        achieved_refs: achievedRefs,
+      })
+    }, 1500)
+    return () => clearTimeout(t)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [progressLoaded, currentIndex, maxReached, sceneResponses, probeCorrectAt, initialMisconception, achievedRefs])
+
+  function startOver() {
+    clearProgress(planId)
+    setCurrentIndex(0); setMaxReached(0); setSceneResponses([])
+    setProbeCorrectAt(new Set()); setInitialMisconception(null); setAchievedRefs([])
+    setSceneReady(!requiresGate(scenes[0])); setAnimKey((k) => k + 1)
+    setResumed(false)
+  }
+
   const finish = useCallback(async () => {
     setCompleting(true)
     try {
@@ -199,7 +338,9 @@ export function LessonPlayer({
     }
     setCurrentIndex(to)
     setAnimKey((k) => k + 1)
-    setSceneReady(!requiresGate(scenes[to]))
+    // A scene strictly behind the furthest-reached one was already cleared, so
+    // revisiting it to review must not re-lock Next behind a gate the student passed.
+    setSceneReady(!requiresGate(scenes[to]) || to < maxReached)
   }
 
   function advance(to: number) {
@@ -210,7 +351,9 @@ export function LessonPlayer({
     }
     setCurrentIndex(to)
     setAnimKey((k) => k + 1)
-    setSceneReady(!requiresGate(scenes[to]))
+    // Stepping forward through scenes already cleared on an earlier pass
+    // (after going Back to review) must not re-lock them.
+    setSceneReady(!requiresGate(scenes[to]) || to < maxReached)
     setMaxReached((m) => Math.max(m, to))
   }
 
@@ -295,13 +438,45 @@ export function LessonPlayer({
 
   useEffect(() => {
     const autoPlayStages: FiveEStage[] = ['Engage', 'Explain']
-    if (scene && hasNarration(scene) && autoPlayStages.includes(getStage(scene, currentIndex))) {
+    let autoplayOff = false
+    try { autoplayOff = localStorage.getItem('lesson_autoplay') === 'off' } catch {}
+    if (!autoplayOff && scene && hasNarration(scene) && autoPlayStages.includes(getStage(scene, currentIndex))) {
       const t = setTimeout(() => playScene(scene), 400)
       return () => clearTimeout(t)
     }
     return () => stopAudio()
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentIndex])
+
+  function toggleAutoplay() {
+    const next = !autoplay
+    setAutoplay(next)
+    try { localStorage.setItem('lesson_autoplay', next ? 'on' : 'off') } catch {}
+    if (!next) stopAudio()
+  }
+
+  // Arrow-key navigation — ignored while typing in a field.
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      const t = e.target as HTMLElement | null
+      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return
+      if (e.metaKey || e.ctrlKey || e.altKey) return
+      if (e.key === 'ArrowRight' && sceneReady && currentIndex < total - 1) advance(currentIndex + 1)
+      if (e.key === 'ArrowLeft' && currentIndex > 0) navigate(currentIndex - 1)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentIndex, sceneReady, total, maxReached])
+
+  // "Stuck" signal: the student got something on THIS scene wrong. Only then
+  // does the in-lesson help affordance appear, so it never distracts a student
+  // who is flowing.
+  const wrongHere = sceneResponses.some((r) => r.sceneIndex === currentIndex && r.correct === false)
+  const askTracyPrompt =
+    `I'm working on "${topic || subject}"${subject ? ` (${subject})` : ''}, in the step "${scene?.title ?? ''}". ` +
+    `I got a question wrong${initialMisconception ? ` — I picked "${initialMisconception}" earlier` : ''}. ` +
+    `Can you explain it a different way, without just giving me the answer?`
 
   if (scenes.length === 0) return null
 
@@ -340,6 +515,8 @@ export function LessonPlayer({
         {onExit ? (
           <button
             onClick={onExit}
+            aria-label="Exit lesson — your place is saved"
+            title="Exit — your place is saved"
             className="flex items-center justify-center h-7 w-7 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
           >
             <X className="h-4 w-4" />
@@ -349,19 +526,29 @@ export function LessonPlayer({
         )}
 
         <div className="flex-1 flex items-center justify-center gap-2 min-w-0">
-          <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${stageCfg.bg} ${stageCfg.text}`}>
+          <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${stageCfg.bg} ${stageCfg.text}`}>
             {stage}
           </span>
           <span className="text-xs text-muted-foreground truncate max-w-[200px]">{scene?.title ?? topic}</span>
           {sessionHint && sessionHint.of_estimate > 1 && (
-            <span className="text-[10px] text-muted-foreground/70 shrink-0 whitespace-nowrap">
+            <span className="text-xs text-muted-foreground/70 shrink-0 whitespace-nowrap">
               Session {sessionHint.index} of ~{sessionHint.of_estimate}
             </span>
           )}
         </div>
 
         <div className="flex items-center gap-2">
-          <span className="text-[11px] text-muted-foreground tabular-nums">{currentIndex + 1}/{total}</span>
+          <span className="text-xs text-muted-foreground tabular-nums">{currentIndex + 1}/{total}</span>
+          {scene && hasNarration(scene) && (
+            <button
+              onClick={toggleAutoplay}
+              aria-pressed={autoplay}
+              title={autoplay ? 'Narration plays automatically — tap to turn off' : 'Narration is manual — tap to play automatically'}
+              className={`text-xs px-1.5 h-6 rounded-md border transition-colors ${autoplay ? 'text-gold border-gold/30' : 'text-muted-foreground border-border'}`}
+            >
+              Auto
+            </button>
+          )}
           {scene && hasNarration(scene) ? (
             <button
               onClick={toggleAudio}
@@ -384,8 +571,19 @@ export function LessonPlayer({
       <div className="flex-1 min-h-0 overflow-y-auto">
         <div
           key={animKey}
-          className="animate-in fade-in slide-in-from-right-4 duration-300 h-full"
+          className="animate-in fade-in slide-in-from-right-4 duration-300 h-full motion-reduce:animate-none"
         >
+          {resumed && (
+            <div className="mx-auto max-w-2xl px-4 pt-3">
+              <div className="flex items-center justify-between gap-2 rounded-lg bg-gold/10 border border-gold/20 px-3 py-2 text-xs">
+                <span>Welcome back — you&apos;re picking up where you left off.</span>
+                <span className="flex items-center gap-3 shrink-0">
+                  <button onClick={startOver} className="underline text-muted-foreground hover:text-foreground">Start over</button>
+                  <button onClick={() => setResumed(false)} aria-label="Dismiss" className="text-muted-foreground hover:text-foreground"><X className="h-3 w-3" /></button>
+                </span>
+              </div>
+            </div>
+          )}
           <div className="mx-auto w-full max-w-2xl px-4 py-6">
             {scene?.image_url && scene.type !== 'slide' && (
               <div className="flex justify-center mb-5">
@@ -413,9 +611,18 @@ export function LessonPlayer({
               </>
             )}
 
+            {/* In-lesson help — appears only after a wrong answer on this step.
+                Opens in a new tab so the lesson (and its saved place) stays put. */}
+            {wrongHere && (
+              <div className="mt-5 flex items-center justify-between gap-3 rounded-xl border border-gold/20 bg-gold/5 px-4 py-3">
+                <p className="text-sm text-muted-foreground">Not quite clicking? Tracy can explain it another way.</p>
+                <AskTracyChip newTab prompt={askTracyPrompt} label="Ask Tracy" className="shrink-0" />
+              </div>
+            )}
+
             {/* Auto-play indicator */}
             {audioPlaying && (
-              <div className="mt-4 flex items-center gap-1.5 text-[11px] text-gold">
+              <div className="mt-4 flex items-center gap-1.5 text-xs text-gold">
                 <span className="h-1.5 w-1.5 rounded-full bg-gold animate-pulse" />
                 Playing audio…
               </div>
@@ -426,7 +633,7 @@ export function LessonPlayer({
 
       {/* ── Usage hint (one line, dismissible) ──────────────────────────── */}
       {showZoomHint && (
-        <div className="flex items-center justify-between gap-2 px-4 py-1.5 text-[11px] text-muted-foreground bg-muted/30 border-t shrink-0">
+        <div className="flex items-center justify-between gap-2 px-4 py-1.5 text-xs text-muted-foreground bg-muted/30 border-t shrink-0">
           <span>💡 Tap any photo to zoom in for a closer look.</span>
           <button onClick={dismissZoomHint} aria-label="Dismiss tip" className="shrink-0 hover:text-foreground">
             <X className="h-3 w-3" />
@@ -446,7 +653,7 @@ export function LessonPlayer({
           <ChevronLeft className="h-4 w-4" /> Back
         </Button>
 
-        <div className="flex-1 flex justify-center gap-1.5">
+        <div className="flex-1 flex justify-center items-center overflow-hidden">
           {scenes.map((_, i) => (
             <button
               key={i}
@@ -454,16 +661,19 @@ export function LessonPlayer({
               disabled={i > maxReached}
               aria-label={`Go to step ${i + 1} of ${total}${scenes[i]?.title ? `: ${scenes[i].title}` : ''}`}
               aria-current={i === currentIndex ? 'step' : undefined}
-              className={`rounded-full transition-all duration-200 ${
-                i > maxReached ? 'cursor-not-allowed' : ''
-              } ${
-                i === currentIndex
-                  ? 'h-2 w-4 bg-gold'
-                  : i < currentIndex
-                  ? 'h-2 w-2 bg-gold/40'
-                  : 'h-2 w-2 bg-muted-foreground/25'
-              }`}
-            />
+              // Padding makes the tap target ~20px wide while the dot stays small.
+              className={`group px-[3px] py-3 ${i > maxReached ? 'cursor-not-allowed' : ''}`}
+            >
+              <span
+                className={`block rounded-full transition-all duration-200 ${
+                  i === currentIndex
+                    ? 'h-2 w-4 bg-gold'
+                    : i < currentIndex
+                    ? 'h-2 w-2 bg-gold/40'
+                    : 'h-2 w-2 bg-muted-foreground/25'
+                }`}
+              />
+            </button>
           ))}
         </div>
 

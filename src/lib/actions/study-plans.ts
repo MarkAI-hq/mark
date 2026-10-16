@@ -125,6 +125,24 @@ export async function markStudyPlanComplete(
   return res
 }
 
+export interface LessonProgressPayload {
+  index: number
+  max_reached: number
+  total: number
+  scene_responses: Array<{ type: string; correct?: boolean; sceneIndex?: number; score?: number; selected?: number | string }>
+  probe_correct_at: number[]
+  initial_misconception: string | null
+  achieved_refs: string[]
+}
+
+/** Best-effort save of in-flight lesson position (cross-device resume). No revalidation — it must stay cheap. */
+export async function saveLessonProgress(planId: string, payload: LessonProgressPayload) {
+  return fetcher<{ saved: boolean }>(`/study-plans/${planId}/progress`, {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+  })
+}
+
 export type NextInSequenceResult =
   | { mode: 'none' }
   | { mode: 'auto_continue'; plan: StudyPlan; topic: string; subject: string }

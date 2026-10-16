@@ -90,7 +90,7 @@ export function SceneSimulation({ scene }: Props) {
         <FlaskConical className="h-4 w-4 text-gold shrink-0" />
         <h2 className="font-semibold text-base leading-tight flex-1">{title}</h2>
         {bloom_level && (
-          <Badge variant="outline" className="text-[10px] shrink-0 capitalize border-gold/30 text-gold">
+          <Badge variant="outline" className="text-xs shrink-0 capitalize border-gold/30 text-gold">
             {bloom_level}
           </Badge>
         )}

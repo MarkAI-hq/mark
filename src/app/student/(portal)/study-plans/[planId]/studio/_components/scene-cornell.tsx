@@ -104,7 +104,7 @@ export function SceneCornell({ scene, planId, subject, topic, onReady }: Props) 
         <NotebookText className="h-4 w-4 text-gold shrink-0 mt-0.5" />
         <h2 className="font-semibold text-base leading-tight">{title}</h2>
         {bloom_level && (
-          <Badge variant="outline" className="text-[10px] ml-auto shrink-0 capitalize border-gold/30 text-gold">
+          <Badge variant="outline" className="text-xs ml-auto shrink-0 capitalize border-gold/30 text-gold">
             {bloom_level}
           </Badge>
         )}
@@ -113,13 +113,13 @@ export function SceneCornell({ scene, planId, subject, topic, onReady }: Props) 
       <div className="grid grid-cols-5 gap-0 rounded-xl border overflow-hidden min-h-[240px]">
         {/* Cue questions — left column */}
         <div className="col-span-2 border-r bg-muted/30 px-3 py-3 flex flex-col gap-3">
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             Cues — think about these
           </p>
           <ul className="space-y-3 flex-1">
             {(cue_questions ?? []).map((q: string, i: number) => (
               <li key={i} {...copyProtectionProps} className={cn('space-y-0.5', copyProtectionProps.className)}>
-                <span className="text-[10px] font-bold text-gold/80 uppercase tracking-wide">Q{i + 1}</span>
+                <span className="text-xs font-bold text-gold/80 uppercase tracking-wide">Q{i + 1}</span>
                 <p className="text-xs text-foreground leading-snug"><LessonProse text={q} /></p>
               </li>
             ))}
@@ -128,7 +128,7 @@ export function SceneCornell({ scene, planId, subject, topic, onReady }: Props) 
 
         {/* Student notes — right column */}
         <div className="col-span-3 px-3 py-3 flex flex-col">
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-2">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">
             Your notes
           </p>
           <textarea
@@ -152,7 +152,7 @@ export function SceneCornell({ scene, planId, subject, topic, onReady }: Props) 
 
       {/* Summary zone */}
       <div className="rounded-xl border bg-card p-3">
-        <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-2">
+        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">
           My summary <span className="normal-case font-normal">(in your own words, after writing your notes)</span>
         </p>
         <textarea

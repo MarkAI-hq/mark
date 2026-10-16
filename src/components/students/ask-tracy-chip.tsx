@@ -14,12 +14,15 @@ interface AskTracyChipProps {
   prompt: string
   label?: string
   className?: string
+  /** Open in a new tab so the caller's in-progress state (e.g. a lesson) stays put. */
+  newTab?: boolean
 }
 
-export function AskTracyChip({ prompt, label = 'Ask Tracy', className = '' }: AskTracyChipProps) {
+export function AskTracyChip({ prompt, label = 'Ask Tracy', className = '', newTab = false }: AskTracyChipProps) {
   return (
     <Link
       href={`/student/tracy?prompt=${encodeURIComponent(prompt)}`}
+      {...(newTab ? { target: '_blank', rel: 'noopener' } : {})}
       className={`inline-flex items-center gap-1.5 rounded-full border border-gold/30 bg-gold/10 px-2.5 py-1 text-[11px] font-medium text-gold hover:bg-gold/20 transition-colors ${className}`}
     >
       <Sparkles className="h-3 w-3" />

@@ -1,8 +1,7 @@
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { fetcher } from '@/lib/fetch'
-import { StudioShell } from './_components/studio-shell'
-import { LessonChooser } from './_components/lesson-chooser'
+import { StudioEntry } from './_components/studio-entry'
 import { LessonReview } from './_components/lesson-review'
 
 interface Props {
@@ -38,16 +37,16 @@ export default async function StudioPage({ params, searchParams }: Props) {
   if (isCompleted && mode === 'review') {
     return <LessonReview plan={plan} from={from} />
   }
-  if (isCompleted && !mode) {
-    return <LessonChooser plan={plan} user={user} from={from} />
-  }
-
+  // Chooser-vs-Studio is decided client-side (and latched at mount) so the
+  // server re-render that follows completing a lesson can't swap the Studio's
+  // completion screen out for the chooser.
   return (
-    <StudioShell
+    <StudioEntry
       plan={plan}
       scenes={scenes}
       user={user}
-      isPractice={isCompleted && mode === 'practice'}
+      from={from}
+      mode={mode}
     />
   )
 }

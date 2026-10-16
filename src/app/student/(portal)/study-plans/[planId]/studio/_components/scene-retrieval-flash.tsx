@@ -52,7 +52,7 @@ export function SceneRetrievalFlash({ scene, onReady, onResponse }: Props) {
           <div key={qIdx} className="rounded-2xl border bg-card p-5 space-y-4">
             <div className="flex items-start justify-between gap-2">
               <p className="font-medium text-base leading-snug flex-1"><LessonProse text={q.question} /></p>
-              <span className="text-[11px] text-muted-foreground whitespace-nowrap shrink-0">
+              <span className="text-xs text-muted-foreground whitespace-nowrap shrink-0">
                 {formatTopicTitle(q.topic)} · {q.days_ago}d ago
               </span>
             </div>
