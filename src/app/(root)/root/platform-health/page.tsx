@@ -1,6 +1,7 @@
 import { redirect }         from 'next/navigation'
 import { getSession }       from '@/lib/session'
-import { getPlatformHealth, type SeedTableCount, type ThinSchemeOfWork, type MissingLearningObjectives } from '@/lib/actions/analytics'
+import { getPlatformHealth, getCurriculumHealth, type SeedTableCount, type ThinSchemeOfWork, type MissingLearningObjectives } from '@/lib/actions/analytics'
+import { CurriculumHealthPanel } from '@/components/health/curriculum-health-panel'
 import { Activity, CheckCircle2, AlertTriangle, Database } from 'lucide-react'
 
 function countColor(row: SeedTableCount): string {
@@ -66,7 +67,10 @@ export default async function PlatformHealthPage() {
   if (!session) redirect('/login')
   if (session.role !== 'Root' && session.role !== 'Support') redirect('/root')
 
-  const { data: health } = await getPlatformHealth()
+  const [{ data: health }, { data: curriculum }] = await Promise.all([
+    getPlatformHealth(),
+    getCurriculumHealth(),
+  ])
 
   return (
     <div className="space-y-6">
@@ -168,6 +172,8 @@ export default async function PlatformHealthPage() {
               </p>
             </div>
           </section>
+
+          {curriculum && <CurriculumHealthPanel health={curriculum} dark />}
 
           <p className="text-xs" style={{ color: 'rgba(255,255,255,0.3)' }}>
             Generated {new Date(health.generatedAt).toLocaleString()}

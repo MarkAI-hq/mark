@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { getSession } from '@/lib/session'
-import { getPlatformHealth } from '@/lib/actions/analytics'
+import { getPlatformHealth, getCurriculumHealth } from '@/lib/actions/analytics'
+import { CurriculumHealthPanel } from '@/components/health/curriculum-health-panel'
 import { Activity, AlertTriangle, CheckCircle2, BarChart3 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
@@ -9,7 +10,10 @@ export default async function ContentHealthPage() {
   if (!session) redirect('/login')
   if (session.role !== 'Admin') redirect('/dashboard')
 
-  const { data: health } = await getPlatformHealth()
+  const [{ data: health }, { data: curriculum }] = await Promise.all([
+    getPlatformHealth(),
+    getCurriculumHealth(),
+  ])
 
   return (
     <div className="space-y-6">
@@ -140,6 +144,8 @@ export default async function ContentHealthPage() {
               </p>
             </CardContent>
           </Card>
+
+          {curriculum && <CurriculumHealthPanel health={curriculum} />}
 
           <p className="text-xs text-slate-400">
             Generated {new Date(health.generatedAt).toLocaleString()}

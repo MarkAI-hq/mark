@@ -143,3 +143,85 @@ export async function getLearningVelocity(
   const qs = orgId ? `?orgId=${encodeURIComponent(orgId)}` : ''
   return fetcher<LearningVelocity>(`/analytics/learning-velocity${qs}`, { cache: 'no-store' })
 }
+
+
+// ── Curriculum health (SPEC-03 S3-R30/R31) ───────────────────────────────────
+// Root/Support: platform; Admin: own organisation. Shapes mirror
+// mark-api/src/modules/analytics/curriculum-health*.ts.
+
+export interface CurriculumGroupScore {
+  passed:  number
+  counted: number
+  pct:     number | null
+}
+
+export interface CurriculumHealthCheck {
+  id:        string
+  group:     'integrity' | 'cognitive_demand'
+  label:     string
+  status:    'pass' | 'fail' | 'info' | 'no_benchmark'
+  source:    string
+  detail?:   string
+  actual?:   number | string
+  expected?: string
+}
+
+export interface CurriculumSchemaHealth {
+  schema_id:        string
+  subject:          string | null
+  country:          string | null
+  curriculum_body:  string | null
+  curriculum_level: string | null
+  topics:           number
+  outcomes:         number
+  versions:         number
+  checks:           CurriculumHealthCheck[]
+  integrity:        CurriculumGroupScore
+  demand:           CurriculumGroupScore
+  pct:              number | null
+  observation: {
+    target:        Record<string, number>
+    actual:        Record<string, number>
+    delta:         Record<string, number>
+    rigor_warning: boolean
+  } | null
+}
+
+export interface CurriculumSchemeHealthRow {
+  scheme_id:             string
+  subject:               string
+  grade_level:           string
+  term:                  string
+  academic_year:         string
+  status:                string
+  entries:               number
+  entries_with_refs:     number
+  refs:                  number
+  linked_pct:            number | null
+  official_coverage_pct: number | null
+  blocking:              string[]
+  ok:                    boolean
+}
+
+export interface CurriculumLessonHealth {
+  total:                  number
+  by_status:              Record<'verified' | 'needs_review' | 'rejected' | 'legacy', number>
+  verified_pct:           number | null
+  gate_failures:          Record<string, number>
+  mean_score:             number | null
+  bands:                  Record<string, number>
+  mean_attempts:          number | null
+  oldest_review_age_days: number | null
+}
+
+export interface CurriculumHealth {
+  generated_at: string
+  scope:        'platform' | 'organization'
+  schemas:      CurriculumSchemaHealth[]
+  schemes:      { total: number; shown: number; ready: number; rows: CurriculumSchemeHealthRow[] }
+  lessons:      CurriculumLessonHealth
+}
+
+export async function getCurriculumHealth(): Promise<ServerActionResponse<CurriculumHealth>> {
+  return fetcher<CurriculumHealth>('/analytics/curriculum-health', { cache: 'no-store' })
+}
