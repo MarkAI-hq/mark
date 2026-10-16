@@ -233,7 +233,7 @@ function SchemePanel({ scheme }: { scheme: PacingScheme }) {
                   </>
                 )}
               </div>
-              <div className="flex gap-3 text-[10px] text-muted-foreground">
+              <div className="flex gap-3 text-[11px] text-muted-foreground">
                 <span className="flex items-center gap-1"><span className="inline-block h-2 w-2 rounded-sm bg-emerald-500" />Mastered</span>
                 <span className="flex items-center gap-1"><span className="inline-block h-2 w-2 rounded-sm bg-amber-400" />Developing</span>
                 <span className="flex items-center gap-1"><span className="inline-block h-2 w-2 rounded-sm bg-rose-400" />Behind</span>
@@ -332,7 +332,7 @@ function FallbackTopicsTable({
       header: 'Plans',
       accessorFn: (t) => t.plan_count,
       cell: ({ row }) => (
-        <Badge variant="outline" className="text-[10px]">
+        <Badge variant="outline" className="text-[11px]">
           {row.original.plan_count} plan{row.original.plan_count !== 1 ? 's' : ''}
         </Badge>
       ),

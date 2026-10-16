@@ -90,7 +90,7 @@ export function ClassConfirmationUploadWidget({ studentId }: Props) {
         <div className="space-y-3 pt-1">
           <div className="grid grid-cols-2 gap-2.5">
             <div className="space-y-1">
-              <Label className="text-[10px] uppercase font-semibold text-muted-foreground tracking-wider">Document Type</Label>
+              <Label className="text-[11px] uppercase font-semibold text-muted-foreground tracking-wider">Document Type</Label>
               <Select value={docType} onValueChange={setDocType}>
                 <SelectTrigger className="h-8 text-xs">
                   <SelectValue placeholder="Select type" />
@@ -104,7 +104,7 @@ export function ClassConfirmationUploadWidget({ studentId }: Props) {
             </div>
 
             <div className="space-y-1">
-              <Label className="text-[10px] uppercase font-semibold text-muted-foreground tracking-wider">Choose File</Label>
+              <Label className="text-[11px] uppercase font-semibold text-muted-foreground tracking-wider">Choose File</Label>
               <div className="relative">
                 <input
                   ref={fileInputRef}

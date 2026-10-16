@@ -194,7 +194,7 @@ export function PathwayClient({ user, hasClass, predictions, prediction, curricu
       {prediction.initial_predicted_score !== undefined &&
         prediction.initial_predicted_score !== prediction.predicted_score && (
         <div className="rounded-xl border bg-card p-4">
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-3">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-3">
             Your progress
           </p>
           <div className="flex items-center gap-4">
@@ -293,7 +293,7 @@ export function PathwayClient({ user, hasClass, predictions, prediction, curricu
                   <span className="text-xs font-semibold">Steady</span>
                 </div>
               )}
-              <p className="text-[10px] text-muted-foreground mt-0.5">vs last assessment</p>
+              <p className="text-[11px] text-muted-foreground mt-0.5">vs last assessment</p>
             </div>
           </div>
 
@@ -347,11 +347,11 @@ export function PathwayClient({ user, hasClass, predictions, prediction, curricu
               <div className="flex items-start justify-between gap-3">
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-bold text-muted-foreground/70 w-5">{action.rank}.</span>
-                  <Badge variant="outline" className={`text-[10px] ${urgencyClass(action.urgency)}`}>
+                  <Badge variant="outline" className={`text-[11px] ${urgencyClass(action.urgency)}`}>
                     {action.urgency.toUpperCase()}
                   </Badge>
                 </div>
-                <Badge variant="outline" className="text-[10px] bg-surface-raised text-muted-foreground shrink-0">
+                <Badge variant="outline" className="text-[11px] bg-surface-raised text-muted-foreground shrink-0">
                   +{action.expected_gain_pp} pp expected
                 </Badge>
               </div>
@@ -378,7 +378,7 @@ export function PathwayClient({ user, hasClass, predictions, prediction, curricu
             <h2 className="text-sm font-semibold text-foreground uppercase tracking-wide">
               Topic performance
             </h2>
-            <span className="text-[10px] text-muted-foreground font-normal normal-case">
+            <span className="text-[11px] text-muted-foreground font-normal normal-case">
               (estimated from overall score)
             </span>
           </div>
@@ -403,7 +403,7 @@ export function PathwayClient({ user, hasClass, predictions, prediction, curricu
                 />
               </div>
               <div className="flex items-center justify-between">
-                <span className={`text-[10px] font-medium ${
+                <span className={`text-[11px] font-medium ${
                   t.status === 'strong'     ? 'text-emerald-600' :
                   t.status === 'developing' ? 'text-amber-600'   :
                   t.status === 'at_risk'    ? 'text-orange-600'  :
@@ -411,7 +411,7 @@ export function PathwayClient({ user, hasClass, predictions, prediction, curricu
                 }`}>
                   {t.status.replace('_', ' ')}
                 </span>
-                <span className="text-[10px] text-muted-foreground/70">
+                <span className="text-[11px] text-muted-foreground/70">
                   {Math.round((t.curriculum_weight ?? 0) * 100)}% of exam
                 </span>
               </div>

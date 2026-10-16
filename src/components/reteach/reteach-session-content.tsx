@@ -187,7 +187,7 @@ export function ReteachSessionContent({ session, editable, sessionId, onSaved, v
             <div className="px-3 pb-3 pt-1 space-y-1.5 border-t border-border">
               {session.lo_text && (
                 <div>
-                  <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide mb-0.5">
+                  <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide mb-0.5">
                     Intended Learning Outcome
                   </p>
                   <p className="text-xs text-foreground leading-relaxed">{session.lo_text}</p>
@@ -282,7 +282,7 @@ export function ReteachSessionContent({ session, editable, sessionId, onSaved, v
           </div>
           {session.self_explanation_prompts.map((p, i) => (
             <div key={i} className="rounded-lg border border-indigo-100 bg-indigo-50 p-3">
-              <p className="text-[10px] font-medium text-indigo-500 uppercase mb-1">After: {p.after_step}</p>
+              <p className="text-[11px] font-medium text-indigo-500 uppercase mb-1">After: {p.after_step}</p>
               <p className="text-xs text-indigo-800">💭 Ask: {p.prompt}</p>
             </div>
           ))}
@@ -304,7 +304,7 @@ export function ReteachSessionContent({ session, editable, sessionId, onSaved, v
                 <div className="flex items-start justify-between gap-2">
                   <p className="text-sm font-medium text-foreground">{i + 1}. {q.question}</p>
                   <div className="flex items-center gap-2 shrink-0">
-                    <Badge variant="outline" className="text-[10px] bg-muted text-muted-foreground border-border">
+                    <Badge variant="outline" className="text-[11px] bg-muted text-muted-foreground border-border">
                       {q.bloom_level}
                     </Badge>
                     <button
@@ -379,7 +379,7 @@ export function ReteachSessionContent({ session, editable, sessionId, onSaved, v
                 Exit ticket — run this before students leave
               </p>
             </div>
-            <Badge variant="outline" className="text-[10px] bg-teal-50 text-teal-600 border-teal-200">
+            <Badge variant="outline" className="text-[11px] bg-teal-50 text-teal-600 border-teal-200">
               {tg.exit_ticket.time_estimate_minutes} min
             </Badge>
           </div>
@@ -442,7 +442,7 @@ export function ReteachSessionContent({ session, editable, sessionId, onSaved, v
                       {i + 1}. {q.question}
                     </p>
                   </div>
-                  <Badge variant="outline" className="text-[10px] shrink-0 bg-muted text-muted-foreground border-border">
+                  <Badge variant="outline" className="text-[11px] shrink-0 bg-muted text-muted-foreground border-border">
                     {q.bloom_level}
                   </Badge>
                 </div>
@@ -527,7 +527,7 @@ export function ReteachSessionContent({ session, editable, sessionId, onSaved, v
             </div>
             {(['day_1', 'day_3', 'day_7'] as const).map((key) => (
               <div key={key} className="flex gap-3 items-start">
-                <span className="text-[10px] font-bold text-muted-foreground w-10 shrink-0 mt-0.5">
+                <span className="text-[11px] font-bold text-muted-foreground w-10 shrink-0 mt-0.5">
                   {key === 'day_1' ? 'Day 1' : key === 'day_3' ? 'Day 3' : 'Day 7'}
                 </span>
                 <p className="text-xs text-foreground leading-relaxed">{session.review_schedule![key]}</p>
@@ -560,13 +560,13 @@ export function ReteachSessionContent({ session, editable, sessionId, onSaved, v
               <div className="border-t">
                 <div className="grid grid-cols-3 min-h-32">
                   <div className="border-r p-3 space-y-2 bg-muted/50">
-                    <p className="text-[10px] font-bold text-muted-foreground uppercase">Cue Questions</p>
+                    <p className="text-[11px] font-bold text-muted-foreground uppercase">Cue Questions</p>
                     {session.cornell_notes.cue_questions.map((q, i) => (
                       <p key={i} className="text-xs text-muted-foreground italic">{q}</p>
                     ))}
                   </div>
                   <div className="col-span-2 p-3 space-y-3">
-                    <p className="text-[10px] font-bold text-muted-foreground uppercase">Notes</p>
+                    <p className="text-[11px] font-bold text-muted-foreground uppercase">Notes</p>
                     {session.cornell_notes.note_sections.map((s, i) => (
                       <div key={i}>
                         <p className="text-xs font-medium text-foreground">{s.heading}</p>
@@ -576,7 +576,7 @@ export function ReteachSessionContent({ session, editable, sessionId, onSaved, v
                   </div>
                 </div>
                 <div className="border-t bg-muted p-3">
-                  <p className="text-[10px] font-bold text-muted-foreground uppercase mb-1">Summary</p>
+                  <p className="text-[11px] font-bold text-muted-foreground uppercase mb-1">Summary</p>
                   <p className="text-xs text-muted-foreground italic leading-relaxed">{session.cornell_notes.summary}</p>
                 </div>
               </div>
@@ -599,13 +599,13 @@ export function ReteachSessionContent({ session, editable, sessionId, onSaved, v
               {session.zettelkasten_notes.atomic_notes.map((note) => (
                 <div key={note.id} className="rounded-lg border p-2.5 space-y-1 bg-muted">
                   <div className="flex items-center justify-between gap-1">
-                    <span className="text-[10px] font-bold text-muted-foreground">{note.id}</span>
-                    <span className="text-[10px] text-muted-foreground bg-muted rounded px-1">{note.tag}</span>
+                    <span className="text-[11px] font-bold text-muted-foreground">{note.id}</span>
+                    <span className="text-[11px] text-muted-foreground bg-muted rounded px-1">{note.tag}</span>
                   </div>
                   <p className="text-xs font-medium text-foreground">{note.concept}</p>
-                  <p className="text-[10px] text-muted-foreground italic leading-relaxed">{note.definition}</p>
+                  <p className="text-[11px] text-muted-foreground italic leading-relaxed">{note.definition}</p>
                   {note.links_to.length > 0 && (
-                    <p className="text-[10px] text-blue-500">→ {note.links_to.join(', ')}</p>
+                    <p className="text-[11px] text-blue-500">→ {note.links_to.join(', ')}</p>
                   )}
                 </div>
               ))}

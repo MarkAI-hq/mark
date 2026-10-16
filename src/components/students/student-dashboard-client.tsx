@@ -534,7 +534,7 @@ export function StudentDashboardClient({
                     style={{ width: `${s.avg_percentage}%` }}
                   />
                 </div>
-                <p className="text-[10px] text-muted-foreground">{s.assessment_count} assessment{s.assessment_count !== 1 ? 's' : ''}</p>
+                <p className="text-[11px] text-muted-foreground">{s.assessment_count} assessment{s.assessment_count !== 1 ? 's' : ''}</p>
               </div>
             ))}
           </CardContent>

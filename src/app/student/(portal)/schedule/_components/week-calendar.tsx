@@ -158,7 +158,7 @@ export function WeekCalendar({ days, blocksByDay }: Props) {
         <div className="shrink-0 w-12 border-r">
           <div className="h-6" />
           {hours.map((h) => (
-            <div key={h} style={{ height: HOUR_HEIGHT }} className="text-[10px] text-muted-foreground text-right pr-1.5 -mt-1.5">
+            <div key={h} style={{ height: HOUR_HEIGHT }} className="text-[11px] text-muted-foreground text-right pr-1.5 -mt-1.5">
               {h % 12 === 0 ? 12 : h % 12}{h < 12 ? 'a' : 'p'}
             </div>
           ))}
@@ -183,7 +183,7 @@ export function WeekCalendar({ days, blocksByDay }: Props) {
                     key={i}
                     onClick={() => setSelected(event)}
                     style={{ top, height }}
-                    className={`absolute left-0.5 right-0.5 rounded-md px-1.5 py-0.5 text-left overflow-hidden text-[10px] leading-tight border transition-opacity hover:opacity-80 ${
+                    className={`absolute left-0.5 right-0.5 rounded-md px-1.5 py-0.5 text-left overflow-hidden text-[11px] leading-tight border transition-opacity hover:opacity-80 ${
                       event.kind === 'class'
                         ? 'bg-blue-100 dark:bg-blue-900/40 border-blue-200 dark:border-blue-800 text-blue-900 dark:text-blue-200'
                         : 'bg-gold/15 border-gold/30 text-foreground'

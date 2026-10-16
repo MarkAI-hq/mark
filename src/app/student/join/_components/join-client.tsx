@@ -1617,7 +1617,7 @@ export function JoinClient({ schoolCode, schoolName }: { schoolCode: string; sch
                             : `${subjects.electiveMin}–${subjects.electiveMax}`}{' '}
                           elective{subjects.electiveMax === 1 ? '' : 's'}
                         </Label>
-                        <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                        <Badge variant="secondary" className="text-[11px] px-1.5 py-0">
                           {electives.length} of {subjects.electiveMax} chosen
                         </Badge>
                       </div>
@@ -1791,13 +1791,13 @@ export function JoinClient({ schoolCode, schoolName }: { schoolCode: string; sch
                           : 'border-slate-200 hover:bg-surface-raised'
                       }`}
                     >
-                      <span className="text-[10px] uppercase font-semibold text-muted-foreground/80 tracking-wider">
+                      <span className="text-[11px] uppercase font-semibold text-muted-foreground/80 tracking-wider">
                         {preset.label}
                       </span>
                       <span className="text-lg font-bold mt-1">
                         {preset.hours}h
                       </span>
-                      <span className="text-[9px] text-muted-foreground leading-tight mt-0.5 max-w-[80px]">
+                      <span className="text-[11px] text-muted-foreground leading-tight mt-0.5 max-w-[80px]">
                         {preset.desc}
                       </span>
                     </button>
@@ -2047,7 +2047,7 @@ export function JoinClient({ schoolCode, schoolName }: { schoolCode: string; sch
               <div className="space-y-3 pt-1">
                 <div className="grid grid-cols-2 gap-2.5">
                   <div className="space-y-1">
-                    <Label className="text-[10px] uppercase font-semibold text-muted-foreground tracking-wider">Document Type</Label>
+                    <Label className="text-[11px] uppercase font-semibold text-muted-foreground tracking-wider">Document Type</Label>
                     <Select value={docType} onValueChange={setDocType}>
                       <SelectTrigger className="h-8 text-xs">
                         <SelectValue placeholder="Select type" />
@@ -2061,7 +2061,7 @@ export function JoinClient({ schoolCode, schoolName }: { schoolCode: string; sch
                   </div>
 
                   <div className="space-y-1">
-                    <Label className="text-[10px] uppercase font-semibold text-muted-foreground tracking-wider">Choose File</Label>
+                    <Label className="text-[11px] uppercase font-semibold text-muted-foreground tracking-wider">Choose File</Label>
                     <div className="relative">
                       <input
                         ref={fileInputRef}

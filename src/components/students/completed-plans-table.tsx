@@ -63,7 +63,7 @@ export function CompletedPlansTable<T extends CompletedPlanLike>({
       header: 'Type',
       cell: ({ row }) => {
         const cfg = lessonCfg(row.original.lesson_type)
-        return <Badge className={`text-[10px] px-1.5 py-0 ${cfg.color}`}>{cfg.icon} {cfg.label}</Badge>
+        return <Badge className={`text-[11px] px-1.5 py-0 ${cfg.color}`}>{cfg.icon} {cfg.label}</Badge>
       },
     },
     {

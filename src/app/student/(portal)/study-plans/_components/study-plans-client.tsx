@@ -91,7 +91,7 @@ function TodayHero({
             )}
             <p className="text-xs text-muted-foreground">{plan.subject}</p>
           </div>
-          <Badge className={`text-[10px] px-1.5 py-0 shrink-0 ${cfg.color}`}>{cfg.icon} {cfg.label}</Badge>
+          <Badge className={`text-[11px] px-1.5 py-0 shrink-0 ${cfg.color}`}>{cfg.icon} {cfg.label}</Badge>
         </div>
         <Button
           className="w-full gap-1.5 bg-gold hover:bg-gold/90 text-gold-foreground"
@@ -110,7 +110,7 @@ function TodayHero({
       <div className="rounded-2xl border-2 border-gold/40 bg-gold/5 p-5 space-y-3">
         <div className="flex items-center gap-2">
           <Sparkles className="h-4 w-4 text-gold" />
-          <Badge className="text-[10px] bg-gold text-gold-foreground px-2 py-0.5">Suggested for you</Badge>
+          <Badge className="text-[11px] bg-gold text-gold-foreground px-2 py-0.5">Suggested for you</Badge>
         </div>
         <div className="space-y-1">
           <p className="text-lg font-semibold leading-snug">{headline}</p>
@@ -188,7 +188,7 @@ function ReviewStrip({ plans, onStudio }: { plans: StudyPlan[]; onStudio: (planI
       <div className="flex items-center gap-2">
         <RotateCcw className="h-4 w-4 text-purple-500" />
         <h2 className="text-sm font-semibold">Due for review</h2>
-        <Badge className="text-[10px] px-1.5 py-0 bg-purple-100 text-purple-800 dark:bg-purple-950/40 dark:text-purple-300">
+        <Badge className="text-[11px] px-1.5 py-0 bg-purple-100 text-purple-800 dark:bg-purple-950/40 dark:text-purple-300">
           {due.length}
         </Badge>
       </div>
@@ -302,7 +302,7 @@ function SubjectSection({
           <h3 className="text-sm font-semibold truncate">{subject.subject}</h3>
           <div className="flex items-center gap-2 mt-0.5 flex-wrap">
             {subject.grade_band && (
-              <Badge className={`text-[10px] px-1.5 py-0 ${
+              <Badge className={`text-[11px] px-1.5 py-0 ${
                 subject.is_passing
                   ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300'
                   : 'bg-rose-100 text-rose-800 dark:bg-rose-950/40 dark:text-rose-300'
@@ -317,7 +317,7 @@ function SubjectSection({
               </span>
             )}
             {subject.class_percentile != null && (
-              <span className="text-[10px] text-muted-foreground">Top {100 - subject.class_percentile}% of class</span>
+              <span className="text-[11px] text-muted-foreground">Top {100 - subject.class_percentile}% of class</span>
             )}
           </div>
         </div>
@@ -646,7 +646,7 @@ export function StudyPlansClient({ user, initialPlans, gradebook, suggestion, er
                 <div className="space-y-3 pt-1">
                   <div className="grid grid-cols-2 gap-2.5">
                     <div className="space-y-1">
-                      <Label className="text-[10px] uppercase font-semibold text-muted-foreground tracking-wider">Document Type</Label>
+                      <Label className="text-[11px] uppercase font-semibold text-muted-foreground tracking-wider">Document Type</Label>
                       <Select value={docType} onValueChange={setDocType}>
                         <SelectTrigger className="h-8 text-xs">
                           <SelectValue placeholder="Select type" />
@@ -660,7 +660,7 @@ export function StudyPlansClient({ user, initialPlans, gradebook, suggestion, er
                     </div>
 
                     <div className="space-y-1">
-                      <Label className="text-[10px] uppercase font-semibold text-muted-foreground tracking-wider">Choose File</Label>
+                      <Label className="text-[11px] uppercase font-semibold text-muted-foreground tracking-wider">Choose File</Label>
                       <div className="relative">
                         <input
                           ref={fileInputRef}

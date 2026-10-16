@@ -42,7 +42,7 @@ export function PreExamBanner({ assessmentId, classId }: PreExamBannerProps) {
           <span className="text-sm font-medium text-amber-800">
             {items.length} undelivered intervention{items.length !== 1 ? 's' : ''} cover topics in this assessment
           </span>
-          <Badge variant="outline" className="text-[10px] bg-amber-100 text-amber-700 border-amber-300">
+          <Badge variant="outline" className="text-[11px] bg-amber-100 text-amber-700 border-amber-300">
             Deliver before assessing
           </Badge>
         </div>
@@ -59,15 +59,15 @@ export function PreExamBanner({ assessmentId, classId }: PreExamBannerProps) {
               <div className="min-w-0">
                 <p className="text-xs font-medium text-amber-800 truncate">{item.error_type}</p>
                 {item.topic && (
-                  <p className="text-[10px] text-amber-600">Topic: {item.topic}</p>
+                  <p className="text-[11px] text-amber-600">Topic: {item.topic}</p>
                 )}
               </div>
               <div className="flex items-center gap-2 shrink-0">
-                <Badge variant="outline" className="text-[10px] bg-amber-50 text-amber-700 border-amber-200">
+                <Badge variant="outline" className="text-[11px] bg-amber-50 text-amber-700 border-amber-200">
                   {item.scope}
                 </Badge>
                 {classId ? (
-                  <Button size="sm" variant="outline" className="h-6 px-2 text-[10px] border-amber-300 text-amber-800 hover:bg-amber-100" asChild>
+                  <Button size="sm" variant="outline" className="h-6 px-2 text-[11px] border-amber-300 text-amber-800 hover:bg-amber-100" asChild>
                     <Link href={`/dashboard/classes/${classId}?tab=interventions`}>
                       <CheckCircle2 className="h-3 w-3 mr-1" />
                       View

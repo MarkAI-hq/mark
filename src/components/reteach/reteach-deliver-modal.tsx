@@ -133,7 +133,7 @@ export function ReteachDeliverModal({
                 <Monitor className="h-4 w-4 shrink-0" />
                 <div className="text-left">
                   <p className="font-medium text-xs">Digital</p>
-                  <p className="text-[10px] opacity-70">Students used devices</p>
+                  <p className="text-[11px] opacity-70">Students used devices</p>
                 </div>
               </button>
               <button
@@ -148,7 +148,7 @@ export function ReteachDeliverModal({
                 <Printer className="h-4 w-4 shrink-0" />
                 <div className="text-left">
                   <p className="font-medium text-xs">Print</p>
-                  <p className="text-[10px] opacity-70">Printed &amp; handed out</p>
+                  <p className="text-[11px] opacity-70">Printed &amp; handed out</p>
                 </div>
               </button>
             </div>

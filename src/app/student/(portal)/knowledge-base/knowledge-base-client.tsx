@@ -289,7 +289,7 @@ function NoteCard({ note, onUpdated }: { note: StudentNote; onUpdated: (note: St
               </div>
               <p className="text-xs text-muted-foreground">{note.subject}</p>
             </div>
-            <Badge variant="outline" className={`text-[10px] shrink-0 ${cfg.bg}`}>
+            <Badge variant="outline" className={`text-[11px] shrink-0 ${cfg.bg}`}>
               <StatusIcon className="h-3 w-3 mr-1" />
               {cfg.label}
             </Badge>
@@ -297,7 +297,7 @@ function NoteCard({ note, onUpdated }: { note: StudentNote; onUpdated: (note: St
 
           <p className="text-xs text-foreground/80 leading-relaxed line-clamp-3">{note.content}</p>
 
-          <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+          <div className="flex items-center justify-between text-[11px] text-muted-foreground">
             <span>{new Date(note.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
             <span className="flex items-center gap-1 text-gold font-medium">
               <Star className="h-3 w-3" />

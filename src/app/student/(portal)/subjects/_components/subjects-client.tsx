@@ -220,7 +220,7 @@ export function SubjectsClient({
                         <span className="text-xs text-muted-foreground">No assessment data yet</span>
                       )}
                       {prediction && (
-                        <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-gold/40 text-gold">
+                        <Badge variant="outline" className="text-[11px] px-1.5 py-0 border-gold/40 text-gold">
                           {prediction.predicted_grade} predicted
                         </Badge>
                       )}

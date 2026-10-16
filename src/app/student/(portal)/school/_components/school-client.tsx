@@ -236,7 +236,7 @@ export function SchoolClient({ user, classmatesData, socialProof, extras, enroll
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
                           <p className="font-medium text-sm">{n.title}</p>
-                          <Badge variant="outline" className="text-[10px] shrink-0">{n.category}</Badge>
+                          <Badge variant="outline" className="text-[11px] shrink-0">{n.category}</Badge>
                         </div>
                         <p className="text-xs text-muted-foreground mt-1 whitespace-pre-line">{n.body}</p>
                         {n.event_date && (
@@ -276,7 +276,7 @@ export function SchoolClient({ user, classmatesData, socialProof, extras, enroll
                         )}
                       </div>
                       {enrolled && (
-                        <Badge className="text-[10px] shrink-0 bg-emerald-100 text-emerald-700">Enrolled</Badge>
+                        <Badge className="text-[11px] shrink-0 bg-emerald-100 text-emerald-700">Enrolled</Badge>
                       )}
                     </div>
                   </CardContent>
@@ -410,7 +410,7 @@ function LeaderboardPanel({ initial, socialProof }: {
               </div>
               <div className="text-right">
                 <p className="text-2xl font-bold text-gold leading-none">{me.mirror_score}</p>
-                <p className="text-[10px] uppercase tracking-wide text-muted-foreground mt-0.5">Mirror Score</p>
+                <p className="text-[11px] uppercase tracking-wide text-muted-foreground mt-0.5">Mirror Score</p>
               </div>
             </div>
 
@@ -476,7 +476,7 @@ function LeaderboardPanel({ initial, socialProof }: {
               <>
                 <div className="flex items-center gap-2 py-1">
                   <div className="flex-1 border-t border-dashed" />
-                  <span className="text-[10px] text-muted-foreground">your position</span>
+                  <span className="text-[11px] text-muted-foreground">your position</span>
                   <div className="flex-1 border-t border-dashed" />
                 </div>
                 {data.around_me.map((e) => <LeaderboardRow key={e.student_id} e={e} metric={metric} />)}
@@ -496,7 +496,7 @@ function LeaderboardRow({ e, metric }: { e: LeaderboardEntry; metric: Leaderboar
         <div className="flex items-center gap-3">
           <div className="w-6 flex justify-center shrink-0">{rankBadge(e.rank)}</div>
           <Avatar className="h-7 w-7 shrink-0">
-            <AvatarFallback className={`text-[10px] ${e.is_me ? 'bg-gold text-gold-foreground' : 'bg-muted'}`}>
+            <AvatarFallback className={`text-[11px] ${e.is_me ? 'bg-gold text-gold-foreground' : 'bg-muted'}`}>
               {e.name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2)}
             </AvatarFallback>
           </Avatar>
@@ -514,7 +514,7 @@ function LeaderboardRow({ e, metric }: { e: LeaderboardEntry; metric: Leaderboar
           </div>
           <div className="text-right shrink-0">
             <p className="text-sm font-bold text-foreground">{metricValue(e, metric)}</p>
-            {metric === 'overall' && <p className="text-[10px] text-muted-foreground">Mirror</p>}
+            {metric === 'overall' && <p className="text-[11px] text-muted-foreground">Mirror</p>}
           </div>
         </div>
       </CardContent>

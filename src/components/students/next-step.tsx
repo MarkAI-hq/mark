@@ -93,7 +93,7 @@ export function NextStep({ nextAction }: { nextAction: NextAction | null }) {
       )}
 
       {/* The one action */}
-      <p className="text-[10px] font-semibold uppercase tracking-wide text-gold mb-1">Do this now</p>
+      <p className="text-[11px] font-semibold uppercase tracking-wide text-gold mb-1">Do this now</p>
 
       {action ? (
         <>

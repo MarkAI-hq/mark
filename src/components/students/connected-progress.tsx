@@ -42,7 +42,7 @@ export function ConnectedProgress({
 
   return (
     <div className="rounded-xl border bg-muted/20 px-4 py-3">
-      <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-2">
+      <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-2">
         How this fits in
       </p>
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 text-sm">

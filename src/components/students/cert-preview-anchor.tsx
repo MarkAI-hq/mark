@@ -35,8 +35,8 @@ export function CertPreviewAnchor({
             <div className={`absolute inset-0 p-4 flex flex-col justify-center ${isEligible ? '' : 'blur-sm'}`}>
               <div className="text-white/30 text-[8px] font-semibold uppercase tracking-widest mb-1">Certificate of Achievement</div>
               <div className="text-white/60 text-xs font-bold truncate">{studentName}</div>
-              <div className="text-white/40 text-[9px] mt-0.5">has successfully completed</div>
-              <div className="text-amber-400/70 text-[10px] font-semibold mt-1 truncate">{schoolName}</div>
+              <div className="text-white/40 text-[11px] mt-0.5">has successfully completed</div>
+              <div className="text-amber-400/70 text-[11px] font-semibold mt-1 truncate">{schoolName}</div>
               <div className="text-white/20 text-[8px] mt-3 font-mono">MRK-CERT-████</div>
             </div>
             {/* Padlock overlay */}
@@ -50,7 +50,7 @@ export function CertPreviewAnchor({
             )}
             {isEligible && (
               <div className="absolute top-2 right-2">
-                <Badge className="bg-gold text-gold-foreground gap-1 text-[10px]">
+                <Badge className="bg-gold text-gold-foreground gap-1 text-[11px]">
                   <Unlock className="h-2.5 w-2.5" /> Unlocked
                 </Badge>
               </div>
@@ -81,7 +81,7 @@ export function CertPreviewAnchor({
 
             <div className="space-y-1.5">
               <Progress value={progress} className={`h-1.5 ${isEligible ? '[&>div]:bg-gold' : ''}`} />
-              <div className="flex justify-between text-[10px] text-muted-foreground">
+              <div className="flex justify-between text-[11px] text-muted-foreground">
                 <span>0%</span>
                 <span className={isEligible ? 'text-gold font-semibold' : ''}>{threshold}% required</span>
               </div>

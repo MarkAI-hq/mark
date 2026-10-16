@@ -495,16 +495,16 @@ function ArtifactItem({ artifact, isRenaming, onOpen, onRename, onDelete, onRetr
         )}
         <div className="flex items-center gap-1.5 text-[11px] text-[#938b7c] mt-[2px] flex-wrap">
           {artifact.status === 'generating' && (
-            <span className="text-[10px] font-semibold text-[#8a6713] dark:text-[#c9a03c] bg-[#f5f0e4] dark:bg-[#2a2315] px-[7px] py-[2px] rounded-full">Generating…</span>
+            <span className="text-[11px] font-semibold text-[#8a6713] dark:text-[#c9a03c] bg-[#f5f0e4] dark:bg-[#2a2315] px-[7px] py-[2px] rounded-full">Generating…</span>
           )}
           {artifact.status === 'ready' && (
-            <span className="text-[10px] font-semibold text-[#4f7d3f] dark:text-[#7dba6a] bg-[#eaf2e3] dark:bg-[#152118] px-[7px] py-[2px] rounded-full">Ready</span>
+            <span className="text-[11px] font-semibold text-[#4f7d3f] dark:text-[#7dba6a] bg-[#eaf2e3] dark:bg-[#152118] px-[7px] py-[2px] rounded-full">Ready</span>
           )}
           {artifact.status === 'failed' && (
             <>
-              <span className="text-[10px] font-semibold text-[#a23a2c] bg-[#f7e3e0] px-[7px] py-[2px] rounded-full">Failed</span>
+              <span className="text-[11px] font-semibold text-[#a23a2c] bg-[#f7e3e0] px-[7px] py-[2px] rounded-full">Failed</span>
               <button onClick={e => { e.stopPropagation(); onRetry(artifact) }}
-                className="text-[10px] font-semibold text-[#b88a1f] hover:text-[#8a6713] transition-colors">Retry</button>
+                className="text-[11px] font-semibold text-[#b88a1f] hover:text-[#8a6713] transition-colors">Retry</button>
             </>
           )}
           <span>{ago}</span>
@@ -599,8 +599,8 @@ function ToolStatusPanel({ tools }: { tools: ToolStatus[] }) {
                 {t.status === 'running'
                   ? <span className="w-2 h-2 border border-[#8a6713]/50 border-t-[#8a6713] rounded-full animate-spin inline-block" />
                   : t.status === 'done'
-                  ? <span className="text-[#4f7d3f] text-[10px]">✓</span>
-                  : <span className="text-red-400 text-[10px]">✕</span>}
+                  ? <span className="text-[#4f7d3f] text-[11px]">✓</span>
+                  : <span className="text-red-400 text-[11px]">✕</span>}
               </span>
               <span className={t.status === 'running' ? 'text-[#2a2722] dark:text-[#f4ead8]' : ''}>{t.label}</span>
             </div>

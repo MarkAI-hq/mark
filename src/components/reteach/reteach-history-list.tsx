@@ -257,7 +257,7 @@ function ReteachHistoryRow({
                   <Button
                     size="sm"
                     variant="outline"
-                    className="h-6 px-2 text-[10px] border-amber-200 text-amber-700 dark:text-amber-300 hover:bg-amber-50 ml-auto"
+                    className="h-6 px-2 text-[11px] border-amber-200 text-amber-700 dark:text-amber-300 hover:bg-amber-50 ml-auto"
                     onClick={(e) => { e.stopPropagation(); setShowExitTicket(v => !v) }}
                   >
                     Log exit ticket
@@ -297,7 +297,7 @@ function ReteachHistoryRow({
                   <Button size="sm" className="h-7 text-xs" onClick={submitExitTicket} disabled={isPendingTicket}>
                     Save
                   </Button>
-                  <p className="text-[10px] text-muted-foreground">
+                  <p className="text-[11px] text-muted-foreground">
                     Formal impact calculated when follow-up assessment is graded.
                   </p>
                 </div>

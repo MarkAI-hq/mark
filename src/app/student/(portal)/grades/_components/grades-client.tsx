@@ -175,7 +175,7 @@ function GradeRing({
           {no_data ? '—' : (band?.label ?? '—')}
         </span>
         {!no_data && band && (
-          <span className="text-[9px] text-muted-foreground leading-tight">
+          <span className="text-[11px] text-muted-foreground leading-tight">
             {band.points}pt
           </span>
         )}
@@ -209,9 +209,9 @@ function TriangulationPanel({
             <div className="min-w-0">
               <p className="text-xs font-semibold text-foreground">{c.label}</p>
               {c.description && (
-                <p className="text-[10px] text-muted-foreground leading-snug mb-1">{c.description}</p>
+                <p className="text-[11px] text-muted-foreground leading-snug mb-1">{c.description}</p>
               )}
-              <span className={`inline-block text-[10px] font-medium px-1.5 py-0.5 rounded-full ${ncdcColor(c.level)}`}>
+              <span className={`inline-block text-[11px] font-medium px-1.5 py-0.5 rounded-full ${ncdcColor(c.level)}`}>
                 {ncdcLabel(c.level)}
               </span>
             </div>
@@ -219,7 +219,7 @@ function TriangulationPanel({
         ))}
       </div>
       {sourceLabel && (
-        <p className="text-[10px] text-muted-foreground px-1 leading-snug">
+        <p className="text-[11px] text-muted-foreground px-1 leading-snug">
           Attitudes and generic skills are embedded in Learning Outcomes and are not assessed separately — {sourceLabel}
         </p>
       )}
@@ -307,7 +307,7 @@ function TopicList({ topics }: { topics: SubjectGradebook['topics'] }) {
       header: 'Status',
       accessorFn: (t) => t.achievement,
       cell: ({ row }) => (
-        <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full whitespace-nowrap ${ncdcColor(row.original.achievement)}`}>
+        <span className={`text-[11px] font-medium px-1.5 py-0.5 rounded-full whitespace-nowrap ${ncdcColor(row.original.achievement)}`}>
           {ncdcLabel(row.original.achievement)}
         </span>
       ),
@@ -380,7 +380,7 @@ function ClassSnapshot({ sub }: { sub: SubjectGradebook }) {
         ].map((s) => (
           <div key={s.label} className="text-center">
             <p className="text-xs font-bold">{s.val}</p>
-            <p className="text-[10px] text-muted-foreground">{s.label}</p>
+            <p className="text-[11px] text-muted-foreground">{s.label}</p>
           </div>
         ))}
       </div>
@@ -388,16 +388,16 @@ function ClassSnapshot({ sub }: { sub: SubjectGradebook }) {
       <div className="space-y-1.5">
         {score_distribution.map((d, i) => (
           <div key={d.range} className="flex items-center gap-2">
-            <span className="text-[10px] text-muted-foreground w-20 shrink-0">{bucketLabels[i]}</span>
+            <span className="text-[11px] text-muted-foreground w-20 shrink-0">{bucketLabels[i]}</span>
             <div className="flex-1 h-3 rounded-sm bg-muted/20 overflow-hidden">
               <div
                 className={`h-full rounded-sm ${bucketColors[i]} ${i === myBucketIdx ? 'ring-1 ring-offset-1 ring-foreground/30' : ''}`}
                 style={{ width: `${(d.count / maxCount) * 100}%` }}
               />
             </div>
-            <span className="text-[10px] text-muted-foreground w-4 text-right">{d.count}</span>
+            <span className="text-[11px] text-muted-foreground w-4 text-right">{d.count}</span>
             {i === myBucketIdx && (
-              <span className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold">← you</span>
+              <span className="text-[11px] text-amber-600 dark:text-amber-400 font-semibold">← you</span>
             )}
           </div>
         ))}
@@ -462,7 +462,7 @@ function SubjectCard({
               <span className="text-xs text-muted-foreground">·</span>
               <span className="text-xs text-muted-foreground">{sub.mastery_pct}%</span>
               {needsAttention && (
-                <span className="flex items-center gap-0.5 text-[10px] text-amber-600 dark:text-amber-400">
+                <span className="flex items-center gap-0.5 text-[11px] text-amber-600 dark:text-amber-400">
                   <AlertTriangle className="h-3 w-3" />
                   Below pass mark
                 </span>
@@ -650,14 +650,14 @@ function ThisWeekTab({
                 )}
                 <span className="text-sm font-medium truncate">{sub.subject}</span>
                 {sub.grade_band && (
-                  <span className={`text-[10px] font-bold px-1.5 rounded-full ${gradeBadgeColor(sub.grade_band.label)}`}>
+                  <span className={`text-[11px] font-bold px-1.5 rounded-full ${gradeBadgeColor(sub.grade_band.label)}`}>
                     {sub.grade_band.label}
                   </span>
                 )}
               </div>
               <div className="min-w-0">
                 <p className="text-sm truncate">{formatTopicTitle(entry.topic)}</p>
-                <span className={`text-[10px] ${ncdcColor(entry.achievement)} px-1.5 py-0.5 rounded-full`}>
+                <span className={`text-[11px] ${ncdcColor(entry.achievement)} px-1.5 py-0.5 rounded-full`}>
                   {ncdcLabel(entry.achievement)}
                 </span>
               </div>
@@ -667,7 +667,7 @@ function ThisWeekTab({
                     {Array.from({ length: Math.min(weekPlans, 5) }).map((_, i) => (
                       <div key={i} className="h-3 w-1.5 rounded-sm bg-[#c9a03c] dark:bg-[#c9a03c]" />
                     ))}
-                    <span className="text-[10px] text-muted-foreground ml-1">{weekPlans}</span>
+                    <span className="text-[11px] text-muted-foreground ml-1">{weekPlans}</span>
                   </div>
                 ) : entry.achievement !== 'all' ? (
                   <button
@@ -856,7 +856,7 @@ export function GradesClient({ user, gradebook, error }: Props) {
           <div className="rounded-2xl border bg-white dark:bg-[#141414] p-4 space-y-2">
             <div className="flex items-center justify-between gap-2">
               <h3 className="font-semibold text-sm">UCE Outlook</h3>
-              <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+              <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${
                 uce_result.result === 1
                   ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300'
                   : uce_result.result === 3
@@ -868,7 +868,7 @@ export function GradesClient({ user, gradebook, error }: Props) {
             </div>
             <p className="text-xs text-muted-foreground">{uce_result.detail}</p>
             <p className="text-xs text-foreground font-medium">{uce_result.actionable}</p>
-            <p className="text-[10px] text-muted-foreground pt-1">
+            <p className="text-[11px] text-muted-foreground pt-1">
               Grading is per-subject only under the new curriculum — no Division I–IV aggregate.
             </p>
           </div>

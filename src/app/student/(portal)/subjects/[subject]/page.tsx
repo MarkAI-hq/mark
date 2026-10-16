@@ -169,7 +169,7 @@ export default async function SubjectDetailPage({ params }: Props) {
                     <TableCell className="text-xs text-muted-foreground">Week {entry.week_number}</TableCell>
                     <TableCell>
                       {entry.is_delivered && (
-                        <Badge variant="outline" className="text-[10px] text-emerald-600 border-emerald-200">
+                        <Badge variant="outline" className="text-[11px] text-emerald-600 border-emerald-200">
                           Delivered
                         </Badge>
                       )}

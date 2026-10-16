@@ -100,7 +100,7 @@ function AttendanceTable({ records }: { records: any[] }) {
       header: 'Source',
       accessorFn: (r) => (r.source === 'platform_activity' ? 'Self-study' : 'Class session'),
       cell: ({ getValue }) => (
-        <Badge variant="outline" className="text-[10px] font-normal text-muted-foreground">
+        <Badge variant="outline" className="text-[11px] font-normal text-muted-foreground">
           {getValue<string>()}
         </Badge>
       ),
@@ -149,7 +149,7 @@ function ThisWeekTable({
               </div>
               <span className="font-medium text-sm">{headline}</span>
               {extraCount > 0 && (
-                <Badge variant="secondary" className="text-[10px] px-1.5 py-0">+{extraCount} more</Badge>
+                <Badge variant="secondary" className="text-[11px] px-1.5 py-0">+{extraCount} more</Badge>
               )}
             </div>
             {(entry.subtopics as string[])?.length > 0 && (
@@ -172,8 +172,8 @@ function ThisWeekTable({
       header: 'Status',
       accessorFn: (e) => (e.is_delivered ? 'Delivered' : 'Upcoming'),
       cell: ({ row }) => row.original.is_delivered
-        ? <Badge className="text-[10px] px-1.5 py-0 bg-emerald-100 text-emerald-700">Delivered</Badge>
-        : <Badge variant="secondary" className="text-[10px] px-1.5 py-0">Upcoming</Badge>,
+        ? <Badge className="text-[11px] px-1.5 py-0 bg-emerald-100 text-emerald-700">Delivered</Badge>
+        : <Badge variant="secondary" className="text-[11px] px-1.5 py-0">Upcoming</Badge>,
     },
     {
       id: 'duration',
@@ -762,7 +762,7 @@ export function ScheduleClient({
                                     <p className="text-sm font-semibold truncate leading-tight">{slot.subject}</p>
                                     <Badge 
                                       variant={isStudy ? "default" : "secondary"} 
-                                      className={`text-[9px] px-1 py-0 uppercase tracking-wide font-bold scale-[0.9] origin-left border-0 ${
+                                      className={`text-[11px] px-1 py-0 uppercase tracking-wide font-bold scale-[0.9] origin-left border-0 ${
                                         isStudy ? 'bg-gold/15 text-gold hover:bg-gold/25' : 'bg-muted-foreground/10 text-muted-foreground'
                                       }`}
                                     >
@@ -789,7 +789,7 @@ export function ScheduleClient({
                                     {initiating && initiatingEntry === slot.sow_entry_id ? '…' : 'Study'}
                                   </Button>
                                 ) : slot.period ? (
-                                  <Badge variant="outline" className="text-[10px] h-5">Period {slot.period}</Badge>
+                                  <Badge variant="outline" className="text-[11px] h-5">Period {slot.period}</Badge>
                                 ) : null}
                               </div>
                             </div>
@@ -815,7 +815,7 @@ export function ScheduleClient({
                             <div className="min-w-0">
                               <div className="flex items-center gap-1.5">
                                 <p className="text-sm font-semibold truncate leading-tight">{b.subject}</p>
-                                <Badge className="text-[9px] px-1 py-0 uppercase tracking-wide font-bold scale-[0.9] origin-left border-0 bg-gold/15 text-gold hover:bg-gold/25">
+                                <Badge className="text-[11px] px-1 py-0 uppercase tracking-wide font-bold scale-[0.9] origin-left border-0 bg-gold/15 text-gold hover:bg-gold/25">
                                   Mirror Study
                                 </Badge>
                               </div>
@@ -878,10 +878,10 @@ export function ScheduleClient({
                           </div>
                           <div className="flex items-center gap-1.5 shrink-0">
                             {slot.type === 'study' && (
-                              <Badge className="text-[10px] px-1.5 py-0 bg-gold/20 text-gold border-0">Study</Badge>
+                              <Badge className="text-[11px] px-1.5 py-0 bg-gold/20 text-gold border-0">Study</Badge>
                             )}
                             {slot.type === 'class' && slot.period && (
-                              <Badge variant="outline" className="text-[10px]">P{slot.period}</Badge>
+                              <Badge variant="outline" className="text-[11px]">P{slot.period}</Badge>
                             )}
                           </div>
                         </div>

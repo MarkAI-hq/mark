@@ -33,7 +33,7 @@ function OriginBody({ note }: { note: ReteachEtymologyNote }) {
         {note.intuition_bridge}
       </p>
       {note.related_terms.length > 0 && (
-        <p className="text-[10px] text-amber-600 dark:text-amber-400">
+        <p className="text-[11px] text-amber-600 dark:text-amber-400">
           See also: {note.related_terms.join(' · ')}
         </p>
       )}
