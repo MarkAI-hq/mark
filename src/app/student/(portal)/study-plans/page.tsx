@@ -4,7 +4,12 @@ import { getMyStudyPlans, getMyGradebook, getSuggestedTopic } from '@/lib/action
 import { getMyClassSoW } from '@/lib/actions/student-dashboard'
 import { StudyPlansClient } from './_components/study-plans-client'
 
-export default async function StudyPlansPage() {
+export default async function StudyPlansPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ notice?: string }>
+}) {
+  const { notice } = await searchParams
   const cookieStore = await cookies()
   const userCookie  = cookieStore.get('user')?.value
   if (!userCookie) redirect('/student/login')
@@ -34,6 +39,7 @@ export default async function StudyPlansPage() {
       error={error?.message ?? null}
       classId={sowData.classId}
       sow={sowData.sow}
+      notice={notice ?? null}
     />
   )
 }

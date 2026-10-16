@@ -24,7 +24,9 @@ export default async function StudioPage({ params, searchParams }: Props) {
   const result = await fetcher<any>(`/study-plans/${planId}/start`)
   const plan   = result?.data ?? null
 
-  if (!plan) redirect('/student/study-plans')
+  // A lesson still under alignment review isn't returned to students (404),
+  // so say why instead of silently bouncing them.
+  if (!plan) redirect('/student/study-plans?notice=preparing')
 
   const scenes = plan?.content?.scenes ?? []
   const isCompleted = plan.status === 'completed'
