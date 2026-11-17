@@ -20,6 +20,8 @@ import { ScenePhenomenon }              from './scene-phenomenon'
 import { SceneRetrievalFlash }          from './scene-retrieval-flash'
 import { SceneOutcomesIntro }           from './scene-outcomes-intro'
 import { SceneOutcomesCheck }           from './scene-outcomes-check'
+import { SceneInteractive }             from './scene-interactive'
+import { SceneUnknown }                 from './scene-unknown'
 import { LessonSidebar }                from './lesson-sidebar'
 import { formatTopicTitle }             from '@/lib/utils'
 import { AskTracyChip }                 from '@/components/students/ask-tracy-chip'
@@ -89,7 +91,15 @@ function getStage(scene: any, index: number): FiveEStage {
 const GATED_TYPES = new Set([
   'quiz', 'hint_quiz', 'probe', 'peer_teach', 'pbl_stage',
   'whiteboard', 'cornell_notes', 'phenomenon_story', 'retrieval_flash',
-  'outcomes_check',
+  'outcomes_check', 'interactive',
+])
+
+// SPEC-05 S5-R4: every type this build can render. Anything else gets the
+// "needs an app update" card instead of a blank screen, and is never gated.
+const KNOWN_TYPES = new Set([
+  'slide', 'quiz', 'simulation', 'whiteboard', 'pbl_stage', 'cornell_notes', 'hint_quiz', 'probe',
+  'misconception_redirect', 'peer_teach', 'mastery_moment', 'phenomenon_story', 'retrieval_flash',
+  'outcomes_intro', 'outcomes_check', 'interactive',
 ])
 
 function requiresGate(scene: any): boolean {
@@ -139,7 +149,15 @@ function ZoomableImage({ src, alt }: { src: string; alt: string }) {
   )
 }
 
-export interface SceneResponse { type: string; correct?: boolean; sceneIndex?: number }
+export interface SceneResponse {
+  type: string
+  correct?: boolean
+  sceneIndex?: number
+  /** 0–100; for interactives the first-attempt score (SPEC-05 S5-R16) */
+  score?: number
+  template?: string
+  misconception_hits?: string[]
+}
 
 interface LessonPlayerProps {
   scenes: any[]
@@ -608,6 +626,8 @@ export function LessonPlayer({
                 {scene.type === 'retrieval_flash'         && <SceneRetrievalFlash        scene={scene} onReady={() => setSceneReady(true)} onResponse={handleSceneResponse} />}
                 {scene.type === 'outcomes_intro'          && <SceneOutcomesIntro         scene={scene} />}
                 {scene.type === 'outcomes_check'          && <SceneOutcomesCheck         scene={scene} onReady={() => setSceneReady(true)} onOutcomesAchieved={setAchievedRefs} />}
+                {scene.type === 'interactive'             && <SceneInteractive           scene={scene} onReady={() => setSceneReady(true)} onResponse={handleSceneResponse} />}
+                {!KNOWN_TYPES.has(scene.type)             && <SceneUnknown               scene={scene} onReady={() => setSceneReady(true)} />}
               </>
             )}
 
