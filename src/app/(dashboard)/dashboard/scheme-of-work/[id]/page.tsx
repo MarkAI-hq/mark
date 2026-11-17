@@ -2,6 +2,7 @@ import { redirect, notFound } from 'next/navigation'
 import Link                    from 'next/link'
 import { getSession }          from '@/lib/session'
 import { getSchemeOfWork }     from '@/lib/actions/scheme-of-work'
+import { SchemeAlignment }     from './_components/scheme-alignment'
 import {
   BookOpen, ChevronLeft, CheckCircle2, Circle, School, CalendarDays, Hash,
 } from 'lucide-react'
@@ -99,55 +100,9 @@ export default async function SchemeOfWorkDetailPage({ params }: Props) {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Weekly entries — takes 2/3 */}
+        {/* Curriculum alignment + weekly entries — takes 2/3 */}
         <div className="lg:col-span-2">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm flex items-center gap-2">
-                <BookOpen className="h-4 w-4 text-muted-foreground" />
-                Weekly Topics
-                <span className="text-xs font-normal text-muted-foreground ml-1">({entries.length} entries)</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {entries.length === 0 ? (
-                <p className="text-sm text-slate-400 py-4 text-center">No entries yet.</p>
-              ) : (
-                <div className="divide-y">
-                  {entries.map((e) => (
-                    <div key={e.id} className="flex items-start gap-3 py-2.5 first:pt-0 last:pb-0">
-                      <div className="mt-0.5 shrink-0">
-                        {e.is_delivered
-                          ? <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-                          : <Circle       className="h-4 w-4 text-slate-300" />
-                        }
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs text-slate-400 shrink-0 w-10">Wk {e.week_number}</span>
-                          <span className="text-sm font-medium text-slate-800 truncate">{e.topic}</span>
-                          {e.duration_lessons > 1 && (
-                            <span className="text-xs text-slate-400 shrink-0">{e.duration_lessons}L</span>
-                          )}
-                        </div>
-                        {e.learning_objectives && e.learning_objectives.length > 0 && (
-                          <p className="text-xs text-slate-400 mt-0.5 ml-12 line-clamp-1">
-                            {e.learning_objectives[0]}
-                            {e.learning_objectives.length > 1 && ` +${e.learning_objectives.length - 1} more`}
-                          </p>
-                        )}
-                      </div>
-                      {e.is_delivered && e.actual_delivery_date && (
-                        <span className="text-xs text-slate-400 shrink-0">
-                          {new Date(e.actual_delivery_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
-                        </span>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          <SchemeAlignment schemeId={sow.id} entries={entries} />
         </div>
 
         {/* Sidebar — assigned classes */}

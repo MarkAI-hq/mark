@@ -364,9 +364,11 @@ interface Props {
   error: string | null
   classId?: string | null
   sow?: SchemeOfWork | null
+  /** e.g. 'preparing' when the student tried to open a lesson still being checked */
+  notice?: string | null
 }
 
-export function StudyPlansClient({ user, initialPlans, gradebook, suggestion, error, classId, sow }: Props) {
+export function StudyPlansClient({ user, initialPlans, gradebook, suggestion, error, classId, sow, notice }: Props) {
   const router = useRouter()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const plans = initialPlans
@@ -735,6 +737,17 @@ export function StudyPlansClient({ user, initialPlans, gradebook, suggestion, er
 
   return (
     <div className="space-y-5 animate-fade-up">
+      {notice === 'preparing' && (
+        <div
+          role="status"
+          className="rounded-xl border border-gold/30 bg-gold/5 px-4 py-3 text-sm text-foreground"
+        >
+          <p className="font-medium">That lesson is still being prepared.</p>
+          <p className="text-muted-foreground mt-0.5">
+            We check every lesson against your curriculum before it reaches you. It will appear here as soon as it&apos;s ready.
+          </p>
+        </div>
+      )}
       {/* Header */}
       <div className="space-y-0.5">
         <h1 className="text-xl font-semibold tracking-tight">My Learning</h1>
