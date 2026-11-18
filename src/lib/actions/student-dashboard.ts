@@ -408,9 +408,34 @@ export async function getMyClassmates(): Promise<{
   }
 }
 
+// ── Started lessons ───────────────────────────────────────────────────────────
+// A lesson generated on demand has already been through the curriculum check
+// when these return: `ready` = open it now; otherwise it's held for teacher
+// review and `alternative` (when present) is an openable lesson on the same topic.
+export interface StartedLesson {
+  plan_id: string
+  plan: any
+  ready: boolean
+  held_reason?: 'review' | 'generation_failed'
+  alternative?: { plan_id: string; topic: string | null; completed: boolean } | null
+}
+
+function toStartedLesson(body: any): StartedLesson {
+  const d = body?.data ?? body ?? {}
+  const plan = d.plan ?? d
+  return {
+    plan_id: d.plan_id ?? plan?.id,
+    plan,
+    // Older API builds didn't send `ready`; treat that as openable (old behaviour).
+    ready: d.ready !== false,
+    held_reason: d.held_reason,
+    alternative: d.alternative ?? null,
+  }
+}
+
 // ── Self-initiate study plan from SoW entry ───────────────────────────────────
 export async function selfInitiateStudyPlan(sowEntryId: string): Promise<{
-  data: { plan_id: string; plan: any } | null
+  data: StartedLesson | null
   error: { message: string } | null
 }> {
   try {
@@ -425,8 +450,7 @@ export async function selfInitiateStudyPlan(sowEntryId: string): Promise<{
       const err = await res.json().catch(() => ({ message: 'Failed to initiate study plan' }))
       return { data: null, error: { message: err.message ?? 'Failed to initiate study plan' } }
     }
-    const plan = await res.json()
-    return { data: { plan_id: plan.id ?? plan.plan_id, plan }, error: null }
+    return { data: toStartedLesson(await res.json()), error: null }
   } catch (err: any) {
     return { data: null, error: { message: err.message ?? 'Failed to initiate study plan' } }
   }
@@ -438,7 +462,7 @@ export async function initiateFreeStudyPlan(
   topic: string,
   lessonType?: string,
 ): Promise<{
-  data: { plan_id: string; plan: any } | null
+  data: StartedLesson | null
   error: { message: string } | null
 }> {
   try {
@@ -453,8 +477,7 @@ export async function initiateFreeStudyPlan(
       const err = await res.json().catch(() => ({ message: 'Failed to initiate study plan' }))
       return { data: null, error: { message: err.message ?? 'Failed to initiate study plan' } }
     }
-    const data = await res.json()
-    return { data: { plan_id: data.plan_id ?? data.plan?.id, plan: data.plan }, error: null }
+    return { data: toStartedLesson(await res.json()), error: null }
   } catch (err: any) {
     return { data: null, error: { message: err.message ?? 'Failed to initiate study plan' } }
   }

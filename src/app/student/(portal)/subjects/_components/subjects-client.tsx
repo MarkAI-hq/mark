@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { useRouter } from 'next/navigation'
+import { useOpenStartedLesson } from '@/hooks/use-open-started-lesson'
 import Link from 'next/link'
 import {
   BookOpenCheck, TrendingUp, Clock, ChevronRight,
@@ -51,7 +51,7 @@ const masteryBorder: Record<string, string> = {
 export function SubjectsClient({
   user, subjectProgress, studyPlans, sow, currentWeekEntries, predictions, classId, classFetchFailed,
 }: Props) {
-  const router = useRouter()
+  const openStartedLesson = useOpenStartedLesson()
   const [initiating, startInitiate] = useTransition()
   const [initiatingSubject, setInitiatingSubject] = useState<string | null>(null)
   const studentId = user?.user_id ?? user?.id
@@ -101,10 +101,7 @@ export function SubjectsClient({
       const { data, error } = await initiateFreeStudyPlan(subject, topic)
       setInitiatingSubject(null)
       if (error) { toast.error(error.message); return }
-      if (data?.plan_id) {
-        toast.success('Study plan created!')
-        router.push(`/student/study-plans/${data.plan_id}/studio`)
-      }
+      openStartedLesson(data, { readyMessage: 'Lesson ready!' })
     })
   }
 

@@ -340,7 +340,14 @@ export async function getStudySchedule(mode?: StudyMode) {
 }
 
 export async function selfInitiateFromEntry(sowEntryId: string) {
-  return fetcher<{ plan: StudyPlan }>(
+  // `ready` / `held_reason` / `alternative`: see StartedLesson in student-dashboard.ts.
+  return fetcher<{
+    plan: StudyPlan
+    plan_id?: string
+    ready?: boolean
+    held_reason?: 'review' | 'generation_failed'
+    alternative?: { plan_id: string; topic: string | null; completed: boolean } | null
+  }>(
     '/study-plans/self-initiate',
     { method: 'POST', body: JSON.stringify({ sow_entry_id: sowEntryId }) },
   )
@@ -351,7 +358,13 @@ export async function initiateFreeStudyPlan(
   topic: string,
   lesson_type = 'consolidation',
 ) {
-  return fetcher<{ plan_id: string; plan: StudyPlan }>(
+  return fetcher<{
+    plan_id: string
+    plan: StudyPlan
+    ready?: boolean
+    held_reason?: 'review' | 'generation_failed'
+    alternative?: { plan_id: string; topic: string | null; completed: boolean } | null
+  }>(
     '/study-plans/initiate-free',
     { method: 'POST', body: JSON.stringify({ subject, topic, lesson_type }) },
   )

@@ -37,6 +37,7 @@ import { AskTracyChip } from '@/components/students/ask-tracy-chip'
 import { ClassConfirmationUploadWidget } from '@/components/students/class-confirmation-upload-widget'
 import { WeekCalendar } from './week-calendar'
 import { SyllabusTab } from './syllabus-tab'
+import { useOpenStartedLesson } from '@/hooks/use-open-started-lesson'
 
 const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday']
 
@@ -239,6 +240,7 @@ export function ScheduleClient({
   user, sow, currentWeekEntries, timetable, attendance, pacingData, studySchedule, paceSettings, activeTab: initialTab, classId, classFetchFailed,
 }: Props) {
   const router = useRouter()
+  const openStartedLesson = useOpenStartedLesson()
   const [tab, setTab] = useState<'week' | 'timetable' | 'attendance' | 'syllabus'>(
     initialTab as any ?? 'week',
   )
@@ -365,10 +367,7 @@ export function ScheduleClient({
         const { data, error } = await initiateFreeStudyPlan(subject, topic, 'pre_class')
         setInitiatingEntry(null)
         if (error) { toast.error(error.message); return }
-        if (data?.plan_id) {
-          toast.success('Pre-class preview plan created!')
-          router.push(`/student/study-plans/${data.plan_id}/studio`)
-        }
+        openStartedLesson(data, { readyMessage: 'Pre-class preview ready!' })
         return
       }
 
@@ -376,10 +375,7 @@ export function ScheduleClient({
       const { data, error } = await selfInitiateStudyPlan(entryId)
       setInitiatingEntry(null)
       if (error) { toast.error(error.message); return }
-      if (data?.plan_id) {
-        toast.success('Review study plan created!')
-        router.push(`/student/study-plans/${data.plan_id}/studio`)
-      }
+      openStartedLesson(data, { readyMessage: 'Review lesson ready!' })
     })
   }
 
