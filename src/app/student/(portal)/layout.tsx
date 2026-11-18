@@ -1,6 +1,8 @@
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { StudentShell } from '@/components/layout/student-shell'
+import { FocusProvider } from '@/components/focus/focus-provider'
+import { FocusDock } from '@/components/focus/focus-dock'
 import { fetcher } from '@/lib/fetch'
 import { getMySchool } from '@/lib/actions/student-shell'
 import { getStudentPaceSettings } from '@/lib/actions/study-plans'
@@ -57,7 +59,12 @@ export default async function StudentPortalLayout({
       organizationName={schoolName ?? user?.organization_name ?? null}
       assistantName={assistantName}
     >
-      {children}
+      {/* One provider for the whole portal so the focus timer and sound
+          survive client-side navigation (Focus Mode v1). */}
+      <FocusProvider studentId={String(studentId ?? "")}>
+        {children}
+        <FocusDock />
+      </FocusProvider>
     </StudentShell>
   )
 }

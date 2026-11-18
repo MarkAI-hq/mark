@@ -32,6 +32,7 @@ import { TermBillingStatusCard } from '@/components/students/term-billing-status
 import { ClassConfirmationUploadWidget } from '@/components/students/class-confirmation-upload-widget'
 import type { ExamHistoryItem, LearningTool, StudentCognitiveProfile, StudyPlan, SocialProof, SubjectProgress, StudentPrediction, NextAction } from '@/lib/actions/student-dashboard'
 import { formatTopicTitle } from '@/lib/utils'
+import { FocusWeekCard } from '@/components/focus/focus-week-card'
 
 const LESSON_TYPE_CONFIG: Record<string, { label: string; color: string }> = {
   catch_up:     { label: 'Catch-Up',     color: 'bg-blue-100 text-blue-800 dark:bg-blue-950/40 dark:text-blue-300' },
@@ -405,6 +406,9 @@ export function StudentDashboardClient({
           </CardContent>
         </Card>
       </div>
+
+      {/* ── Focus this week (Focus Mode v1) ──────────────────────────── */}
+      <FocusWeekCard />
 
       {/* ── Continue studying CTA ────────────────────────────────────── */}
       {nextPendingPlan && (
