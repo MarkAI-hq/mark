@@ -16,6 +16,7 @@ import {
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { studentLogout } from '@/lib/actions/student-auth'
 import { recordCheckOut } from '@/lib/checkin'
+import { useAssistantName } from '@/hooks/use-assistant-name'
 
 export interface StudentUser {
   id:                 string
@@ -31,21 +32,27 @@ export interface StudentUser {
 interface StudentSidebarNavProps {
   user:              StudentUser
   organizationName?: string | null
+  /** The student's own name for their assistant, from the server (null = "Tracy"). */
+  assistantName?:    string | null
   collapsed:         boolean
   onToggleCollapse:  () => void
 }
 
 export function StudentSidebarNav({
-  user, organizationName, collapsed, onToggleCollapse,
+  user, organizationName, assistantName, collapsed, onToggleCollapse,
 }: StudentSidebarNavProps) {
   const pathname                    = usePathname()
   const [mobileOpen, setMobileOpen] = useState(false)
 
   const isMarketplace = user.enrollment_source === 'marketplace'
 
-  const accessibleItems = studentNavItems.filter(
-    (item) => !(isMarketplace && item.hideForMarketplace),
-  )
+  // The assistant's menu entry carries the name THIS student gave it (live — it
+  // changes the moment they rename it), not the shared default.
+  const myAssistantName = useAssistantName(assistantName)
+
+  const accessibleItems = studentNavItems
+    .filter((item) => !(isMarketplace && item.hideForMarketplace))
+    .map((item) => (item.href === '/student/tracy' ? { ...item, title: myAssistantName } : item))
 
   return (
     <TooltipProvider delayDuration={0}>

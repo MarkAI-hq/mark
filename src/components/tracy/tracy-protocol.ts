@@ -45,6 +45,9 @@ export type TracySseEvent =
   | { type: 'tool_call';   name: string; label: string }
   | { type: 'tool_result'; name: string; success: boolean }
   | { type: 'text_delta';  delta: string }
+  | { type: 'reset' }
+  | { type: 'quiz_verified'; outcome_id: string }
+  | { type: 'practice_saved'; outcome: string; topic?: string; correct: boolean; attempted: number; achieved: number; mastered: boolean }
   | { type: 'error';       message: string }
   | { type: 'done'; reply?: string; sessionId?: string; usageRemaining?: number; [key: string]: unknown }
 

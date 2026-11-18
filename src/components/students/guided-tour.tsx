@@ -33,6 +33,7 @@ import { PartyPopper } from 'lucide-react'
 import { TourGuideClient } from '@sjmc11/tourguidejs'
 import { toast } from 'sonner'
 import { useCelebration } from '@/hooks/use-celebration'
+import { useAssistantName } from '@/hooks/use-assistant-name'
 // CSS is imported in the portal layout (src/app/student/(portal)/layout.tsx),
 // not here — this component only mounts on the dashboard, so a client-side
 // <Link> transition into it (e.g. Help page's "Retake the tour") wouldn't
@@ -51,7 +52,7 @@ const TOUR_GROUP = 'student-dashboard-intro'
 // doesn't recreate a module-level constant — would hand the library stale,
 // detached elements from the previous page render instead of re-resolving
 // the current selectors, breaking positioning and dialog content silently.
-function candidateSteps() {
+function candidateSteps(assistant: string) {
   return [
     {
       target: '[data-tour="next-step"]',
@@ -90,8 +91,8 @@ function candidateSteps() {
     },
     {
       target: 'a[href="/student/tracy"]',
-      title: 'Ask Tracy',
-      content: 'Stuck on something? Tracy is your AI study buddy — ask anything, any time.',
+      title: `Ask ${assistant}`,
+      content: `Stuck on something? ${assistant} is your AI study buddy — ask anything, any time.`,
       order: 6,
       group: TOUR_GROUP,
     },
@@ -119,6 +120,10 @@ export function GuidedTour({ trigger }: { trigger: 'welcome' | 'replay' | null }
   // query) actually sees becomes a race.
   const startedForRef = useRef<string | null>(null)
   const { celebrate } = useCelebration()
+  // Read through a ref so a rename never re-runs (and restarts) the tour effect below.
+  const assistantName = useAssistantName()
+  const assistantRef  = useRef(assistantName)
+  assistantRef.current = assistantName
 
   useEffect(() => {
     if (!trigger || startedForRef.current === trigger) return
@@ -135,7 +140,7 @@ export function GuidedTour({ trigger }: { trigger: 'welcome' | 'replay' | null }
     // address bar and is invisible to React.
     window.history.replaceState(null, '', '/student/dashboard')
 
-    const availableSteps = candidateSteps().filter((s) => document.querySelector(s.target))
+    const availableSteps = candidateSteps(assistantRef.current).filter((s) => document.querySelector(s.target))
     if (availableSteps.length === 0) return
 
     // exitOnClickOutside is the library default (true) — off here because it

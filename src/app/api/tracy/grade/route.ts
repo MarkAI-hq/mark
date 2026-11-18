@@ -32,6 +32,7 @@ export async function POST(req: NextRequest) {
       prompt: string
       explanation: string
       rubricPoints?: string[]
+      typing?: { chars?: number; keystrokes?: number; ms?: number; paste_blocked?: number }
     };
 
     if (!body.explanation?.trim()) {
@@ -48,6 +49,7 @@ export async function POST(req: NextRequest) {
         prompt: body.prompt,
         explanation: body.explanation,
         rubricPoints: body.rubricPoints,
+        typing: body.typing,
       }),
     });
 

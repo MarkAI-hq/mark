@@ -191,3 +191,9 @@
   /* Blank ruled lines (comments) */
   .report-card-print .rule-field { border-bottom: 1px solid #bbb; min-height: 18px; margin-top: 5px; }
 }
+
+/* KaTeX keeps a visually-hidden MathML copy of every formula for screen readers, absolutely
+   positioned. With no positioned ancestor it escapes a chat's scroll container and stretches
+   the whole page; the chat's auto-scroll then scrolls the page itself and leaves a void below
+   the app. Containing it inside its own formula fixes that for every chat surface. */
+.katex { position: relative; }

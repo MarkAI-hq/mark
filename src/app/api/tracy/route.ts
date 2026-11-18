@@ -46,6 +46,8 @@ export async function POST(req: NextRequest) {
       message: string;
       sessionId: string;
       sourceIds?: string[];
+      /** The page is showing a blank chat — Tracy should not inherit earlier chats' history. */
+      freshChat?: boolean;
       attachments?: Array<{ name: string; type: string; size: number }>;
     };
 
@@ -86,6 +88,7 @@ export async function POST(req: NextRequest) {
       body: JSON.stringify({
         message: enrichedMessage,
         sessionId: body.sessionId,
+        freshChat: body.freshChat === true,
       }),
     });
 

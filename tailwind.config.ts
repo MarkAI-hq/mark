@@ -1,4 +1,9 @@
 import type { Config } from "tailwindcss";
+import tailwindcssAnimate from "tailwindcss-animate";
+// Powers every `prose` class (Tracy chat replies, exam viewer, marking guide).
+// Without it Tailwind's preflight strips list bullets and heading styles, so
+// markdown lists rendered as bare lines.
+import typography from "@tailwindcss/typography";
 
 export default {
     darkMode: ["class"],
@@ -117,5 +122,5 @@ export default {
   		}
   	}
   },
-  plugins: [require("tailwindcss-animate")],
+  plugins: [tailwindcssAnimate, typography],
 } satisfies Config;

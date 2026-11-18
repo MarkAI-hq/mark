@@ -17,6 +17,7 @@ import { SceneMisconceptionRedirect }   from './scene-misconception-redirect'
 import { ScenePeerTeach }               from './scene-peer-teach'
 import { SceneMasteryMoment }           from './scene-mastery-moment'
 import { ScenePhenomenon }              from './scene-phenomenon'
+import { noPasteCaptureProps }          from '@/lib/no-paste'
 import { SceneRetrievalFlash }          from './scene-retrieval-flash'
 import { SceneOutcomesIntro }           from './scene-outcomes-intro'
 import { SceneOutcomesCheck }           from './scene-outcomes-check'
@@ -25,6 +26,7 @@ import { SceneUnknown }                 from './scene-unknown'
 import { LessonSidebar }                from './lesson-sidebar'
 import { formatTopicTitle }             from '@/lib/utils'
 import { AskTracyChip }                 from '@/components/students/ask-tracy-chip'
+import { AssistantName }                from '@/components/students/assistant-name'
 import type { LessonProgressPayload }   from '@/lib/actions/study-plans'
 
 // ── Resume-where-you-left-off ────────────────────────────────────────────────
@@ -602,7 +604,8 @@ export function LessonPlayer({
               </div>
             </div>
           )}
-          <div className="mx-auto w-full max-w-2xl px-4 py-6">
+          {/* Every answer box in a scene is the student's own typing — no pasting. */}
+          <div className="mx-auto w-full max-w-2xl px-4 py-6" {...noPasteCaptureProps('lesson')}>
             {scene?.image_url && scene.type !== 'slide' && (
               <div className="flex justify-center mb-5">
                 <ZoomableImage src={scene.image_url} alt={scene.title ?? 'Scene image'} />
@@ -635,8 +638,8 @@ export function LessonPlayer({
                 Opens in a new tab so the lesson (and its saved place) stays put. */}
             {wrongHere && (
               <div className="mt-5 flex items-center justify-between gap-3 rounded-xl border border-gold/20 bg-gold/5 px-4 py-3">
-                <p className="text-sm text-muted-foreground">Not quite clicking? Tracy can explain it another way.</p>
-                <AskTracyChip newTab prompt={askTracyPrompt} label="Ask Tracy" className="shrink-0" />
+                <p className="text-sm text-muted-foreground">Not quite clicking? <AssistantName /> can explain it another way.</p>
+                <AskTracyChip prompt={askTracyPrompt} label="Ask Tracy" className="shrink-0" />
               </div>
             )}
 

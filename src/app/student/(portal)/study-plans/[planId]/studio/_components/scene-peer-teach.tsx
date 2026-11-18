@@ -8,6 +8,8 @@ import { validateStudentInput, copyProtectionProps } from '@/lib/utils/validatio
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import { LessonProse } from '@/components/lesson/lesson-prose'
+import { AssistantName } from '@/components/students/assistant-name'
+import { useTypingSignals } from '@/lib/no-paste'
 
 interface Props {
   scene: any
@@ -19,6 +21,7 @@ interface GradeResult {
   score: number
   feedback: string
   met_points: string[]
+  authenticity?: { own_words: boolean; signals: string[] }
 }
 
 export function ScenePeerTeach({ scene, onReady, onResponse }: Props) {
@@ -29,6 +32,7 @@ export function ScenePeerTeach({ scene, onReady, onResponse }: Props) {
   const [grading, setGrading]     = useState(false)
   const [grade, setGrade]         = useState<GradeResult | null>(null)
   const [validationError, setValidationError] = useState<string | null>(null)
+  const typing = useTypingSignals()
   const wordCount = text.trim().split(/\s+/).filter(Boolean).length
   const canSubmit = wordCount >= min_words && !submitted
 
@@ -48,12 +52,14 @@ export function ScenePeerTeach({ scene, onReady, onResponse }: Props) {
       const res = await fetch('/api/tracy/grade', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: teachPrompt, explanation: text, rubricPoints: rubric_points }),
+        body: JSON.stringify({ prompt: teachPrompt, explanation: text, rubricPoints: rubric_points, typing: typing.read(text) }),
       })
       const { result } = await res.json()
       if (result) {
         setGrade(result)
-        onResponse?.({ type: 'peer_teach', correct: result.score >= 60 })
+        // Copied/AI-written explanations earn no credit (see Tracy gradePeerTeach).
+        const ownWords = result.authenticity?.own_words !== false
+        onResponse?.({ type: 'peer_teach', correct: ownWords && result.score >= 60 })
       } else {
         // Grading unavailable — still count the attempt as engagement, just ungraded.
         onResponse?.({ type: 'peer_teach', correct: true })
@@ -80,6 +86,7 @@ export function ScenePeerTeach({ scene, onReady, onResponse }: Props) {
         <div className="space-y-2">
           <Textarea
             value={text}
+            onKeyDown={typing.onKeyDown}
             onChange={(e) => { setText(e.target.value); setValidationError(null) }}
             placeholder="Write your explanation here…"
             className="min-h-32 resize-none text-base leading-relaxed"
@@ -105,7 +112,7 @@ export function ScenePeerTeach({ scene, onReady, onResponse }: Props) {
           {grading && (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" />
-              Tracy is reading your explanation…
+              <AssistantName /> is reading your explanation…
             </div>
           )}
 
@@ -113,9 +120,14 @@ export function ScenePeerTeach({ scene, onReady, onResponse }: Props) {
             <div className="rounded-2xl border border-gold/30 bg-gold/5 px-5 py-4 space-y-1.5">
               <div className="flex items-center gap-2">
                 <Sparkles className="h-4 w-4 text-gold shrink-0" />
-                <p className="text-sm font-semibold">Tracy&apos;s read: {grade.score}/100</p>
+                <p className="text-sm font-semibold"><AssistantName />&apos;s read: {grade.score}/100</p>
               </div>
               <p className="text-sm text-foreground/80 leading-relaxed">{grade.feedback}</p>
+              {grade.authenticity?.own_words === false && (
+                <p className="mt-2 rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
+                  This doesn&apos;t read like your own words, so it didn&apos;t count toward your progress. Explaining it yourself — even imperfectly — is what makes it stick.
+                </p>
+              )}
             </div>
           )}
 
