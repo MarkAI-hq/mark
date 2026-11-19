@@ -24,12 +24,18 @@ import {
   type TracySseEvent,
 } from '@/components/tracy/tracy-protocol'
 import { useTracyChatStream } from '@/hooks/use-tracy-chat-stream'
+import {
+  useChatAttachments, AttachButton, PendingAttachmentChips, SentAttachmentChips, type SentAttachment,
+} from '@/components/tracy/chat-attachment-picker'
+import { toast } from 'sonner'
 
 interface ChatMessage {
   id: string
   role: 'user' | 'assistant'
   content: string
   isLoading?: boolean
+  /** Report cards, letters etc. the guardian sent with this message. */
+  attachments?: SentAttachment[]
 }
 
 const BARE_MARKER_RE = /(?:^|\n)\s*(?:__)?(?:NEXT|CONFIRM|ARTIFACT)(?:__)?\s*:\s*$/
@@ -49,6 +55,7 @@ export function GuardianTracyClient({ guardianName }: { guardianName: string }) 
 
   const sessionIdRef = useRef<string>(crypto.randomUUID())
   const tracyStream = useTracyChatStream()
+  const attach = useChatAttachments()
   const scrollRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -57,14 +64,16 @@ export function GuardianTracyClient({ guardianName }: { guardianName: string }) 
 
   async function send(text: string) {
     const trimmed = text.trim()
-    if (!trimmed || streaming) return
+    if ((!trimmed && !attach.ready) || streaming) return
+    if (attach.uploading) { toast('Hang on, your file is still uploading…'); return }
+    const { refs: attachmentRefs, sent: sentFiles } = attach.take()
 
     setNextSuggestion(null)
     setInput('')
     setStreaming(true)
     setMessages((prev) => [
       ...prev,
-      { id: crypto.randomUUID(), role: 'user', content: trimmed },
+      { id: crypto.randomUUID(), role: 'user', content: trimmed, attachments: sentFiles.length ? sentFiles : undefined },
       { id: crypto.randomUUID(), role: 'assistant', content: '', isLoading: true },
     ])
 
@@ -117,7 +126,11 @@ export function GuardianTracyClient({ guardianName }: { guardianName: string }) 
     }
 
     try {
-      await tracyStream.stream({ message: trimmed, sessionId: sessionIdRef.current }, onEvent)
+      await tracyStream.stream({
+        message: trimmed,
+        sessionId: sessionIdRef.current,
+        ...(attachmentRefs.length ? { attachments: attachmentRefs } : {}),
+      }, onEvent)
     } catch {
       setMessages((p) =>
         p.map((m) => (m.isLoading ? { ...m, content: 'Sorry, I had trouble responding. Please try again.', isLoading: false } : m)),
@@ -164,6 +177,7 @@ export function GuardianTracyClient({ guardianName }: { guardianName: string }) 
                   : 'max-w-[85%] rounded-2xl bg-muted px-4 py-2.5 text-sm whitespace-pre-wrap'
               }
             >
+              {m.role === 'user' && <SentAttachmentChips files={m.attachments} />}
               {m.isLoading && !m.content ? <TypingDots /> : m.content}
             </div>
           </div>
@@ -185,7 +199,10 @@ export function GuardianTracyClient({ guardianName }: { guardianName: string }) 
 
       <UsageRemainingBanner remaining={usageRemaining} />
 
-      <div className="flex items-end gap-2 border-t pt-3">
+      <div className="border-t pt-3">
+      <PendingAttachmentChips files={attach.files} onRemove={attach.remove} />
+      <div className="flex items-end gap-2">
+        <AttachButton onFiles={attach.add} disabled={streaming} className="h-[44px]" />
         <Textarea
           value={input}
           onChange={(e) => setInput(e.target.value)}
@@ -195,13 +212,14 @@ export function GuardianTracyClient({ guardianName }: { guardianName: string }) 
               send(input)
             }
           }}
-          placeholder="Ask about your child's progress…"
+          placeholder="Ask about your child's progress, or attach a report card…"
           className="min-h-[44px] max-h-32 resize-none"
           disabled={streaming}
         />
-        <Button size="icon" onClick={() => send(input)} disabled={streaming || !input.trim()}>
+        <Button size="icon" onClick={() => send(input)} disabled={streaming || attach.uploading || (!input.trim() && !attach.ready)}>
           <Send className="h-4 w-4" />
         </Button>
+      </div>
       </div>
     </div>
   )

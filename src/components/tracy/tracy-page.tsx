@@ -18,6 +18,7 @@ import {
   ResizableHandle,
 } from "@/components/ui/resizable";
 import { useTracyChatStream } from "@/hooks/use-tracy-chat-stream";
+import { uploadChatFile, type TracyAttachmentRef } from "@/components/tracy/chat-attachments";
 import {
   ARTIFACT_RE, CONFIRM_RE, NEXT_RE, WIDGET_RE, NEXT_RE_IN_WIDGET,
   extractJson,
@@ -56,6 +57,8 @@ interface UploadedFile {
   previewUrl?: string;
   uploadState?: "pending" | "uploading" | "done" | "error";
   uploadedUrl?: string;
+  /** Storage key from /api/upload — what Tracy uses to read the file itself. */
+  uploadedPath?: string;
 }
 
 type ArtifactType = "assessment" | "report" | "reteach_plan" | "results" | "audit" | "generic" | "form";
@@ -154,14 +157,7 @@ function relativeTime(ms: number): string {
   return new Date(ms).toLocaleDateString([], { month: "short", day: "numeric" });
 }
 
-async function uploadFile(file: File): Promise<string> {
-  const formData = new FormData();
-  formData.append("file", file);
-  const res = await fetch("/api/upload", { method: "POST", body: formData });
-  if (!res.ok) throw new Error(`Upload failed: ${res.statusText}`);
-  const data = await res.json();
-  return data.url as string;
-}
+const uploadFile = uploadChatFile;
 
 // ── localStorage helpers ──────────────────────────────────────────────────────
 
@@ -1669,8 +1665,8 @@ export default function TracyPage({ initialPrompt }: { initialPrompt?: string } 
       if (file.type === "application/pdf" || file.type.startsWith("image/")) {
         setPendingFiles((prev) => prev.map((f) => f.id === fileId ? { ...f, uploadState: "uploading" } : f));
         uploadFile(file)
-          .then((url) => {
-            setPendingFiles((prev) => prev.map((f) => f.id === fileId ? { ...f, uploadState: "done", uploadedUrl: url } : f));
+          .then(({ url, path }) => {
+            setPendingFiles((prev) => prev.map((f) => f.id === fileId ? { ...f, uploadState: "done", uploadedUrl: url, uploadedPath: path } : f));
           })
           .catch(() => {
             setPendingFiles((prev) => prev.map((f) => f.id === fileId ? { ...f, uploadState: "error" } : f));
@@ -1761,22 +1757,27 @@ export default function TracyPage({ initialPrompt }: { initialPrompt?: string } 
 
     try {
       const uploadedParts: string[] = [];
+      const uploadedPaths: Record<string, string> = {};
       for (const f of snapshotFiles) {
         if (f.type === "application/pdf" || f.type.startsWith("image/")) {
           let url = f.uploadedUrl;
+          let path = f.uploadedPath;
           if (!url) {
             const fileObj = fileObjectsRef.current[f.id];
             if (fileObj) {
-              try { url = await uploadFile(fileObj); } catch { /* skip */ }
+              try { ({ url, path } = await uploadFile(fileObj)); } catch { /* skip */ }
             }
           }
+          // The URL stays in the message for tools that take a file link
+          // (assessment / marking-guide / exam detection); the path lets Tracy see the file.
           if (url) uploadedParts.push(`${f.name} (${f.type}) ${url}`);
+          if (path) uploadedPaths[f.id] = path;
         }
       }
 
       const attachedFilesBlock  = uploadedParts.length > 0 ? `\n\n[ATTACHED FILES: ${uploadedParts.join(", ")}]` : "";
       const finalPayloadMessage = `${userMsg.content}${fileDataContext}${attachedFilesBlock}`;
-      const attachmentsMeta     = snapshotFiles.map(({ name, type, size }) => ({ name, type, size }));
+      const attachmentsMeta: TracyAttachmentRef[] = snapshotFiles.map(({ id, name, type, size }) => ({ name, type, size, path: uploadedPaths[id] }));
 
       let fullReply = "";
       let finalArtifacts = { ...artifacts };

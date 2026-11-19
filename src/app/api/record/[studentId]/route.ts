@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const API = process.env.MIRROR_API_URL ?? "http://localhost:4000/api/v1";
+import { mirrorApiUrl } from "@/lib/mirror-api-url";
+
+const API = mirrorApiUrl();
 
 async function mirrorGet(path: string, jwt: string) {
   try {

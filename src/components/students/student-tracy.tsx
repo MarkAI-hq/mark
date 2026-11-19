@@ -50,6 +50,9 @@ import {
   extractJson,
 } from '@/components/tracy/tracy-protocol'
 import { AssistantMessage, UserMessage } from '@/components/tracy/chat-message'
+import {
+  useChatAttachments, AttachButton, PendingAttachmentChips, SentAttachmentChips, type SentAttachment,
+} from '@/components/tracy/chat-attachment-picker'
 import { WidgetRenderer } from '@/components/tracy/widget-renderer'
 import { buildGreeting, type Greeting } from '@/components/tracy/greeting'
 import { publishAssistantName, useAssistantName } from '@/hooks/use-assistant-name'
@@ -82,6 +85,8 @@ interface Message {
   role:      'user' | 'tracy'
   content:   string
   timestamp: Date
+  /** Photos/PDFs the student sent with this message. */
+  attachments?: SentAttachment[]
   isLoading?: boolean
   /** Tools Tracy used to produce this reply, kept for the collapsed trace row. */
   tools?:    ToolStatus[]
@@ -612,7 +617,7 @@ function MessageBubble({ message, activeIds, onGenerateChip, toolStatuses, isLas
   const isUser  = message.role === 'user'
   const content = message.content.replace(/\bNEXT:\s*/g, '').trim()
 
-  if (isUser) return <UserMessage>{content}</UserMessage>
+  if (isUser) return <UserMessage><SentAttachmentChips files={message.attachments} />{content}</UserMessage>
 
   const chipType = activeIds.size > 0 && content && !message.isLoading ? detectChipType(content) : null
   return (
@@ -744,6 +749,7 @@ export function StudentTracyPage({ user, weakSubjects, currentTopics, initialNot
   }
 
   const tracyStream = useTracyChatStream()
+  const attach = useChatAttachments()
   const bottomRef   = useRef<HTMLDivElement>(null)
   const audioRef    = useRef<HTMLAudioElement | null>(null)
   const inputRef    = useRef<HTMLInputElement>(null)
@@ -981,7 +987,9 @@ export function StudentTracyPage({ user, weakSubjects, currentTopics, initialNot
   }
 
   async function sendMessage(text: string) {
-    if (!text.trim() || streaming) return
+    if ((!text.trim() && !attach.ready) || streaming) return
+    if (attach.uploading) { toast('Hang on, your file is still uploading…'); return }
+    const { refs: attachmentRefs, sent: sentFiles } = attach.take()
     setInput('')
     // Once the question has been answered, any new message that isn't the answer itself
     // (a new topic, "another one"…) clears the old question from the side panel.
@@ -991,7 +999,7 @@ export function StudentTracyPage({ user, weakSubjects, currentTopics, initialNot
     }
     setToolStatuses([])
 
-    const userMsg:    Message = { id: crypto.randomUUID(), role: 'user',  content: text, timestamp: new Date() }
+    const userMsg:    Message = { id: crypto.randomUUID(), role: 'user',  content: text, timestamp: new Date(), attachments: sentFiles.length ? sentFiles : undefined }
     const loadingMsg: Message = { id: crypto.randomUUID(), role: 'tracy', content: '',   timestamp: new Date(), isLoading: true }
     setMessages(prev => [...prev, userMsg, loadingMsg])
     setStreaming(true)
@@ -1144,7 +1152,10 @@ export function StudentTracyPage({ user, weakSubjects, currentTopics, initialNot
     try {
       await tracyStream.stream(
         // A blank chat starts clean; a chat restored from History keeps its saved context.
-        { message: text, sessionId: sessionIdRef.current, mode: 'student', sourceIds: Array.from(activeIds), freshChat: messages.length === 0 },
+        {
+          message: text, sessionId: sessionIdRef.current, mode: 'student', sourceIds: Array.from(activeIds), freshChat: messages.length === 0,
+          ...(attachmentRefs.length ? { attachments: attachmentRefs } : {}),
+        },
         onEvent,
       )
     } catch (err: any) {
@@ -1334,12 +1345,14 @@ export function StudentTracyPage({ user, weakSubjects, currentTopics, initialNot
 
           {/* Composer */}
           <div className="px-[22px] pt-3 pb-[18px] border-t border-[#e8e8e6] dark:border-[#1f1f1f] shrink-0">
+            <PendingAttachmentChips files={attach.files} onRemove={attach.remove} />
             {/* Input wrapper */}
             <div className={`flex items-center gap-2.5 bg-[#f6f6f5] dark:bg-[#141414] border rounded-[14px] px-4 py-[6px] transition-all ${
               inputFocused
                 ? 'border-[#b88a1f] shadow-[0_0_0_3px_#ecdfc2] dark:shadow-[0_0_0_3px_#332b12]'
                 : 'border-[#e2e2df] dark:border-[#2a2a2a]'
             }`}>
+              <AttachButton onFiles={attach.add} disabled={streaming} className="-ml-2" />
               <input
                 ref={inputRef}
                 {...noPasteProps('tracy-chat')}
@@ -1353,7 +1366,7 @@ export function StudentTracyPage({ user, weakSubjects, currentTopics, initialNot
               />
               <button
                 onClick={() => sendMessage(input)}
-                disabled={!input.trim() || streaming}
+                disabled={(!input.trim() && !attach.ready) || streaming || attach.uploading}
                 className="w-[38px] h-[38px] rounded-[10px] flex items-center justify-center shrink-0 border-0 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
                 style={{ background: 'linear-gradient(150deg, #b88a1f, #8a6713)', boxShadow: '0 3px 8px rgba(138,103,19,.30)' }}>
                 <ArrowUp className="h-4 w-4 text-white" strokeWidth={2} />
