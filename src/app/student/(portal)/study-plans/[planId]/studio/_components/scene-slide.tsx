@@ -77,10 +77,13 @@ export function SceneSlide({ scene, imageUrl }: Props) {
           <div className="space-y-3">
             <div className="flex items-start gap-2">
               <BookOpen className="h-4 w-4 text-gold shrink-0 mt-1" />
-              <h2 className={`font-bold leading-tight ${showImage ? 'text-xl' : 'text-2xl'}`}>{title}</h2>
+              <h2 className={`font-bold leading-tight ${showImage ? 'text-lg sm:text-xl' : 'text-xl sm:text-2xl'}`}>{title}</h2>
             </div>
             {text && (
-              <p className={`leading-relaxed text-foreground ${showImage ? 'text-sm' : 'text-base'}`}><LessonProse text={text} /></p>
+              // With an image the text only shares a row from sm up; on phones
+              // it stacks full-width under the image, so keep it full size
+              // there (it was 14px on phones beside 16px bullets).
+              <p className={`leading-relaxed text-foreground ${showImage ? 'text-base sm:text-sm' : 'text-base'}`}><LessonProse text={text} /></p>
             )}
           </div>
         </div>
@@ -105,7 +108,7 @@ export function SceneSlide({ scene, imageUrl }: Props) {
     <div className="space-y-5">
       <div className="flex items-start gap-2">
         <BookOpen className="h-4 w-4 text-gold shrink-0 mt-1" />
-        <h2 className="font-bold text-2xl leading-tight">{title}</h2>
+        <h2 className="font-bold text-xl sm:text-2xl leading-tight">{title}</h2>
       </div>
 
       {text && (

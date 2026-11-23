@@ -66,6 +66,7 @@ export function FocusWeekCard() {
           <Stat
             label="Most used"
             value={summary?.most_used_system ? SYSTEMS[summary.most_used_system].label : '–'}
+            text
           />
         </div>
         {!empty && (
@@ -88,10 +89,22 @@ export function FocusWeekCard() {
   )
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
+// `text` marks a word value ("Pomodoro", "Flowtime"): at text-2xl it is wider
+// than a third of a phone-width card, so it steps down and may wrap instead of
+// spilling out of its column. Numbers keep the big size.
+function Stat({ label, value, text = false }: { label: string; value: string; text?: boolean }) {
   return (
-    <div>
-      <p className="text-2xl font-bold">{value}</p>
+    <div className="min-w-0">
+      <p
+        className={
+          text
+            ? 'flex min-h-8 items-center justify-center text-base font-bold leading-tight [overflow-wrap:anywhere] sm:text-lg'
+            : 'text-2xl font-bold tabular-nums'
+        }
+        title={value}
+      >
+        {value}
+      </p>
       <p className="text-xs text-muted-foreground">{label}</p>
     </div>
   )

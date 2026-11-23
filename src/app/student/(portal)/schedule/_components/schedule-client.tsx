@@ -380,10 +380,10 @@ export function ScheduleClient({
   }
 
   const tabs = [
-    { id: 'week',       label: 'This Week',  icon: BookOpen },
-    { id: 'timetable',  label: 'Timetable',  icon: CalendarDays },
-    { id: 'attendance', label: 'Attendance', icon: UserCheck },
-    { id: 'syllabus',   label: 'Syllabus',   icon: Sparkles },
+    { id: 'week',       label: 'This Week',  short: 'Week',       icon: BookOpen },
+    { id: 'timetable',  label: 'Timetable',  short: 'Timetable',  icon: CalendarDays },
+    { id: 'attendance', label: 'Attendance', short: 'Attendance', icon: UserCheck },
+    { id: 'syllabus',   label: 'Syllabus',   short: 'Syllabus',   icon: Sparkles },
   ]
 
   // Merge physical timetable + SoW study slots
@@ -506,11 +506,19 @@ export function ScheduleClient({
       </div>
 
       <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)}>
-      <TabsList>
-        {tabs.map(({ id, label, icon: Icon }) => (
-          <TabsTrigger key={id} value={id} className="flex items-center gap-1.5">
-            <Icon className="h-3.5 w-3.5" />
-            {label}
+      {/* Phones: four equal columns spanning the width, smaller text, no
+          icons below 400px, "Week" for "This Week" — all four always fit
+          (verified at 320/360/412px). sm+: the normal inline pill. */}
+      <TabsList className="grid w-full grid-cols-4 sm:inline-flex sm:w-auto">
+        {tabs.map(({ id, label, short, icon: Icon }) => (
+          <TabsTrigger
+            key={id}
+            value={id}
+            className="flex min-w-0 items-center gap-1.5 px-1 text-[11px] min-[400px]:text-xs sm:px-3 sm:text-sm"
+          >
+            <Icon className="hidden h-3.5 w-3.5 shrink-0 min-[400px]:block" />
+            <span className="sm:hidden">{short}</span>
+            <span className="hidden sm:inline">{label}</span>
           </TabsTrigger>
         ))}
       </TabsList>

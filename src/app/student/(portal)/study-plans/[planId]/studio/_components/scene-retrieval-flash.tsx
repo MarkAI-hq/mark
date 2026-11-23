@@ -40,7 +40,7 @@ export function SceneRetrievalFlash({ scene, onReady, onResponse }: Props) {
       <div className="flex items-start gap-2">
         <Zap className="h-4 w-4 text-gold shrink-0 mt-1" />
         <div>
-          <h2 className="font-bold text-2xl leading-tight">{title}</h2>
+          <h2 className="font-bold text-xl sm:text-2xl leading-tight">{title}</h2>
           <p className="text-sm text-muted-foreground mt-0.5">Warm up your memory</p>
         </div>
       </div>
@@ -50,9 +50,11 @@ export function SceneRetrievalFlash({ scene, onReady, onResponse }: Props) {
 
         return (
           <div key={qIdx} className="rounded-2xl border bg-card p-5 space-y-4">
-            <div className="flex items-start justify-between gap-2">
-              <p className="font-medium text-base leading-snug flex-1"><LessonProse text={q.question} /></p>
-              <span className="text-xs text-muted-foreground whitespace-nowrap shrink-0">
+            {/* Topic label goes above the question on phones — side by side,
+                its no-wrap topic name squeezed the question into a sliver. */}
+            <div className="flex flex-col-reverse gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-2">
+              <p className="min-w-0 font-medium text-base leading-snug sm:flex-1"><LessonProse text={q.question} /></p>
+              <span className="text-xs text-muted-foreground sm:max-w-[45%] sm:shrink-0 sm:text-right">
                 {formatTopicTitle(q.topic)} · {q.days_ago}d ago
               </span>
             </div>

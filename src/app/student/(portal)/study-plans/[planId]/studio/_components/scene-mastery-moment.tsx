@@ -34,7 +34,7 @@ export function SceneMasteryMoment({ scene, initialMisconception }: Props) {
 
       <div className="space-y-1">
         <p className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Mastered</p>
-        <h2 className="font-bold text-2xl leading-tight">{topic}</h2>
+        <h2 className="font-bold text-xl sm:text-2xl leading-tight">{topic}</h2>
       </div>
 
       {initialMisconception && (

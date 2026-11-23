@@ -285,7 +285,7 @@ function InteractiveBody({ scene, content, onReady, onResponse }: Props & { cont
     <div className="space-y-5">
       <div className="flex items-start gap-2">
         <Puzzle className="mt-1 h-4 w-4 shrink-0 text-gold" />
-        <h2 className="text-2xl font-bold leading-tight">{scene.title}</h2>
+        <h2 className="text-xl sm:text-2xl font-bold leading-tight">{scene.title}</h2>
       </div>
       <p className="text-base text-muted-foreground"><LessonProse text={content.instructions} /></p>
 

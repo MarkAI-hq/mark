@@ -110,9 +110,11 @@ export function SceneCornell({ scene, planId, subject, topic, onReady }: Props) 
         )}
       </div>
 
-      <div className="grid grid-cols-5 gap-0 rounded-xl border overflow-hidden min-h-[240px]">
-        {/* Cue questions — left column */}
-        <div className="col-span-2 border-r bg-muted/30 px-3 py-3 flex flex-col gap-3">
+      {/* Stacked on phones (cues above notes); side-by-side from sm up. A 2/5
+          column on a ~330px phone left the cues ~130px wide. */}
+      <div className="grid grid-cols-1 sm:grid-cols-5 gap-0 rounded-xl border overflow-hidden min-h-[240px]">
+        {/* Cue questions — left column (top on phones) */}
+        <div className="sm:col-span-2 border-b sm:border-b-0 sm:border-r bg-muted/30 px-3 py-3 flex flex-col gap-3">
           <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             Cues — think about these
           </p>
@@ -120,21 +122,21 @@ export function SceneCornell({ scene, planId, subject, topic, onReady }: Props) 
             {(cue_questions ?? []).map((q: string, i: number) => (
               <li key={i} {...copyProtectionProps} className={cn('space-y-0.5', copyProtectionProps.className)}>
                 <span className="text-xs font-bold text-gold/80 uppercase tracking-wide">Q{i + 1}</span>
-                <p className="text-xs text-foreground leading-snug"><LessonProse text={q} /></p>
+                <p className="text-sm sm:text-xs text-foreground leading-snug"><LessonProse text={q} /></p>
               </li>
             ))}
           </ul>
         </div>
 
         {/* Student notes — right column */}
-        <div className="col-span-3 px-3 py-3 flex flex-col">
+        <div className="sm:col-span-3 px-3 py-3 flex flex-col">
           <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">
             Your notes
           </p>
           <textarea
             value={studentNotes}
             onChange={(e) => { setStudentNotes(e.target.value); setValidationError(null) }}
-            placeholder="Write your own notes here — use the cue questions on the left to guide you…"
+            placeholder="Write your own notes here — use the cue questions to guide you…"
             className="flex-1 min-h-[180px] w-full bg-transparent text-sm resize-none focus:outline-none placeholder:text-muted-foreground leading-relaxed"
           />
         </div>

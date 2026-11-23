@@ -56,10 +56,13 @@ export function StudentSidebarNav({
 
   return (
     <TooltipProvider delayDuration={0}>
-      {/* Mobile hamburger */}
-      {!mobileOpen && (
+      {/* Mobile hamburger — not inside a lesson studio: the studio is
+          full-screen with its own Exit button, and this fixed button sat on
+          top of the lesson's top bar (partly covering Exit) on phones. */}
+      {!mobileOpen && !pathname.includes('/studio') && (
         <Button
           variant="ghost"
+          aria-label="Open menu"
           className="fixed top-4 left-4 z-50 md:!hidden"
           onClick={() => setMobileOpen(true)}
         >

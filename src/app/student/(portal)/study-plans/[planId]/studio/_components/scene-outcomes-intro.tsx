@@ -19,7 +19,7 @@ export function SceneOutcomesIntro({ scene }: Props) {
         </span>
       </div>
 
-      <h2 className="font-bold text-2xl leading-tight">
+      <h2 className="font-bold text-xl sm:text-2xl leading-tight">
         What you will learn: {topic}
       </h2>
 

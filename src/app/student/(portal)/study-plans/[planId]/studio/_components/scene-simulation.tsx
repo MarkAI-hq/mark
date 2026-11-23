@@ -32,6 +32,20 @@ body {
   padding: 0.75rem 1rem 1.25rem;
   line-height: 1.5;
 }
+/* Phone guards. Generated simulations often hard-code desktop widths
+   (e.g. a 600px canvas or container), which the frame's overflow-hidden
+   then cuts off on a phone. Scoped to narrow frames so desktop rendering is
+   unchanged. max-width is a separate property from width, so it caps fixed
+   widths set by the simulation's own class rules too. Note: a canvas scaled
+   down this way still draws at full resolution; click maths that uses
+   offsetX unscaled may be slightly off on phones (previously unusable). */
+@media (max-width: 640px) {
+  body { overflow-wrap: anywhere; }
+  body * { max-width: 100%; }
+  img, svg, video, canvas { max-width: 100% !important; height: auto; }
+  table { display: block; overflow-x: auto; }
+  pre { overflow-x: auto; white-space: pre-wrap; }
+}
 </style>`
 
 // Sends content height to parent on load + any DOM resize.
