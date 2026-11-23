@@ -2,6 +2,7 @@
 'use client'
 
 import { LogOut, Settings, ChevronsUpDown } from 'lucide-react'
+import { isStandalone } from '@/lib/pwa'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { useCookies } from 'next-client-cookies'
@@ -41,7 +42,9 @@ export function UserNav() {
       if (user) recordCheckOut(user.id)
       const result = await logout()
       if (!result.success) throw new Error(result.error as string)
-      router.push('/')
+      // Inside the installed app, '/' is the marketing page — go back to the
+      // sign-in chooser instead.
+      router.push(isStandalone() ? '/app' : '/')
       router.refresh()
     } catch (err) {
       toast.error('Error', {

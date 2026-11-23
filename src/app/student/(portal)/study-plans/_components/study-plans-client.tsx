@@ -4,6 +4,7 @@
 
 import { useState, useTransition, useEffect, useMemo, useRef } from 'react'
 import { useRouter } from 'next/navigation'
+import { useOpenStartedLesson } from '@/hooks/use-open-started-lesson'
 import type { ColumnDef } from '@tanstack/react-table'
 import {
   BookOpen, CheckCircle2, Clock, ChevronRight, Sparkles,
@@ -24,6 +25,7 @@ import {
 import { DataTable } from '@/components/ui/data-table'
 import { CompletedPlansTable } from '@/components/students/completed-plans-table'
 import { PendingPlansTable } from '@/components/students/pending-plans-table'
+import { ReviewListCard } from '@/components/students/review-list-card'
 
 import {
   checkInStudySession, selfInitiateFromEntry,
@@ -364,10 +366,21 @@ interface Props {
   error: string | null
   classId?: string | null
   sow?: SchemeOfWork | null
+  /** e.g. 'preparing' when the student tried to open a lesson still being checked */
+  notice?: string | null
 }
 
-export function StudyPlansClient({ user, initialPlans, gradebook, suggestion, error, classId, sow }: Props) {
+export function StudyPlansClient({ user, initialPlans, gradebook, suggestion, error, classId, sow, notice }: Props) {
   const router = useRouter()
+  const openStartedLesson = useOpenStartedLesson()
+
+  // One-shot notice from a lesson link that couldn't open. Shown once, then the
+  // query param is dropped so a refresh or back-navigation doesn't bring it
+  // back — it used to sit there permanently, looking like nothing ever changed.
+  const [showNotice, setShowNotice] = useState(notice === 'preparing')
+  useEffect(() => {
+    if (notice === 'preparing') router.replace('/student/study-plans', { scroll: false })
+  }, [notice, router])
   const fileInputRef = useRef<HTMLInputElement>(null)
   const plans = initialPlans
 
@@ -535,13 +548,18 @@ export function StudyPlansClient({ user, initialPlans, gradebook, suggestion, er
       if (matchesSuggestion && suggestion) {
         const { data, error: err } = await selfInitiateFromEntry(suggestion.entry.id)
         if (err) { toast.error(err.message); return }
-        if (data?.plan?.id) { toast.success('Study plan created!'); goStudio(data.plan.id) }
+        // The API now reports whether the lesson can open (held lessons used to
+        // dead-end on the "still being prepared" banner).
+        openStartedLesson(
+          data ? { ...data, plan_id: data.plan_id ?? data.plan?.id, ready: data.ready !== false } : null,
+          { readyMessage: 'Lesson ready!' },
+        )
         return
       }
 
       const { data, error: err } = await initiateFreeStudyPlan(freeSub.trim(), freeTopic.trim())
       if (err) { toast.error(err.message); return }
-      if (data?.plan_id) { toast.success('Study plan created!'); goStudio(data.plan_id) }
+      openStartedLesson(data, { readyMessage: 'Lesson ready!' })
     })
   }
 
@@ -735,6 +753,27 @@ export function StudyPlansClient({ user, initialPlans, gradebook, suggestion, er
 
   return (
     <div className="space-y-5 animate-fade-up">
+      {showNotice && (
+        <div
+          role="status"
+          className="flex items-start gap-3 rounded-xl border border-gold/30 bg-gold/5 px-4 py-3 text-sm text-foreground"
+        >
+          <div className="flex-1">
+            <p className="font-medium">That lesson isn&apos;t open yet.</p>
+            <p className="text-muted-foreground mt-0.5">
+              It&apos;s with your teacher for a quick check against your curriculum, and will show up below once it&apos;s approved. Pick another lesson in the meantime.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowNotice(false)}
+            className="text-muted-foreground hover:text-foreground text-xs font-medium"
+            aria-label="Dismiss"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
       {/* Header */}
       <div className="space-y-0.5">
         <h1 className="text-xl font-semibold tracking-tight">My Learning</h1>
@@ -789,6 +828,9 @@ export function StudyPlansClient({ user, initialPlans, gradebook, suggestion, er
 
       {/* Spaced-repetition reviews due */}
       <ReviewStrip plans={plans} onStudio={goStudio} />
+
+      {/* The student's own "still tricky" list from end-of-lesson review logs */}
+      <ReviewListCard />
 
       {/* Subject-grouped learning queue */}
       {subjects.length > 0 && (

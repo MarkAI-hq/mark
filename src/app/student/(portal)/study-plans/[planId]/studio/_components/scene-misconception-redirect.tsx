@@ -12,7 +12,7 @@ export function SceneMisconceptionRedirect({ scene, subject, topic }: Props) {
 
   return (
     <div className="space-y-4">
-      <h2 className="font-bold text-2xl leading-tight">{title}</h2>
+      <h2 className="font-bold text-xl sm:text-2xl leading-tight">{title}</h2>
 
       <div className="rounded-2xl border border-rose-200 dark:border-rose-800 bg-rose-50 dark:bg-rose-900/20 px-5 py-4 space-y-1">
         <div className="flex items-center gap-2 text-rose-700 dark:text-rose-300 text-sm font-medium">

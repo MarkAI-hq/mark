@@ -14,6 +14,7 @@ const sidebarNavItems = [
   { title: 'Members',           href: '/dashboard/settings/members',        icon: 'Users'      },
   { title: 'Billing',           href: '/dashboard/settings/billing',        icon: 'CreditCard' },
   { title: 'Subjects',          href: '/dashboard/settings/subjects',       icon: 'BookMarked' },
+  { title: 'Term Dates',        href: '/dashboard/settings/term-dates',     icon: 'CalendarDays' },
   { title: 'Welcome Pack',      href: '/dashboard/settings/welcome-pack',   icon: 'Gift'       },
   { title: 'Account & Privacy', href: '/dashboard/settings/account',        icon: 'Shield'     },
 ];

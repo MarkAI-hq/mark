@@ -29,7 +29,7 @@ export function SceneProbe({ scene, onAnswer, onReady }: Props) {
         What do you already think?
       </div>
 
-      <h2 className="font-bold text-2xl leading-tight">{title}</h2>
+      <h2 className="font-bold text-xl sm:text-2xl leading-tight">{title}</h2>
 
       <div className="rounded-2xl border bg-card px-5 py-4">
         <p className="font-medium text-lg leading-snug"><LessonProse text={question} /></p>

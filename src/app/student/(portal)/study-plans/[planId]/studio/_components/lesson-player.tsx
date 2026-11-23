@@ -17,13 +17,18 @@ import { SceneMisconceptionRedirect }   from './scene-misconception-redirect'
 import { ScenePeerTeach }               from './scene-peer-teach'
 import { SceneMasteryMoment }           from './scene-mastery-moment'
 import { ScenePhenomenon }              from './scene-phenomenon'
+import { noPasteCaptureProps }          from '@/lib/no-paste'
 import { SceneRetrievalFlash }          from './scene-retrieval-flash'
 import { SceneOutcomesIntro }           from './scene-outcomes-intro'
 import { SceneOutcomesCheck }           from './scene-outcomes-check'
+import { SceneInteractive }             from './scene-interactive'
+import { SceneUnknown }                 from './scene-unknown'
 import { LessonSidebar }                from './lesson-sidebar'
 import { formatTopicTitle }             from '@/lib/utils'
 import { AskTracyChip }                 from '@/components/students/ask-tracy-chip'
+import { AssistantName }                from '@/components/students/assistant-name'
 import type { LessonProgressPayload }   from '@/lib/actions/study-plans'
+import { FoundationNote, type LessonRemediation } from '@/components/students/foundation-note'
 
 // ── Resume-where-you-left-off ────────────────────────────────────────────────
 // Progress is mirrored to localStorage per plan so an accidental exit, refresh,
@@ -89,7 +94,15 @@ function getStage(scene: any, index: number): FiveEStage {
 const GATED_TYPES = new Set([
   'quiz', 'hint_quiz', 'probe', 'peer_teach', 'pbl_stage',
   'whiteboard', 'cornell_notes', 'phenomenon_story', 'retrieval_flash',
-  'outcomes_check',
+  'outcomes_check', 'interactive',
+])
+
+// SPEC-05 S5-R4: every type this build can render. Anything else gets the
+// "needs an app update" card instead of a blank screen, and is never gated.
+const KNOWN_TYPES = new Set([
+  'slide', 'quiz', 'simulation', 'whiteboard', 'pbl_stage', 'cornell_notes', 'hint_quiz', 'probe',
+  'misconception_redirect', 'peer_teach', 'mastery_moment', 'phenomenon_story', 'retrieval_flash',
+  'outcomes_intro', 'outcomes_check', 'interactive',
 ])
 
 function requiresGate(scene: any): boolean {
@@ -139,7 +152,15 @@ function ZoomableImage({ src, alt }: { src: string; alt: string }) {
   )
 }
 
-export interface SceneResponse { type: string; correct?: boolean; sceneIndex?: number }
+export interface SceneResponse {
+  type: string
+  correct?: boolean
+  sceneIndex?: number
+  /** 0–100; for interactives the first-attempt score (SPEC-05 S5-R16) */
+  score?: number
+  template?: string
+  misconception_hits?: string[]
+}
 
 interface LessonPlayerProps {
   scenes: any[]
@@ -157,6 +178,8 @@ interface LessonPlayerProps {
   serverProgress?: any | null
   /** Debounced best-effort persist of progress to the server. Omit for practice retakes. */
   onSaveProgress?: (payload: LessonProgressPayload) => void
+  /** Set when this is a foundation lesson (content.remediation) — explained on the first step. */
+  remediation?: LessonRemediation | null
 }
 
 // Server snapshots are snake_case; normalise to the local shape.
@@ -188,6 +211,7 @@ export function LessonPlayer({
   sessionHint,
   serverProgress,
   onSaveProgress,
+  remediation,
 }: LessonPlayerProps) {
   const topic = formatTopicTitle(topicProp)
   const [currentIndex, setCurrentIndex] = useState(0)
@@ -526,18 +550,20 @@ export function LessonPlayer({
         )}
 
         <div className="flex-1 flex items-center justify-center gap-2 min-w-0">
-          <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${stageCfg.bg} ${stageCfg.text}`}>
+          <span className={`shrink-0 text-xs font-semibold px-2 py-0.5 rounded-full ${stageCfg.bg} ${stageCfg.text}`}>
             {stage}
           </span>
-          <span className="text-xs text-muted-foreground truncate max-w-[200px]">{scene?.title ?? topic}</span>
+          {/* Title takes whatever room is left and truncates — on a phone the
+              bar also holds the badge, counter and audio controls. */}
+          <span className="min-w-0 text-xs text-muted-foreground truncate sm:max-w-[200px]">{scene?.title ?? topic}</span>
           {sessionHint && sessionHint.of_estimate > 1 && (
-            <span className="text-xs text-muted-foreground/70 shrink-0 whitespace-nowrap">
+            <span className="hidden sm:inline text-xs text-muted-foreground/70 shrink-0 whitespace-nowrap">
               Session {sessionHint.index} of ~{sessionHint.of_estimate}
             </span>
           )}
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-2">
           <span className="text-xs text-muted-foreground tabular-nums">{currentIndex + 1}/{total}</span>
           {scene && hasNarration(scene) && (
             <button
@@ -584,7 +610,14 @@ export function LessonPlayer({
               </div>
             </div>
           )}
-          <div className="mx-auto w-full max-w-2xl px-4 py-6">
+          {/* Every answer box in a scene is the student's own typing — no pasting.
+              overflow-wrap:anywhere is inherited by every scene below, so long
+              AI-generated tokens (chemical names, formulas, URLs) wrap on a
+              phone instead of pushing text off-screen. `anywhere` (unlike
+              `break-word`) also lowers min-content width, so flex rows of
+              text + badge can actually shrink. */}
+          <div className="mx-auto w-full min-w-0 max-w-2xl px-4 py-6 [overflow-wrap:anywhere]" {...noPasteCaptureProps('lesson')}>
+            {currentIndex === 0 && <FoundationNote remediation={remediation ?? null} variant="banner" className="mb-5" />}
             {scene?.image_url && scene.type !== 'slide' && (
               <div className="flex justify-center mb-5">
                 <ZoomableImage src={scene.image_url} alt={scene.title ?? 'Scene image'} />
@@ -608,6 +641,8 @@ export function LessonPlayer({
                 {scene.type === 'retrieval_flash'         && <SceneRetrievalFlash        scene={scene} onReady={() => setSceneReady(true)} onResponse={handleSceneResponse} />}
                 {scene.type === 'outcomes_intro'          && <SceneOutcomesIntro         scene={scene} />}
                 {scene.type === 'outcomes_check'          && <SceneOutcomesCheck         scene={scene} onReady={() => setSceneReady(true)} onOutcomesAchieved={setAchievedRefs} />}
+                {scene.type === 'interactive'             && <SceneInteractive           scene={scene} onReady={() => setSceneReady(true)} onResponse={handleSceneResponse} />}
+                {!KNOWN_TYPES.has(scene.type)             && <SceneUnknown               scene={scene} onReady={() => setSceneReady(true)} />}
               </>
             )}
 
@@ -615,8 +650,8 @@ export function LessonPlayer({
                 Opens in a new tab so the lesson (and its saved place) stays put. */}
             {wrongHere && (
               <div className="mt-5 flex items-center justify-between gap-3 rounded-xl border border-gold/20 bg-gold/5 px-4 py-3">
-                <p className="text-sm text-muted-foreground">Not quite clicking? Tracy can explain it another way.</p>
-                <AskTracyChip newTab prompt={askTracyPrompt} label="Ask Tracy" className="shrink-0" />
+                <p className="min-w-0 text-sm text-muted-foreground">Not quite clicking? <AssistantName /> can explain it another way.</p>
+                <AskTracyChip prompt={askTracyPrompt} label="Ask Tracy" className="shrink-0" />
               </div>
             )}
 

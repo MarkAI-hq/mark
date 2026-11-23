@@ -71,3 +71,48 @@ export async function getSubmissionDetail(
     cache: 'no-store',
   })
 }
+// ===== Timed attempts (Focus Mode v1, spec §6) =====
+// The server owns the clock: it sets deadline_at when a Pending attempt is
+// created for an assessment with duration_minutes, returns the same attempt
+// on reload, and refuses writes with 403 DEADLINE_PASSED after deadline + 60 s.
+
+export interface TimedSubmission {
+  submission_id: string
+  assessment_id: string
+  status:        'Pending' | 'Submitted' | 'Graded'
+  started_at:    string | null
+  deadline_at:   string | null
+  submitted_at:  string | null
+  server_now:    string
+}
+
+export async function startOrResumeAttempt(
+  assessmentId: string,
+): Promise<ServerActionResponse<TimedSubmission>> {
+  return await fetcher<TimedSubmission>('/submissions', {
+    method: 'POST',
+    body:   JSON.stringify({ assessment_id: assessmentId }),
+    cache:  'no-store',
+  })
+}
+
+export async function saveAttemptResponse(
+  submissionId: string,
+  questionId: string,
+  answer: string,
+): Promise<ServerActionResponse<{ response_id: string }>> {
+  return await fetcher(`/submissions/${submissionId}/responses`, {
+    method: 'POST',
+    body:   JSON.stringify({ question_id: questionId, student_answer: answer }),
+    cache:  'no-store',
+  })
+}
+
+export async function submitAttempt(
+  submissionId: string,
+): Promise<ServerActionResponse<TimedSubmission>> {
+  return await fetcher<TimedSubmission>(`/submissions/${submissionId}/submit`, {
+    method: 'POST',
+    cache:  'no-store',
+  })
+}

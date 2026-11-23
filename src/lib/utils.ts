@@ -77,3 +77,27 @@ export function splitTopicHeadline(raw: string | null | undefined): { headline: 
   const clauses = formatted.split(' / ')
   return { headline: clauses[0] ?? '', extraCount: clauses.length - 1 }
 }
+
+/**
+ * "just now" · "5 min ago" · "3 h ago" · "yesterday" · "4 days ago" · "12 Nov".
+ * Use for every "created … ago" label — a raw minute count reads as nonsense
+ * ("9,214 min ago") once something is more than an hour old.
+ */
+export function formatTimeAgo(date: string | number | Date, now: number = Date.now()): string {
+  const t = new Date(date).getTime()
+  if (!Number.isFinite(t)) return ''
+  const mins = Math.max(0, Math.round((now - t) / 60_000))
+  if (mins < 1) return 'just now'
+  if (mins < 60) return `${mins} min ago`
+  const hours = Math.round(mins / 60)
+  if (hours < 24) return `${hours} h ago`
+  const days = Math.round(hours / 24)
+  if (days === 1) return 'yesterday'
+  if (days < 7) return `${days} days ago`
+  const d = new Date(t)
+  return d.toLocaleDateString(undefined, {
+    day: 'numeric',
+    month: 'short',
+    ...(d.getFullYear() !== new Date(now).getFullYear() ? { year: 'numeric' } : {}),
+  })
+}

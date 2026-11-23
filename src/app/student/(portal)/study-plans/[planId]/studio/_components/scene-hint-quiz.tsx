@@ -23,7 +23,7 @@ export function SceneHintQuiz({ scene, onReady, onResponse }: Props) {
     <div className="space-y-5">
       <div className="flex items-start gap-2">
         <HelpCircle className="h-4 w-4 text-gold shrink-0 mt-1" />
-        <h2 className="font-bold text-2xl leading-tight">{title}</h2>
+        <h2 className="font-bold text-xl sm:text-2xl leading-tight">{title}</h2>
       </div>
 
       <div className="rounded-2xl border bg-card px-5 py-4">

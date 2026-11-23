@@ -101,6 +101,7 @@ export interface GuardianNotificationPreferences {
   streak_at_risk?: boolean
   exam_registration?: boolean
   digest?: boolean
+  daily_digest?: boolean
 }
 
 export async function getNotificationPreferences(

@@ -32,6 +32,9 @@ import { TermBillingStatusCard } from '@/components/students/term-billing-status
 import { ClassConfirmationUploadWidget } from '@/components/students/class-confirmation-upload-widget'
 import type { ExamHistoryItem, LearningTool, StudentCognitiveProfile, StudyPlan, SocialProof, SubjectProgress, StudentPrediction, NextAction } from '@/lib/actions/student-dashboard'
 import { formatTopicTitle } from '@/lib/utils'
+import { FoundationNote, remediationOf } from '@/components/students/foundation-note'
+import { FocusWeekCard } from '@/components/focus/focus-week-card'
+import { DailyGoalCard } from '@/components/students/daily-goal-card'
 
 const LESSON_TYPE_CONFIG: Record<string, { label: string; color: string }> = {
   catch_up:     { label: 'Catch-Up',     color: 'bg-blue-100 text-blue-800 dark:bg-blue-950/40 dark:text-blue-300' },
@@ -406,6 +409,10 @@ export function StudentDashboardClient({
         </Card>
       </div>
 
+      {/* ── Today's goal (#3) + Focus this week ───────────────────────── */}
+      <DailyGoalCard plans={studyPlans} />
+      <FocusWeekCard />
+
       {/* ── Continue studying CTA ────────────────────────────────────── */}
       {nextPendingPlan && (
         <Link href={`/student/study-plans/${nextPendingPlan.id}/studio`} className="block">
@@ -417,6 +424,7 @@ export function StudentDashboardClient({
                 <p className="text-xs text-muted-foreground mt-0.5">
                   {nextPendingPlan.subject} · {nextPendingPlan.content?.estimated_minutes ?? 20} min
                 </p>
+                <FoundationNote remediation={remediationOf(nextPendingPlan)} className="mt-0.5 flex" />
               </div>
             </div>
             <ArrowRight className="h-4 w-4 text-gold shrink-0" />

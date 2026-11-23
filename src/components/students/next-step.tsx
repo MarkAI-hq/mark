@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { useRouter } from 'next/navigation'
+import { useOpenStartedLesson } from '@/hooks/use-open-started-lesson'
 import Link from 'next/link'
 import { ArrowRight, Sparkles, Target, Trophy, Clock, CheckCircle2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -15,7 +15,7 @@ import { formatEmbeddedCaps, splitTopicHeadline } from '@/lib/utils'
  * Answers, in one card: DO THIS NOW · IT GETS YOU THIS · YOU vs YOUR GOAL.
  */
 export function NextStep({ nextAction }: { nextAction: NextAction | null }) {
-  const router = useRouter()
+  const openStartedLesson = useOpenStartedLesson()
   const [starting, startTransition] = useTransition()
   const [busy, setBusy] = useState(false)
 
@@ -33,7 +33,7 @@ export function NextStep({ nextAction }: { nextAction: NextAction | null }) {
         toast.error(error.message ?? 'Could not start lesson')
         return
       }
-      if (data?.plan_id) router.push(`/student/study-plans/${data.plan_id}/studio`)
+      openStartedLesson(data)
     })
   }
 

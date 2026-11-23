@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { X, Trophy, PartyPopper, Loader2, Check, ArrowRight, Sparkles } from 'lucide-react'
 import Link from 'next/link'
@@ -13,12 +13,16 @@ import {
   getNextAction, getStudentSubjectProgress, getStudentPredictions, type NextAction,
 } from '@/lib/actions/student-dashboard'
 import {
-  markStudyPlanComplete, saveLessonProgress, resolveNextInSequence, selfInitiateFromEntry,
+  markStudyPlanComplete, saveLessonProgress, resolveNextInSequence, selfInitiateFromEntry, logStudyMinutes,
   type NextInSequenceResult,
 } from '@/lib/actions/study-plans'
 import { submitStudentNote } from '@/lib/actions/student-notes'
 import { LessonPlayer, clearProgress, type SceneResponse } from './lesson-player'
 import { splitTopicHeadline } from '@/lib/utils'
+import { remediationOf } from '@/components/students/foundation-note'
+import { LessonReport, buildLessonReport, type LessonReportData } from './lesson-report'
+import { ReviewLog } from './review-log'
+import { useOptionalFocus } from '@/components/focus/focus-provider'
 
 // ── Component ─────────────────────────────────────────────────────────────────
 //
@@ -73,6 +77,16 @@ export function StudioShell({ plan, scenes, user, isPractice }: Props) {
   // alongside the other completion-screen data — never blocks completion if
   // it errors, the student still lands on the normal NextStep fallback.
   const [sequence, setSequence] = useState<NextInSequenceResult | null>(null)
+
+  // Lesson report (#8) + review log (#9). Time is measured from when this
+  // session opened the studio — a resumed lesson reports this session only.
+  const startedAtRef = useRef<number>(Date.now())
+  // A running Focus session already logs its own minutes to today's goal, so
+  // lesson time is only logged when no session is counting (no double count).
+  const focus = useOptionalFocus()
+  const focusPhaseRef = useRef(focus?.view.phase)
+  focusPhaseRef.current = focus?.view.phase
+  const [report, setReport] = useState<LessonReportData | null>(null)
   const [startingExtra, setStartingExtra] = useState(false)
 
   function handleStartExtra(entryId: string) {
@@ -120,6 +134,26 @@ export function StudioShell({ plan, scenes, user, isPractice }: Props) {
 
         toast.success('Lesson complete!')
 
+        // Feed today's goal (#3) with real time on task, capped so a tab left
+        // open for hours can't inflate it.
+        if (!focusPhaseRef.current || focusPhaseRef.current === 'idle') {
+          const est = Number((plan.content as any)?.estimated_minutes) || 20
+          const mins = Math.round((Date.now() - startedAtRef.current) / 60_000)
+          const capped = Math.min(Math.max(mins, 1), Math.max(60, est * 2))
+          void logStudyMinutes(capped).catch(() => {})
+        }
+
+        setReport(
+          buildLessonReport({
+            scenes,
+            responses: data.sceneResponses,
+            achievedRefs: data.achievedRefs,
+            startedAt: startedAtRef.current,
+            estimatedMinutes: (plan.content as any)?.estimated_minutes ?? null,
+            nextReview: res?.data?.plan?.next_review_date ?? null,
+          }),
+        )
+
         const studentId = user?.user_id ?? user?.id
         // Fetch the next action + the connective tissue (subject mastery,
         // exam prediction) in parallel — no dead air, and the completion
@@ -149,7 +183,7 @@ export function StudioShell({ plan, scenes, user, isPractice }: Props) {
         setCompleting(false)
       }
     },
-    [plan.id, plan.subject, user, isPractice],
+    [plan.id, plan.subject, plan.content, scenes, user, isPractice],
   )
 
   // Practice retake — a small, clearly-different screen. No breadcrumb, no
@@ -214,6 +248,8 @@ export function StudioShell({ plan, scenes, user, isPractice }: Props) {
             )}
           </div>
 
+          {report && <LessonReport report={report} />}
+
           {/* This lesson doesn't stand alone — show what it fed into */}
           <ConnectedProgress
             topic={plan.topic ?? ''}
@@ -271,6 +307,8 @@ export function StudioShell({ plan, scenes, user, isPractice }: Props) {
 
           {/* The immediate next action — no dead air */}
           {(!sequence || sequence.mode === 'none') && <NextStep nextAction={done.next} />}
+
+          {report && <ReviewLog planId={plan.id} missed={report.missed} />}
 
           {/* Auto-prompt for a quick summary — saved straight to the Knowledge Base */}
           {!summarySaved && !summaryOpen ? (
@@ -356,6 +394,7 @@ export function StudioShell({ plan, scenes, user, isPractice }: Props) {
       sessionHint={sessionHint}
       serverProgress={isPractice ? null : (plan as any).progress_snapshot}
       onSaveProgress={isPractice ? undefined : (p) => { void saveLessonProgress(plan.id, p).catch(() => {}) }}
+      remediation={remediationOf(plan)}
     />
   )
 }

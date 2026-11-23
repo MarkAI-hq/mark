@@ -14,13 +14,14 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { DataTable } from '@/components/ui/data-table'
 import { formatTopicTitle } from '@/lib/utils'
+import { FoundationNote, remediationOf, type LessonRemediation } from '@/components/students/foundation-note'
 
 interface PendingPlanLike {
   id: string
   topic: string
   subject: string
   lesson_type: string
-  content?: { estimated_minutes?: number } | null
+  content?: { estimated_minutes?: number; remediation?: LessonRemediation } | null
 }
 
 const LESSON_TYPE_CONFIG: Record<string, { label: string; color: string; icon: string }> = {
@@ -48,7 +49,12 @@ export function PendingPlansTable<T extends PendingPlanLike>({
     {
       accessorKey: 'topic',
       header: 'Topic',
-      cell: ({ row }) => <span className="text-sm font-medium line-clamp-1">{formatTopicTitle(row.original.topic)}</span>,
+      cell: ({ row }) => (
+        <div className="flex min-w-0 flex-col">
+          <span className="text-sm font-medium line-clamp-1">{formatTopicTitle(row.original.topic)}</span>
+          <FoundationNote remediation={remediationOf(row.original)} />
+        </div>
+      ),
     },
     ...(showSubject ? [{
       accessorKey: 'subject',

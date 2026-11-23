@@ -4,6 +4,7 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { refreshAccessToken } from './lib/actions/auth'
 import { SCHOOL_DOMAIN_HOSTS } from './config/site-domains'
+import { SIGNIN_PREF_COOKIE, SIGNIN_PREF_PATH } from './lib/signin-preference'
 
 // A Student who hasn't finished onboarding belongs back in that flow, not the
 // dashboard — mirrors the Admin `onboarding_complete` → /onboarding redirect
@@ -21,6 +22,19 @@ function studentDestination(user: {
     return user.school_code ? `/student/join?school=${user.school_code}` : '/student/join'
   }
   return '/student/dashboard'
+}
+
+// Where each role lands when it has nowhere more specific to go.
+function roleHome(user: { role: string; onboarding_complete?: boolean; school_code?: string; enrollment_source?: string }): string {
+  switch (user.role) {
+    case 'Root':
+    case 'Support':  return '/root'
+    case 'Student':  return studentDestination(user)
+    case 'Teacher':  return '/dashboard/teacher'
+    case 'Admin':    return user.onboarding_complete === false ? '/onboarding' : '/dashboard'
+    case 'Reviewer': return '/guardian/dashboard'
+    default:         return '/login'
+  }
 }
 
 export async function middleware(request: NextRequest) {
@@ -61,6 +75,7 @@ export async function middleware(request: NextRequest) {
     '/record',
     '/pay',
     '/learning-compass',
+    '/app',
   ]
 
   const isPublicPath =
@@ -82,6 +97,25 @@ export async function middleware(request: NextRequest) {
     } catch {
       return null
     }
+  }
+
+  // /app is the installed PWA's start_url. A signed-in user never sees it —
+  // they go straight to their role's home (a refresh token is enough: the
+  // 15-min access token has usually expired between app launches, and the
+  // protected route below refreshes it). Signed out, a remembered sign-in
+  // choice skips the chooser unless ?choose=1 asks for it.
+  if (pathname === '/app') {
+    const user = getUser()
+    if (user && (token || request.cookies.get('refreshToken')?.value)) {
+      return NextResponse.redirect(new URL(roleHome(user), request.url))
+    }
+    if (!request.nextUrl.searchParams.has('choose')) {
+      const pref = request.cookies.get(SIGNIN_PREF_COOKIE)?.value
+      if (pref === 'student' || pref === 'email') {
+        return NextResponse.redirect(new URL(SIGNIN_PREF_PATH[pref], request.url))
+      }
+    }
+    return NextResponse.next()
   }
 
   if (isPublicPath) {

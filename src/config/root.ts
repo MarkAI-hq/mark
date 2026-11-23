@@ -1,4 +1,4 @@
-import { LayoutDashboard, Building2, ImageIcon, ShieldCheck, ScrollText, Megaphone, BookOpen, ShieldPlus, Inbox, BadgeCheck, BarChart2, Zap, Settings, Activity, FlaskConical, LucideIcon } from 'lucide-react'
+import { LayoutDashboard, Building2, ImageIcon, ShieldCheck, ScrollText, Megaphone, BookOpen, ShieldPlus, Inbox, BadgeCheck, BarChart2, Zap, Settings, Activity, FlaskConical, Timer, LucideIcon } from 'lucide-react'
 
 export interface RootNavItem {
   title:     string
@@ -23,6 +23,7 @@ export const rootConfig = {
     { title: 'Tutoring Quality', href: '/root/tutoring-quality', icon: FlaskConical                 },
     { title: 'Platform Health', href: '/root/platform-health',   icon: Activity                     },
     { title: 'Learning Velocity', href: '/root/learning-velocity', icon: Zap                        },
+    { title: 'Focus Sessions', href: '/root/focus-sessions',     icon: Timer                        },
     { title: 'Settings',      href: '/root/settings',           icon: Settings                     },
   ] as RootNavItem[],
 }

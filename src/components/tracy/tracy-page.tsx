@@ -18,20 +18,29 @@ import {
   ResizableHandle,
 } from "@/components/ui/resizable";
 import { useTracyChatStream } from "@/hooks/use-tracy-chat-stream";
+import { uploadChatFile, type TracyAttachmentRef } from "@/components/tracy/chat-attachments";
 import {
-  ARTIFACT_RE, CONFIRM_RE, NEXT_RE, WIDGET_RE, NEXT_RE_IN_WIDGET,
+  ARTIFACT_RE, CONFIRM_RE, NEXT_RE, WIDGET_RE, NEXT_RE_IN_WIDGET, stoppedReplyText,
   extractJson,
   type ConfirmationOption, type ConfirmationPayload, type ToolStatus,
 } from "@/components/tracy/tracy-protocol";
 import { TypingDots } from "@/components/tracy/typing-dots";
+import { ToolTrace, normalizeMath } from "@/components/tracy/chat-message";
+import remarkMath from "remark-math";
+import rehypeKatex from "rehype-katex";
 import { WidgetRenderer } from "@/components/tracy/widget-renderer";
 import { UsageRemainingBanner } from "@/components/tracy/usage-remaining-banner";
+import { getTracyChatHistory } from "@/lib/actions/assistant-history";
+import { groupServerConversations, toRows, type ServerChatRow } from "@/components/tracy/server-history";
+import { EditMessageButton, UserMessageEditor } from "@/components/tracy/edit-user-message";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 interface Message {
   id: string;
   role: "user" | "tracy";
+  /** Tools Tracy used for this reply — kept for the collapsed trace row. */
+  tools?: ToolStatus[];
   content: string;
   timestamp: Date;
   isLoading?: boolean;
@@ -39,6 +48,8 @@ interface Message {
   artifactId?: string;
   nextOptions?: ConfirmationOption[];
   widgetHtml?: string;
+  /** assistant_messages row id, once Tracy has saved this turn — needed to edit it. */
+  serverId?: string;
 }
 
 interface UploadedFile {
@@ -49,6 +60,8 @@ interface UploadedFile {
   previewUrl?: string;
   uploadState?: "pending" | "uploading" | "done" | "error";
   uploadedUrl?: string;
+  /** Storage key from /api/upload — what Tracy uses to read the file itself. */
+  uploadedPath?: string;
 }
 
 type ArtifactType = "assessment" | "report" | "reteach_plan" | "results" | "audit" | "generic" | "form";
@@ -147,14 +160,7 @@ function relativeTime(ms: number): string {
   return new Date(ms).toLocaleDateString([], { month: "short", day: "numeric" });
 }
 
-async function uploadFile(file: File): Promise<string> {
-  const formData = new FormData();
-  formData.append("file", file);
-  const res = await fetch("/api/upload", { method: "POST", body: formData });
-  if (!res.ok) throw new Error(`Upload failed: ${res.statusText}`);
-  const data = await res.json();
-  return data.url as string;
-}
+const uploadFile = uploadChatFile;
 
 // ── localStorage helpers ──────────────────────────────────────────────────────
 
@@ -180,6 +186,59 @@ function upsertConversation(
     ? conversations.map((c, i) => (i === idx ? entry : c))
     : [entry, ...conversations];
   return updated.slice(0, MAX_HISTORY);
+}
+
+// ── Server-side history (assistant_messages) ──────────────────────────────────
+// localStorage only holds chats from this browser. Tracy also persists every
+// turn server-side, so we rebuild the sidebar from there too and merge.
+
+function groupServerHistory(rows: ServerChatRow[]): StoredConversation[] {
+  // Saved replies still carry their markers, so forms, reports and widgets
+  // come back as cards rather than plain text.
+  return groupServerConversations(rows).map((c) => {
+    const artifacts: Record<string, ArtifactPayload> = {};
+    const messages: Message[] = c.messages.map((m) => {
+      const artifactId = m.artifact ? `art_${m.id}` : undefined;
+      if (artifactId && m.artifact) {
+        artifacts[artifactId] = { id: artifactId, ...m.artifact, type: m.artifact.type as ArtifactType };
+      }
+      return {
+        id: m.id,
+        role: m.role,
+        content: m.content,
+        timestamp: m.timestamp,
+        serverId: m.serverId,
+        nextOptions: m.nextOptions,
+        widgetHtml: m.widgetHtml,
+        artifactId,
+        attachments: m.attachments?.map((a, i) => ({ id: `${m.id}_f${i}`, name: a.name, type: a.type, size: 0 })),
+      };
+    });
+    return { ...c, messages, artifacts };
+  });
+}
+
+/** Add server conversations that this browser doesn't already have a local copy of. */
+function mergeServerConversations(
+  local: StoredConversation[],
+  server: StoredConversation[]
+): StoredConversation[] {
+  const alreadyLocal = (s: StoredConversation) => {
+    if (local.some((c) => c.id === s.id)) return true;
+    const first = s.messages.find((m) => m.role === "user");
+    if (!first) return true;
+    return local.some((c) =>
+      c.messages.some(
+        (m) =>
+          m.role === "user" &&
+          m.content.trim() === first.content.trim() &&
+          Math.abs(new Date(m.timestamp).getTime() - s.createdAt) < 10 * 60 * 1000
+      )
+    );
+  };
+  const extra = server.filter((s) => !alreadyLocal(s));
+  if (extra.length === 0) return local;
+  return [...local, ...extra].sort((a, b) => b.updatedAt - a.updatedAt).slice(0, MAX_HISTORY);
 }
 
 function serializeMessages(messages: Message[]): Message[] {
@@ -273,57 +332,12 @@ function ChatFileCard({ file, inUserBubble = false }: { file: UploadedFile; inUs
       </div>
       <div className="min-w-0">
         <p className={`text-[11px] font-medium truncate ${inUserBubble ? "text-white" : "text-foreground"}`}>{file.name}</p>
-        <p className={`text-[10px] ${inUserBubble ? "text-white/60" : "text-muted-foreground"}`}>{formatFileSize(file.size)}</p>
+        {file.size > 0 && <p className={`text-[10px] ${inUserBubble ? "text-white/60" : "text-muted-foreground"}`}>{formatFileSize(file.size)}</p>}
       </div>
     </div>
   );
 }
 
-// ── Tool Status Display ───────────────────────────────────────────────────────
-
-function ToolStatusPanel({ tools }: { tools: ToolStatus[] }) {
-  const [expanded, setExpanded] = useState(false);
-  if (tools.length === 0) return null;
-
-  const running = tools.find((t) => t.status === "running");
-  const lastCompleted = [...tools].reverse().find((t) => t.status === "done" || t.status === "failed");
-  const summaryLabel = running?.label ?? lastCompleted?.label ?? "Working…";
-  // Strip trailing ellipsis for the summary line
-  const summary = summaryLabel.replace(/…$/, "");
-
-  return (
-    <div className="mt-1.5 mb-0.5">
-      <button
-        onClick={() => setExpanded((v) => !v)}
-        className="flex items-center gap-1.5 group text-left"
-      >
-        {running && (
-          <span className="w-2.5 h-2.5 border border-[#c9a84c]/40 border-t-[#c9a84c] rounded-full animate-spin flex-shrink-0" />
-        )}
-        <span className="text-xs italic text-[#c9a84c]/75 group-hover:text-[#c9a84c] transition-colors">
-          {summary}
-        </span>
-        <ChevronRight className={`w-3 h-3 text-[#c9a84c]/50 group-hover:text-[#c9a84c] transition-all flex-shrink-0 ${expanded ? "rotate-90" : ""}`} />
-      </button>
-      {expanded && (
-        <div className="mt-2 pl-3 border-l border-[#c9a84c]/20 space-y-1.5">
-          {tools.map((t, i) => (
-            <div key={i} className="flex items-center gap-2 text-[11px] text-muted-foreground">
-              <span className="flex-shrink-0">
-                {t.status === "running"
-                  ? <span className="w-2 h-2 border border-[#c9a84c]/50 border-t-[#c9a84c] rounded-full animate-spin inline-block" />
-                  : t.status === "done"
-                  ? <span className="text-emerald-500 text-[10px]">✓</span>
-                  : <span className="text-red-400 text-[10px]">✕</span>}
-              </span>
-              <span className={t.status === "running" ? "text-foreground/80" : ""}>{t.label}</span>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
 
 // ── Artifact Chip ─────────────────────────────────────────────────────────────
 
@@ -1054,7 +1068,8 @@ function ReportView({ data }: { data: any }) {
 function TracyMarkdown({ content }: { content: string }) {
   return (
     <ReactMarkdown
-      remarkPlugins={[remarkGfm]}
+      remarkPlugins={[remarkGfm, [remarkMath, { singleDollarTextMath: true }]]}
+      rehypePlugins={[[rehypeKatex, { throwOnError: false, strict: "ignore" }]]}
       components={{
         table:      ({ children }) => (
           <div className="overflow-x-auto my-3 rounded-lg border border-border">
@@ -1092,7 +1107,7 @@ function TracyMarkdown({ content }: { content: string }) {
         ),
       }}
     >
-      {content}
+      {normalizeMath(content)}
     </ReactMarkdown>
   );
 }
@@ -1106,6 +1121,8 @@ function MessageBubble({
   onArtifactClick,
   isArtifactActive,
   onSend,
+  onEdit,
+  editDisabled,
 }: {
   message: Message;
   artifact?: ArtifactPayload;
@@ -1113,11 +1130,15 @@ function MessageBubble({
   onArtifactClick?: (a: ArtifactPayload) => void;
   isArtifactActive?: boolean;
   onSend?: (text: string) => void;
+  /** Set on the user's own saved messages: replace this message and re-ask Tracy. */
+  onEdit?: (text: string) => void;
+  editDisabled?: boolean;
 }) {
   const isUser        = message.role === "user";
   const hasAttachments = message.attachments && message.attachments.length > 0;
   const hasContent    = message.isLoading || !!message.content || !!message.widgetHtml;
   const [copied, setCopied] = useState(false);
+  const [editing, setEditing] = useState(false);
 
   const FORM_SUBMIT_RE = /^__FORM_SUBMIT__:\{[\s\S]*?\}\n\n/;
   const visibleContent = isUser ? message.content.replace(FORM_SUBMIT_RE, "") : message.content;
@@ -1132,16 +1153,30 @@ function MessageBubble({
   const hasWidget = !isUser && !!message.widgetHtml && !message.isLoading;
 
   // ── User message ────────────────────────────────────────────────────────────
+  if (isUser && editing && onEdit) {
+    const keptFiles = message.attachments?.some((f) => f.uploadedPath || f.uploadedUrl);
+    return (
+      <div className="flex w-full justify-end" style={{ animation: "fadeUp 0.2s ease" }}>
+        <UserMessageEditor
+          initial={visibleContent}
+          hasAttachments={hasAttachments ? (keptFiles ? "kept" : "dropped") : undefined}
+          onCancel={() => setEditing(false)}
+          onSave={(text) => { setEditing(false); onEdit(text); }}
+        />
+      </div>
+    );
+  }
+
   if (isUser) {
     return (
       <div className="flex w-full justify-end" style={{ animation: "fadeUp 0.2s ease" }}>
         <div className="flex gap-3 items-end flex-row-reverse max-w-[80%] lg:max-w-[70%] group">
           <div className="flex flex-col gap-1.5 items-end">
             {(hasAttachments || hasContent) && (
-              <div className="bg-[#c9a84c] text-white rounded-2xl rounded-br-sm shadow-sm px-4 py-2.5 flex flex-col gap-2">
+              <div className="bg-muted text-foreground rounded-lg px-4 py-2.5 flex flex-col gap-2">
                 {hasAttachments && (
                   <div className="flex flex-wrap gap-2">
-                    {message.attachments!.map((f) => <ChatFileCard key={f.id} file={f} inUserBubble />)}
+                    {message.attachments!.map((f) => <ChatFileCard key={f.id} file={f} />)}
                   </div>
                 )}
                 {hasContent && (
@@ -1151,9 +1186,14 @@ function MessageBubble({
                 )}
               </div>
             )}
-            <span className="text-[10px] text-muted-foreground px-1 opacity-0 group-hover:opacity-100 transition-opacity">
-              {formatTime(message.timestamp instanceof Date ? message.timestamp : new Date(message.timestamp))}
-            </span>
+            <div className="flex items-center gap-1 px-1 sm:opacity-0 sm:group-hover:opacity-100 sm:focus-within:opacity-100 transition-opacity">
+              {onEdit && !message.isLoading && (
+                <EditMessageButton onClick={() => setEditing(true)} disabled={editDisabled} />
+              )}
+              <span className="text-[10px] text-muted-foreground">
+                {formatTime(message.timestamp instanceof Date ? message.timestamp : new Date(message.timestamp))}
+              </span>
+            </div>
           </div>
         </div>
       </div>
@@ -1232,11 +1272,14 @@ function MessageBubble({
             </div>
           )}
           {hasContent && (
-            <div className="rounded-2xl px-4 py-2.5 text-sm leading-relaxed bg-muted/50 border border-border text-foreground rounded-bl-sm">
-              {message.isLoading ? <TypingDots /> : <TracyMarkdown content={message.content} />}
-              {message.isLoading && toolStatuses && toolStatuses.length > 0 && (
-                <ToolStatusPanel tools={toolStatuses} />
-              )}
+            <div className="px-1 py-1 text-sm leading-relaxed text-foreground">
+              <ToolTrace
+                tools={(message.isLoading ? toolStatuses : message.tools) ?? []}
+                live={!!message.isLoading}
+              />
+              {message.isLoading
+                ? (message.content ? <TracyMarkdown content={message.content} /> : (toolStatuses?.length ? null : <TypingDots />))
+                : <TracyMarkdown content={message.content} />}
             </div>
           )}
           {!message.isLoading && message.content && (
@@ -1510,6 +1553,22 @@ export default function TracyPage({ initialPrompt }: { initialPrompt?: string } 
   const sessionId          = useRef(`session_${Date.now()}`);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
+  // Pull the user's saved history from the server so the sidebar isn't limited
+  // to chats made in this browser. Local copies win (they carry artifacts).
+  useEffect(() => {
+    let cancelled = false;
+    getTracyChatHistory().then(({ data }) => {
+      if (cancelled || !data) return;
+      const rows = toRows(data);
+      if (rows.length === 0) return;
+      setConversations((prev) => {
+        const merged = mergeServerConversations(prev, groupServerHistory(rows));
+        return merged === prev ? prev : merged;
+      });
+    }).catch(() => { /* offline or signed out — localStorage history still works */ });
+    return () => { cancelled = true; };
+  }, []);
+
   // Load history and bootstrap personalised suggestions
   useEffect(() => {
     setConversations(loadHistory());
@@ -1562,7 +1621,8 @@ export default function TracyPage({ initialPrompt }: { initialPrompt?: string } 
     if (!el) return;
     const fromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
     if (fromBottom < 300) {
-      bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+      // Only the message list — scrollIntoView would also scroll the page itself.
+      el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
     }
   }, [messages]);
 
@@ -1656,8 +1716,8 @@ export default function TracyPage({ initialPrompt }: { initialPrompt?: string } 
       if (file.type === "application/pdf" || file.type.startsWith("image/")) {
         setPendingFiles((prev) => prev.map((f) => f.id === fileId ? { ...f, uploadState: "uploading" } : f));
         uploadFile(file)
-          .then((url) => {
-            setPendingFiles((prev) => prev.map((f) => f.id === fileId ? { ...f, uploadState: "done", uploadedUrl: url } : f));
+          .then(({ url, path }) => {
+            setPendingFiles((prev) => prev.map((f) => f.id === fileId ? { ...f, uploadState: "done", uploadedUrl: url, uploadedPath: path } : f));
           })
           .catch(() => {
             setPendingFiles((prev) => prev.map((f) => f.id === fileId ? { ...f, uploadState: "error" } : f));
@@ -1703,19 +1763,21 @@ export default function TracyPage({ initialPrompt }: { initialPrompt?: string } 
     setMessages((prev) =>
       prev.map((m) =>
         m.isLoading
-          ? { ...m, isLoading: false, content: m.content || "[stopped]" }
+          ? { ...m, isLoading: false, content: stoppedReplyText(m.content) || "[stopped]" }
           : m
       )
     );
     setTimeout(() => inputRef.current?.focus(), 50);
   }, [tracyStream]);
 
-  const send = useCallback(async (text?: string) => {
+  const send = useCallback(async (text?: string, opts?: { editMessageId?: string; files?: UploadedFile[] }) => {
+    // An edit re-asks with the edited text (and the original's already-uploaded
+    // files); whatever is in the composer is left alone for the next message.
+    const editing = !!opts?.editMessageId;
     const content = (text ?? input).trim();
-    if ((!content && pendingFiles.length === 0) || isLoading) return;
-
-    const snapshotFiles    = [...pendingFiles];
-    const snapshotContents = { ...pendingFileContents };
+    const snapshotFiles    = editing ? [...(opts?.files ?? [])] : [...pendingFiles];
+    const snapshotContents: Record<string, string> = editing ? {} : { ...pendingFileContents };
+    if ((!content && snapshotFiles.length === 0) || isLoading) return;
 
     let fileDataContext = "";
     Object.entries(snapshotContents).forEach(([id, textContent]) => {
@@ -1738,39 +1800,58 @@ export default function TracyPage({ initialPrompt }: { initialPrompt?: string } 
       userMsg,
       { id: loadingId, role: "tracy", content: "", timestamp: new Date(), isLoading: true },
     ]);
-    setInput("");
-    if (inputRef.current) inputRef.current.style.height = "auto";
-    revokeAndClearFiles(snapshotFiles);
-    setPendingFiles([]);
-    setPendingFileContents({});
+    if (!editing) {
+      setInput("");
+      if (inputRef.current) inputRef.current.style.height = "auto";
+      revokeAndClearFiles(snapshotFiles);
+      setPendingFiles([]);
+      setPendingFileContents({});
+    }
     setToolStatuses([]);
     setIsLoading(true);
 
     try {
       const uploadedParts: string[] = [];
+      const uploadedPaths: Record<string, string> = {};
+      const uploadedUrls: Record<string, string> = {};
       for (const f of snapshotFiles) {
         if (f.type === "application/pdf" || f.type.startsWith("image/")) {
           let url = f.uploadedUrl;
+          let path = f.uploadedPath;
           if (!url) {
             const fileObj = fileObjectsRef.current[f.id];
             if (fileObj) {
-              try { url = await uploadFile(fileObj); } catch { /* skip */ }
+              try { ({ url, path } = await uploadFile(fileObj)); } catch { /* skip */ }
             }
           }
+          // The URL stays in the message for tools that take a file link
+          // (assessment / marking-guide / exam detection); the path lets Tracy see the file.
           if (url) uploadedParts.push(`${f.name} (${f.type}) ${url}`);
+          if (url) uploadedUrls[f.id] = url;
+          if (path) uploadedPaths[f.id] = path;
         }
+      }
+      // Remember where the files went, so editing this message can re-send them.
+      if (snapshotFiles.length > 0) {
+        setMessages((prev) => prev.map((m) => m.id === userMsg.id && m.attachments
+          ? { ...m, attachments: m.attachments.map((f) => ({ ...f, uploadedUrl: uploadedUrls[f.id] ?? f.uploadedUrl, uploadedPath: uploadedPaths[f.id] ?? f.uploadedPath })) }
+          : m));
       }
 
       const attachedFilesBlock  = uploadedParts.length > 0 ? `\n\n[ATTACHED FILES: ${uploadedParts.join(", ")}]` : "";
       const finalPayloadMessage = `${userMsg.content}${fileDataContext}${attachedFilesBlock}`;
-      const attachmentsMeta     = snapshotFiles.map(({ name, type, size }) => ({ name, type, size }));
+      const attachmentsMeta: TracyAttachmentRef[] = snapshotFiles.map(({ id, name, type, size }) => ({ name, type, size, path: uploadedPaths[id] }));
 
       let fullReply = "";
       let finalArtifacts = { ...artifacts };
+      // Mirror of toolStatuses readable from this closure (state is stale in here).
+      let trace: ToolStatus[] = [];
 
       const processEvent = (event: any) => {
         switch (event.type) {
           case "tool_call": {
+            if (!trace.find((t) => t.name === event.name && t.status === "running"))
+              trace = [...trace, { name: event.name, label: event.label, status: "running" }];
             setToolStatuses((prev) => {
               const existing = prev.find((t) => t.name === event.name && t.status === "running");
               if (existing) return prev;
@@ -1779,6 +1860,11 @@ export default function TracyPage({ initialPrompt }: { initialPrompt?: string } 
             break;
           }
           case "tool_result": {
+            trace = trace.map((t) =>
+              t.name === event.name && t.status === "running"
+                ? { ...t, status: event.success ? "done" : "failed" }
+                : t
+            );
             setToolStatuses((prev) =>
               prev.map((t) =>
                 t.name === event.name && t.status === "running"
@@ -1807,6 +1893,13 @@ export default function TracyPage({ initialPrompt }: { initialPrompt?: string } 
           case "done": {
             const reply = fullReply || event.reply || "";
             const trimmed = reply.trim();
+            const ids = event.messageIds as { user?: string; assistant?: string } | undefined;
+            if (ids?.user || ids?.assistant) {
+              setMessages((prev) => prev.map((m) =>
+                m.id === userMsg.id ? { ...m, serverId: ids.user ?? m.serverId }
+                : m.id === loadingId ? { ...m, serverId: ids.assistant ?? m.serverId }
+                : m));
+            }
 
             if (typeof event.usageRemaining === "number") setUsageRemaining(event.usageRemaining);
 
@@ -1841,13 +1934,13 @@ export default function TracyPage({ initialPrompt }: { initialPrompt?: string } 
                   finalArtifacts = { ...finalArtifacts, [artifactId]: artifact };
                   setArtifacts(finalArtifacts);
                   setMessages((prev) =>
-                    prev.map((m) => m.isLoading ? { ...m, content: bubbleText, isLoading: false, artifactId } : m)
+                    prev.map((m) => m.isLoading ? { ...m, content: bubbleText, isLoading: false, artifactId, tools: trace.length ? trace : undefined } : m)
                   );
                   openArtifact(artifact);
 
                   // Save to history
                   setMessages((current) => {
-                    saveConversation(current.filter((m) => !m.isLoading).concat([{ id: loadingId, role: "tracy", content: bubbleText, timestamp: new Date(), artifactId }]), finalArtifacts);
+                    saveConversation(current.filter((m) => !m.isLoading).concat([{ id: loadingId, role: "tracy", content: bubbleText, timestamp: new Date(), artifactId, serverId: ids?.assistant }]), finalArtifacts);
                     return current;
                   });
                   return;
@@ -1905,7 +1998,7 @@ export default function TracyPage({ initialPrompt }: { initialPrompt?: string } 
                   setMessages((prev) =>
                     prev.map((m) =>
                       m.isLoading
-                        ? { ...m, content: beforeTag, isLoading: false, nextOptions: parsed.options }
+                        ? { ...m, content: beforeTag, isLoading: false, nextOptions: parsed.options, tools: trace.length ? trace : undefined }
                         : m
                     )
                   );
@@ -1920,7 +2013,7 @@ export default function TracyPage({ initialPrompt }: { initialPrompt?: string } 
 
             // Plain text reply
             setMessages((prev) =>
-              prev.map((m) => m.isLoading ? { ...m, content: reply, isLoading: false } : m)
+              prev.map((m) => m.isLoading ? { ...m, content: reply, isLoading: false, tools: trace.length ? trace : undefined } : m)
             );
             setMessages((current) => {
               saveConversation(current, finalArtifacts);
@@ -1935,6 +2028,7 @@ export default function TracyPage({ initialPrompt }: { initialPrompt?: string } 
         message:     finalPayloadMessage,
         sessionId:   sessionId.current,
         attachments: attachmentsMeta.length > 0 ? attachmentsMeta : undefined,
+        ...(opts?.editMessageId ? { editMessageId: opts.editMessageId } : {}),
       }, processEvent);
 
     } catch (err: any) {
@@ -1950,6 +2044,26 @@ export default function TracyPage({ initialPrompt }: { initialPrompt?: string } 
       inputRef.current?.focus();
     }
   }, [input, pendingFiles, pendingFileContents, isLoading, artifacts, openArtifact, revokeAndClearFiles, saveConversation, tracyStream]);
+
+  // Edit a sent message: drop it and everything after it, then ask again.
+  // Tracy deletes the same turns server-side (editMessageId), so History matches.
+  const editMessage = useCallback((messageId: string, text: string) => {
+    if (isLoading) return;
+    const idx = messages.findIndex((m) => m.id === messageId);
+    const original = messages[idx];
+    if (idx < 0 || !original?.serverId) return;
+    const dropped = messages.slice(idx);
+    if (activeArtifact && dropped.some((m) => m.artifactId === activeArtifact.id)) closePanel();
+    setConfirmation(null);
+    setMessages((prev) => {
+      const at = prev.findIndex((m) => m.id === messageId);
+      return at < 0 ? prev : prev.slice(0, at);
+    });
+    send(text, {
+      editMessageId: original.serverId,
+      files: original.attachments?.filter((f) => f.uploadedPath || f.uploadedUrl),
+    });
+  }, [isLoading, messages, activeArtifact, closePanel, send]);
 
   const handleConfirmationSelect = useCallback((value: string) => {
     setConfirmation(null);
@@ -2173,6 +2287,8 @@ export default function TracyPage({ initialPrompt }: { initialPrompt?: string } 
                           onArtifactClick={openArtifact}
                           isArtifactActive={panelOpen && activeArtifact?.id === m.artifactId}
                           onSend={send}
+                          onEdit={m.role === "user" && m.serverId ? (text) => editMessage(m.id, text) : undefined}
+                          editDisabled={isLoading}
                         />
                       ))}
                     </div>
@@ -2183,7 +2299,7 @@ export default function TracyPage({ initialPrompt }: { initialPrompt?: string } 
                 {/* Scroll to bottom button */}
                 {showScrollBtn && (
                   <button
-                    onClick={() => bottomRef.current?.scrollIntoView({ behavior: "smooth" })}
+                    onClick={() => scrollContainerRef.current?.scrollTo({ top: scrollContainerRef.current.scrollHeight, behavior: "smooth" })}
                     className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-background border border-border shadow-md text-xs text-muted-foreground hover:text-foreground hover:border-[#c9a84c]/30 transition-all"
                     style={{ animation: "fadeUp 0.15s ease" }}
                   >

@@ -1,7 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { usePathname } from 'next/navigation'
+import { AssistantNameProvider, publishAssistantName } from '@/hooks/use-assistant-name'
 import { StudentSidebarNav, StudentUser } from '@/components/nav/student-sidebar-nav'
 import { NotificationBell } from '@/components/notifications/notification-bell'
 import { StreakBadge } from '@/components/students/streak-badge'
@@ -9,21 +10,32 @@ import { ThemeToggle } from '@/components/layout/theme-toggle'
 import { Footer } from '@/components/nav/footer'
 import { WelcomeCheckIn } from '@/components/check-in/welcome-checkin'
 import { CheckInIndicator } from '@/components/check-in/checkin-indicator'
+import { AssistantPanel } from '@/components/students/assistant-panel'
 
 interface StudentShellProps {
   children:          React.ReactNode
   user:              StudentUser
   organizationName?: string | null
+  /** The student's own name for their Tracy assistant (null = default). */
+  assistantName?:    string | null
 }
 
-export function StudentShell({ children, user, organizationName }: StudentShellProps) {
+export function StudentShell({ children, user, organizationName, assistantName }: StudentShellProps) {
   const pathname                      = usePathname()
+
+  // Seed the shared assistant name from the server for THIS student. Done on every
+  // load (and when the server value changes) so a name never leaks from a previous
+  // student who used the same tab.
+  useEffect(() => {
+    publishAssistantName(assistantName ?? null)
+  }, [user.id, assistantName])
   const [collapsed, setCollapsed]     = useState(false)
 
   // Full-height treatment for Tracy and Studio (no padding, no footer)
   const isFullscreen = pathname?.includes('/tracy') || pathname?.includes('/studio')
 
   return (
+    <AssistantNameProvider name={assistantName}>
     <div className="h-screen flex bg-background overflow-hidden">
 
       <WelcomeCheckIn userId={user.id} firstName={user.name?.split(' ')[0]} streak={user.study_streak} />
@@ -31,6 +43,7 @@ export function StudentShell({ children, user, organizationName }: StudentShellP
       <StudentSidebarNav
         user={user}
         organizationName={organizationName}
+        assistantName={assistantName}
         collapsed={collapsed}
         onToggleCollapse={() => setCollapsed((c) => !c)}
       />
@@ -64,6 +77,10 @@ export function StudentShell({ children, user, organizationName }: StudentShellP
         )}
       </div>
 
+      {/* Slide-in assistant, opened in place by any "Ask Tracy" chip (lessons included). */}
+      <AssistantPanel />
+
     </div>
+    </AssistantNameProvider>
   )
 }

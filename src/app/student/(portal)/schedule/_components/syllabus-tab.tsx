@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { useRouter } from 'next/navigation'
+import { useOpenStartedLesson } from '@/hooks/use-open-started-lesson'
 import type { ColumnDef } from '@tanstack/react-table'
 import {
   CheckCircle2, Clock, AlertTriangle, XCircle, Circle,
@@ -171,7 +171,7 @@ function SchemeEntriesTable({
 // ── Scheme panel ──────────────────────────────────────────────────────────────
 
 function SchemePanel({ scheme }: { scheme: PacingScheme }) {
-  const router = useRouter()
+  const openStartedLesson = useOpenStartedLesson()
   const [pending, startTransition] = useTransition()
   const [activeTopic, setActiveTopic] = useState<string | null>(null)
 
@@ -181,10 +181,7 @@ function SchemePanel({ scheme }: { scheme: PacingScheme }) {
       const { data, error } = await initiateFreeStudyPlan(scheme.subject, topic)
       setActiveTopic(null)
       if (error) { toast.error(error.message); return }
-      if (data?.plan_id) {
-        toast.success('Study plan created!')
-        router.push(`/student/study-plans/${data.plan_id}/studio`)
-      }
+      openStartedLesson(data, { readyMessage: 'Lesson ready!' })
     })
   }
 
@@ -365,7 +362,7 @@ function FallbackTopicsTable({
 // ── Fallback: no SoW ──────────────────────────────────────────────────────────
 
 function FallbackPanel({ topics }: { topics: PacingResponse['fallback_topics'] }) {
-  const router = useRouter()
+  const openStartedLesson = useOpenStartedLesson()
   const [, startTransition] = useTransition()
 
   if (!topics?.length) {
@@ -386,10 +383,7 @@ function FallbackPanel({ topics }: { topics: PacingResponse['fallback_topics'] }
     startTransition(async () => {
       const { data, error } = await initiateFreeStudyPlan(subject, topic)
       if (error) { toast.error(error.message); return }
-      if (data?.plan_id) {
-        toast.success('Study plan created!')
-        router.push(`/student/study-plans/${data.plan_id}/studio`)
-      }
+      openStartedLesson(data, { readyMessage: 'Lesson ready!' })
     })
   }
 

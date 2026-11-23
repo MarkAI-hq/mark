@@ -2,7 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { refreshAccessToken } from "@/lib/actions/auth";
 
-const MIRROR_API_URL = process.env.MIRROR_API_URL ?? "http://localhost:4000/api/v1";
+import { mirrorApiUrl } from "@/lib/mirror-api-url";
+
+const MIRROR_API_URL = mirrorApiUrl();
 
 export async function POST(req: NextRequest) {
   try {

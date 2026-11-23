@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/button'
 import { MetricEmptyState } from '@/components/ui/metric-empty-state'
 import { QualityScorecardGrid, computeAverageCleanPass, rateTextColor } from '@/components/quality/scorecard-grid'
 import { getChildOverview, getChildQualityScorecard } from '@/lib/actions/guardian'
+import { getChildToday } from '@/lib/actions/daily-summary'
+import { TodaySummary } from '@/components/guardian/today-summary'
 
 export default async function GuardianChildOverviewPage({
   params,
@@ -13,9 +15,10 @@ export default async function GuardianChildOverviewPage({
   params: Promise<{ studentId: string }>
 }) {
   const { studentId } = await params
-  const [{ data: overview, error }, { data: scorecards }] = await Promise.all([
+  const [{ data: overview, error }, { data: scorecards }, { data: today }] = await Promise.all([
     getChildOverview(studentId),
     getChildQualityScorecard(studentId),
+    getChildToday(studentId),
   ])
 
   if (error || !overview) {
@@ -47,6 +50,8 @@ export default async function GuardianChildOverviewPage({
           </Link>
         </Button>
       </div>
+
+      {today && <TodaySummary summary={today} />}
 
       <div className="grid gap-4 sm:grid-cols-3">
         <Card>

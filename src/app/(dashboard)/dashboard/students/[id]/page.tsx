@@ -9,6 +9,7 @@ import {
 
 import { getStudent, listGuardians } from '@/lib/actions/students'
 import { GuardianInviteButton } from './_components/guardian-invite-button'
+import { CoachNoteCard } from '@/components/guardian/coach-note-card'
 import { getStudentEnrollments, getStudentSubmissions, getStudentCognitiveProfiles } from '@/lib/actions/student-details'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -152,6 +153,9 @@ export default async function StudentDetailPage({ params }: Props) {
           </Card>
         ))}
       </div>
+
+      {/* Today + the coach's note that goes to guardians tonight (#4) */}
+      <CoachNoteCard studentId={id} />
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 

@@ -24,6 +24,40 @@ export interface AssistantArtifact {
   source_note_ids: string[]
   source_labels:   string[]
   createdAt:       string
+  /** List responses only: whether the artifact has in-chat content to open. */
+  has_content?:    boolean
+  /** Single-artifact responses only (see getAssistantArtifact). */
+  content?:        StudioContent | null
+}
+
+export type StudioType = 'flashcards' | 'quiz' | 'slide_deck' | 'study_guide'
+
+export type StudioContent =
+  | { cards: { front: string; back: string }[] }
+  | { questions: { question: string; options: string[]; correct: number; explanation: string }[] }
+  | { slides: { title: string; bullets: string[]; note?: string }[] }
+  | { summary: string; sections: { heading: string; points: string[] }[]; key_terms?: { term: string; meaning: string }[] }
+
+/** Build a studio artifact from the student's own notes; the content is stored
+ *  on the artifact and opened inside the chat (no lesson, no review queue). */
+export async function generateStudioArtifact(dto: {
+  type:            StudioType
+  subject:         string
+  topic:           string
+  title:           string
+  source_note_ids: string[]
+  source_labels?:  string[]
+  artifact_id?:    string
+}): Promise<ServerActionResponse<AssistantArtifact>> {
+  return fetcher<AssistantArtifact>('/assistant/artifacts/generate', {
+    method: 'POST',
+    body: JSON.stringify(dto),
+    cache: 'no-store',
+  })
+}
+
+export async function getAssistantArtifact(id: string): Promise<ServerActionResponse<AssistantArtifact>> {
+  return fetcher<AssistantArtifact>(`/assistant/artifacts/${id}`, { cache: 'no-store' })
 }
 
 export async function listAssistantArtifacts(): Promise<ServerActionResponse<AssistantArtifact[]>> {

@@ -4,7 +4,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Building2, Users, CreditCard, Shield, Gift, BookMarked, LucideIcon } from 'lucide-react';
+import { Building2, Users, CreditCard, Shield, Gift, BookMarked, CalendarDays, LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const ICON_MAP: Record<string, LucideIcon> = {
@@ -14,6 +14,7 @@ const ICON_MAP: Record<string, LucideIcon> = {
   Shield,
   Gift,
   BookMarked,
+  CalendarDays,
 };
 
 interface NavItem {

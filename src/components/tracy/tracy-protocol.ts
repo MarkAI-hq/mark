@@ -19,8 +19,23 @@ export const ARTIFACT_RE = /(?:^|\s)(?:__)?ARTIFACT(?:__)?\s*:\s*(\{[\s\S]*)/
 export const CONFIRM_RE  = /(?:^|\s)(?:__)?CONFIRM(?:__)?\s*:\s*(\{[\s\S]*)/
 export const NEXT_RE     = /(?:^|\s)(?:__)?NEXT(?:__)?\s*:\s*(\{[\s\S]*)/
 // Teacher-only marker — student chat has no widget rendering surface.
-export const WIDGET_RE         = /(?:^|\s)(?:__)?WIDGET(?:__)?\s*:\s*([\s\S]+)/
+// The model sometimes drops the colon ("__WIDGET__\n<div…"); accept that only
+// in the fully-underscored form followed by HTML, so prose can't trip it.
+export const WIDGET_RE         = /(?:^|\s)(?:(?:__)?WIDGET(?:__)?\s*:|__WIDGET__(?=\s*<))\s*([\s\S]+)/
 export const NEXT_RE_IN_WIDGET = /\s(?:__)?NEXT(?:__)?\s*:\s*(\{[\s\S]*)/
+
+// Any machine marker, complete or cut off mid-name ("__WID", "__UI__:{\"comp…").
+const STOPPED_MARKER_RE = /(?:^|\s)__[A-Z]*(?:__)?/
+
+/**
+ * The visible text of a reply the user stopped mid-stream: everything before
+ * the first (possibly half-written) marker, since a cut-off card, widget or
+ * JSON can't be rendered. Tracy keeps the same cut server-side.
+ */
+export function stoppedReplyText(raw: string): string {
+  const at = raw.search(STOPPED_MARKER_RE)
+  return (at < 0 ? raw : raw.slice(0, at)).trim()
+}
 
 export interface ConfirmationOption {
   label: string
@@ -45,6 +60,9 @@ export type TracySseEvent =
   | { type: 'tool_call';   name: string; label: string }
   | { type: 'tool_result'; name: string; success: boolean }
   | { type: 'text_delta';  delta: string }
+  | { type: 'reset' }
+  | { type: 'quiz_verified'; outcome_id: string }
+  | { type: 'practice_saved'; outcome: string; topic?: string; correct: boolean; attempted: number; achieved: number; mastered: boolean }
   | { type: 'error';       message: string }
   | { type: 'done'; reply?: string; sessionId?: string; usageRemaining?: number; [key: string]: unknown }
 

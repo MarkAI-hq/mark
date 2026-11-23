@@ -1,32 +1,38 @@
+'use client'
+
 // src/components/students/ask-tracy-chip.tsx
 //
-// A small, contextual entry point into Tracy from wherever a struggle signal
+// A small, contextual entry point into the assistant from wherever a struggle signal
 // already exists in data the page is loading anyway (an at-risk mastery badge,
-// a behind-pace schedule, a missed quiz answer). Deep-links into
-// /student/tracy?prompt=... so Tracy's composer arrives pre-filled with the
-// specific subject/topic/misconception instead of a blank chat the student
-// has to reconstruct context for themselves.
+// a behind-pace schedule, a missed quiz answer). It opens the slide-in assistant
+// panel right where the student is, and asks the specific subject/topic/
+// misconception straight away — no new tab, no leaving a lesson half-done.
+//
+// Callers pass phrases like "Struggling? Ask Tracy"; the word "Tracy" is swapped for
+// whatever this student has named their assistant, so no caller has to know.
 
-import Link from 'next/link'
 import { Sparkles } from 'lucide-react'
+import { useAssistantName, withAssistantName } from '@/hooks/use-assistant-name'
+import { openAssistantPanel } from '@/signals/assistant-panel'
 
 interface AskTracyChipProps {
   prompt: string
   label?: string
   className?: string
-  /** Open in a new tab so the caller's in-progress state (e.g. a lesson) stays put. */
+  /** @deprecated The chip now always opens the in-place panel; kept so existing callers compile. */
   newTab?: boolean
 }
 
-export function AskTracyChip({ prompt, label = 'Ask Tracy', className = '', newTab = false }: AskTracyChipProps) {
+export function AskTracyChip({ prompt, label = 'Ask Tracy', className = '' }: AskTracyChipProps) {
+  const name = useAssistantName()
   return (
-    <Link
-      href={`/student/tracy?prompt=${encodeURIComponent(prompt)}`}
-      {...(newTab ? { target: '_blank', rel: 'noopener' } : {})}
+    <button
+      type="button"
+      onClick={() => openAssistantPanel(prompt)}
       className={`inline-flex items-center gap-1.5 rounded-full border border-gold/30 bg-gold/10 px-2.5 py-1 text-[11px] font-medium text-gold hover:bg-gold/20 transition-colors ${className}`}
     >
       <Sparkles className="h-3 w-3" />
-      {label}
-    </Link>
+      {withAssistantName(label, name)}
+    </button>
   )
 }

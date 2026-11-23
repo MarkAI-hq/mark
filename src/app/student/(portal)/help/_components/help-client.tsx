@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import { AssistantName } from '@/components/students/assistant-name'
 import { LifeBuoy, Send, Sparkles, BookOpen, MessageCircle, CheckCircle2, Compass } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -42,8 +43,8 @@ export function HelpClient({ isMarketplace }: { isMarketplace: boolean }) {
           <CardContent className="py-4 px-4 flex items-start gap-3">
             <MessageCircle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
             <p className="text-sm text-muted-foreground">
-              You&apos;re studying independently, so there&apos;s no class guide to message directly. Tracy is your best
-              first stop for questions — she can explain concepts, show your results, and point you toward what to
+              You&apos;re studying independently, so there&apos;s no class guide to message directly. <AssistantName /> is your best
+              first stop for questions — explaining concepts, showing your results, and pointing you toward what to
               study next.
             </p>
           </CardContent>
@@ -55,7 +56,7 @@ export function HelpClient({ isMarketplace }: { isMarketplace: boolean }) {
             <div>
               <p className="text-sm font-medium">Sent to your guide</p>
               <p className="text-xs text-muted-foreground mt-0.5">
-                They&apos;ll see it in their notifications. In the meantime, Tracy can help you keep moving.
+                They&apos;ll see it in their notifications. In the meantime, <AssistantName /> can help you keep moving.
               </p>
             </div>
           </CardContent>
@@ -107,7 +108,7 @@ export function HelpClient({ isMarketplace }: { isMarketplace: boolean }) {
             <CardContent className="py-4 px-4 flex items-start gap-3">
               <Sparkles className="h-4 w-4 text-gold shrink-0 mt-0.5" />
               <div>
-                <p className="text-sm font-medium">Ask Tracy instantly</p>
+                <p className="text-sm font-medium">Ask <AssistantName /> instantly</p>
                 <p className="text-xs text-muted-foreground mt-0.5">
                   For quick explanations, checking your results, or practice — no waiting for a reply.
                 </p>

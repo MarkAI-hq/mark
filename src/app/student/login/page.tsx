@@ -2,8 +2,10 @@
 import { Metadata } from 'next'
 import Image from 'next/image'
 import Link from 'next/link'
-import { Sparkles, BookOpen, Star, Trophy, ArrowLeft } from 'lucide-react'
+import { Sparkles, BookOpen, Star, Trophy } from 'lucide-react'
 import { StudentLoginForm } from '@/components/auth/students-login-form'
+import { SigninSwitchLink } from '@/components/auth/signin-switch-link'
+import { BackHomeLink } from '@/components/auth/back-home-link'
 
 export const metadata: Metadata = {
   title:       'Student Login — Mirror Intelligence',
@@ -109,13 +111,7 @@ export default function StudentLoginPage() {
 
         {/* Top navigation */}
         <div className="absolute top-6 left-6 right-6 flex items-center justify-between">
-          <Link
-            href="/"
-            className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-gold transition-colors"
-          >
-            <ArrowLeft className="h-3.5 w-3.5" />
-            Back to home
-          </Link>
+          <BackHomeLink />
           <p className="text-sm text-muted-foreground">
             New here?{' '}
             <Link href="/schools" className="font-semibold text-gold hover:underline underline-offset-2">
@@ -144,6 +140,8 @@ export default function StudentLoginPage() {
               <StudentLoginForm />
             </div>
           </div>
+
+          <SigninSwitchLink to="email" prompt="Teacher, staff or parent?" label="Sign in with email" />
 
         </div>
 

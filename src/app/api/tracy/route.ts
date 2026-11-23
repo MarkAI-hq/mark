@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { refreshAccessToken } from "@/lib/actions/auth";
+import type { TracyAttachmentRef } from "@/components/tracy/chat-attachments";
 
 const TRACY_URL = process.env.TRACY_URL ?? "http://localhost:4001";
 const API_BASE  = process.env.API_BASE_URL ?? process.env.NEXT_PUBLIC_API_URL ?? "";
@@ -46,7 +47,11 @@ export async function POST(req: NextRequest) {
       message: string;
       sessionId: string;
       sourceIds?: string[];
-      attachments?: Array<{ name: string; type: string; size: number }>;
+      /** The page is showing a blank chat — Tracy should not inherit earlier chats' history. */
+      freshChat?: boolean;
+      attachments?: TracyAttachmentRef[];
+      /** Saved id of a sent message the user edited — Tracy replaces it and what followed. */
+      editMessageId?: string;
     };
 
     let enrichedMessage = body.message;
@@ -72,13 +77,24 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    if (body.attachments && body.attachments.length > 0) {
-      const fileList = body.attachments.map((f) => `${f.name} (${f.type})`).join(", ");
+    // Uploaded files go to Tracy as storage paths it can open itself (it
+    // validates them and reads them back with this same JWT). Anything without
+    // a path (e.g. a CSV, already inlined as text by the page) is just named.
+    const attachments = Array.isArray(body.attachments) ? body.attachments : [];
+    const readable = attachments
+      .filter((f) => typeof f?.path === "string" && f.path)
+      .map((f) => ({ path: f.path, name: f.name, mime: f.type }));
+    const nameOnly = attachments.filter((f) => !f?.path);
+    if (nameOnly.length > 0) {
+      const fileList = nameOnly.map((f) => `${f.name} (${f.type})`).join(", ");
       enrichedMessage = `${enrichedMessage}\n\n[Attached files: ${fileList}]`;
     }
 
     const tracyRes = await fetch(`${TRACY_URL}/chat/stream`, {
       method: "POST",
+      // Stop: when the chat aborts its request, this aborts Tracy's too, so it
+      // cancels the model call instead of writing a reply nobody will read.
+      signal: req.signal,
       headers: {
         "Content-Type": "application/json",
         "Authorization": `Bearer ${jwt}`,
@@ -86,6 +102,9 @@ export async function POST(req: NextRequest) {
       body: JSON.stringify({
         message: enrichedMessage,
         sessionId: body.sessionId,
+        freshChat: body.freshChat === true,
+        ...(typeof body.editMessageId === "string" && body.editMessageId ? { editMessageId: body.editMessageId } : {}),
+        ...(readable.length > 0 ? { attachments: readable } : {}),
       }),
     });
 

@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyRecordToken } from "@/lib/record-share";
 
-const API = process.env.MIRROR_API_URL ?? "http://localhost:4000/api/v1";
+import { mirrorApiUrl } from "@/lib/mirror-api-url";
+
+const API = mirrorApiUrl();
 const SERVICE_TOKEN = process.env.MIRROR_SERVICE_TOKEN ?? "";
 
 async function mirrorGet(path: string) {

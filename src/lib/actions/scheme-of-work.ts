@@ -241,3 +241,77 @@ export async function addSchemeEntry(
   }
   return res
 }
+
+// ── Curriculum alignment + the teacher mapping tool (SPEC-03 S3-R1/R2/R32) ──
+
+export interface AlignmentFinding {
+  code: string
+  message: string
+  detail?: unknown
+}
+
+export interface AlignmentCheck {
+  checked_at: string
+  subject_key: string | null
+  class_key: string | null
+  schema_id: string | null
+  entries: number
+  entries_with_refs: number
+  refs: number
+  /** things the school can fix — these block activation */
+  blocking: AlignmentFinding[]
+  /** things only the platform can fix — shown, never blocking */
+  platform: {
+    refs_with_official_chunk: number
+    refs_without_official_chunk: number
+    refs_via_outcome_id: number
+    refs_via_topic_id: number
+    refs_not_in_curriculum_schema: number
+    refs_from_other_class_or_term: number
+    sample_missing: string[]
+  }
+  ok: boolean
+}
+
+export interface OutcomeSuggestion {
+  ref: string
+  text: string
+  topic_id: string
+  topic_name: string
+  score: number
+  /** the week's title names this outcome's curriculum topic */
+  topic_match: boolean
+}
+
+export interface OutcomeSuggestions {
+  scope: { mode: string; candidates: number }
+  entry: { id: string; topic: string }
+  suggestions: OutcomeSuggestion[]
+}
+
+export async function getAlignmentCheck(schemeId: string, classId?: string) {
+  const qs = classId ? `?class_id=${encodeURIComponent(classId)}` : ''
+  return fetcher<AlignmentCheck>(`/scheme-of-work/${schemeId}/alignment-check${qs}`)
+}
+
+/** Nothing is saved: suggestions only. */
+export async function suggestOutcomes(schemeId: string, entryId: string) {
+  return fetcher<OutcomeSuggestions>(
+    `/scheme-of-work/${schemeId}/entries/${entryId}/suggest-refs`,
+    { method: 'POST' },
+  )
+}
+
+/** Links a week to curriculum outcomes; objectives are set from the curriculum in the same order. */
+export async function applyOutcomes(schemeId: string, entryId: string, refs: string[]) {
+  const res = await fetcher<{
+    entry: SchemeOfWorkEntry
+    alignment: AlignmentCheck
+    warnings: string[]
+  }>(`/scheme-of-work/${schemeId}/entries/${entryId}/refs`, {
+    method: 'PUT',
+    body: JSON.stringify({ refs }),
+  })
+  if (!res.error) revalidatePath(`/dashboard/scheme-of-work/${schemeId}`)
+  return res
+}
