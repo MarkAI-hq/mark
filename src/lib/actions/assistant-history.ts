@@ -12,5 +12,6 @@ import type { ServerChatRow } from '@/components/tracy/server-history'
 export async function getTracyChatHistory(): Promise<
   ServerActionResponse<ServerChatRow[] | { data: ServerChatRow[] }>
 > {
-  return fetcher('/assistant/messages', { cache: 'no-store' })
+  // More than Tracy's own 50-message context window, so History reaches back further.
+  return fetcher('/assistant/messages?limit=500', { cache: 'no-store' })
 }

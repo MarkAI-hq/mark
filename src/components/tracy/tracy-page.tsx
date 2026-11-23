@@ -32,6 +32,7 @@ import { WidgetRenderer } from "@/components/tracy/widget-renderer";
 import { UsageRemainingBanner } from "@/components/tracy/usage-remaining-banner";
 import { getTracyChatHistory } from "@/lib/actions/assistant-history";
 import { groupServerConversations, toRows, type ServerChatRow } from "@/components/tracy/server-history";
+import { EditMessageButton, UserMessageEditor } from "@/components/tracy/edit-user-message";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -47,6 +48,8 @@ interface Message {
   artifactId?: string;
   nextOptions?: ConfirmationOption[];
   widgetHtml?: string;
+  /** assistant_messages row id, once Tracy has saved this turn — needed to edit it. */
+  serverId?: string;
 }
 
 interface UploadedFile {
@@ -190,7 +193,29 @@ function upsertConversation(
 // turn server-side, so we rebuild the sidebar from there too and merge.
 
 function groupServerHistory(rows: ServerChatRow[]): StoredConversation[] {
-  return groupServerConversations(rows).map((c) => ({ ...c, artifacts: {} }));
+  // Saved replies still carry their markers, so forms, reports and widgets
+  // come back as cards rather than plain text.
+  return groupServerConversations(rows).map((c) => {
+    const artifacts: Record<string, ArtifactPayload> = {};
+    const messages: Message[] = c.messages.map((m) => {
+      const artifactId = m.artifact ? `art_${m.id}` : undefined;
+      if (artifactId && m.artifact) {
+        artifacts[artifactId] = { id: artifactId, ...m.artifact, type: m.artifact.type as ArtifactType };
+      }
+      return {
+        id: m.id,
+        role: m.role,
+        content: m.content,
+        timestamp: m.timestamp,
+        serverId: m.serverId,
+        nextOptions: m.nextOptions,
+        widgetHtml: m.widgetHtml,
+        artifactId,
+        attachments: m.attachments?.map((a, i) => ({ id: `${m.id}_f${i}`, name: a.name, type: a.type, size: 0 })),
+      };
+    });
+    return { ...c, messages, artifacts };
+  });
 }
 
 /** Add server conversations that this browser doesn't already have a local copy of. */
@@ -199,6 +224,7 @@ function mergeServerConversations(
   server: StoredConversation[]
 ): StoredConversation[] {
   const alreadyLocal = (s: StoredConversation) => {
+    if (local.some((c) => c.id === s.id)) return true;
     const first = s.messages.find((m) => m.role === "user");
     if (!first) return true;
     return local.some((c) =>
@@ -306,7 +332,7 @@ function ChatFileCard({ file, inUserBubble = false }: { file: UploadedFile; inUs
       </div>
       <div className="min-w-0">
         <p className={`text-[11px] font-medium truncate ${inUserBubble ? "text-white" : "text-foreground"}`}>{file.name}</p>
-        <p className={`text-[10px] ${inUserBubble ? "text-white/60" : "text-muted-foreground"}`}>{formatFileSize(file.size)}</p>
+        {file.size > 0 && <p className={`text-[10px] ${inUserBubble ? "text-white/60" : "text-muted-foreground"}`}>{formatFileSize(file.size)}</p>}
       </div>
     </div>
   );
@@ -1095,6 +1121,8 @@ function MessageBubble({
   onArtifactClick,
   isArtifactActive,
   onSend,
+  onEdit,
+  editDisabled,
 }: {
   message: Message;
   artifact?: ArtifactPayload;
@@ -1102,11 +1130,15 @@ function MessageBubble({
   onArtifactClick?: (a: ArtifactPayload) => void;
   isArtifactActive?: boolean;
   onSend?: (text: string) => void;
+  /** Set on the user's own saved messages: replace this message and re-ask Tracy. */
+  onEdit?: (text: string) => void;
+  editDisabled?: boolean;
 }) {
   const isUser        = message.role === "user";
   const hasAttachments = message.attachments && message.attachments.length > 0;
   const hasContent    = message.isLoading || !!message.content || !!message.widgetHtml;
   const [copied, setCopied] = useState(false);
+  const [editing, setEditing] = useState(false);
 
   const FORM_SUBMIT_RE = /^__FORM_SUBMIT__:\{[\s\S]*?\}\n\n/;
   const visibleContent = isUser ? message.content.replace(FORM_SUBMIT_RE, "") : message.content;
@@ -1121,6 +1153,20 @@ function MessageBubble({
   const hasWidget = !isUser && !!message.widgetHtml && !message.isLoading;
 
   // ── User message ────────────────────────────────────────────────────────────
+  if (isUser && editing && onEdit) {
+    const keptFiles = message.attachments?.some((f) => f.uploadedPath || f.uploadedUrl);
+    return (
+      <div className="flex w-full justify-end" style={{ animation: "fadeUp 0.2s ease" }}>
+        <UserMessageEditor
+          initial={visibleContent}
+          hasAttachments={hasAttachments ? (keptFiles ? "kept" : "dropped") : undefined}
+          onCancel={() => setEditing(false)}
+          onSave={(text) => { setEditing(false); onEdit(text); }}
+        />
+      </div>
+    );
+  }
+
   if (isUser) {
     return (
       <div className="flex w-full justify-end" style={{ animation: "fadeUp 0.2s ease" }}>
@@ -1140,9 +1186,14 @@ function MessageBubble({
                 )}
               </div>
             )}
-            <span className="text-[10px] text-muted-foreground px-1 opacity-0 group-hover:opacity-100 transition-opacity">
-              {formatTime(message.timestamp instanceof Date ? message.timestamp : new Date(message.timestamp))}
-            </span>
+            <div className="flex items-center gap-1 px-1 sm:opacity-0 sm:group-hover:opacity-100 sm:focus-within:opacity-100 transition-opacity">
+              {onEdit && !message.isLoading && (
+                <EditMessageButton onClick={() => setEditing(true)} disabled={editDisabled} />
+              )}
+              <span className="text-[10px] text-muted-foreground">
+                {formatTime(message.timestamp instanceof Date ? message.timestamp : new Date(message.timestamp))}
+              </span>
+            </div>
           </div>
         </div>
       </div>
@@ -1719,12 +1770,14 @@ export default function TracyPage({ initialPrompt }: { initialPrompt?: string } 
     setTimeout(() => inputRef.current?.focus(), 50);
   }, [tracyStream]);
 
-  const send = useCallback(async (text?: string) => {
+  const send = useCallback(async (text?: string, opts?: { editMessageId?: string; files?: UploadedFile[] }) => {
+    // An edit re-asks with the edited text (and the original's already-uploaded
+    // files); whatever is in the composer is left alone for the next message.
+    const editing = !!opts?.editMessageId;
     const content = (text ?? input).trim();
-    if ((!content && pendingFiles.length === 0) || isLoading) return;
-
-    const snapshotFiles    = [...pendingFiles];
-    const snapshotContents = { ...pendingFileContents };
+    const snapshotFiles    = editing ? [...(opts?.files ?? [])] : [...pendingFiles];
+    const snapshotContents: Record<string, string> = editing ? {} : { ...pendingFileContents };
+    if ((!content && snapshotFiles.length === 0) || isLoading) return;
 
     let fileDataContext = "";
     Object.entries(snapshotContents).forEach(([id, textContent]) => {
@@ -1747,17 +1800,20 @@ export default function TracyPage({ initialPrompt }: { initialPrompt?: string } 
       userMsg,
       { id: loadingId, role: "tracy", content: "", timestamp: new Date(), isLoading: true },
     ]);
-    setInput("");
-    if (inputRef.current) inputRef.current.style.height = "auto";
-    revokeAndClearFiles(snapshotFiles);
-    setPendingFiles([]);
-    setPendingFileContents({});
+    if (!editing) {
+      setInput("");
+      if (inputRef.current) inputRef.current.style.height = "auto";
+      revokeAndClearFiles(snapshotFiles);
+      setPendingFiles([]);
+      setPendingFileContents({});
+    }
     setToolStatuses([]);
     setIsLoading(true);
 
     try {
       const uploadedParts: string[] = [];
       const uploadedPaths: Record<string, string> = {};
+      const uploadedUrls: Record<string, string> = {};
       for (const f of snapshotFiles) {
         if (f.type === "application/pdf" || f.type.startsWith("image/")) {
           let url = f.uploadedUrl;
@@ -1771,8 +1827,15 @@ export default function TracyPage({ initialPrompt }: { initialPrompt?: string } 
           // The URL stays in the message for tools that take a file link
           // (assessment / marking-guide / exam detection); the path lets Tracy see the file.
           if (url) uploadedParts.push(`${f.name} (${f.type}) ${url}`);
+          if (url) uploadedUrls[f.id] = url;
           if (path) uploadedPaths[f.id] = path;
         }
+      }
+      // Remember where the files went, so editing this message can re-send them.
+      if (snapshotFiles.length > 0) {
+        setMessages((prev) => prev.map((m) => m.id === userMsg.id && m.attachments
+          ? { ...m, attachments: m.attachments.map((f) => ({ ...f, uploadedUrl: uploadedUrls[f.id] ?? f.uploadedUrl, uploadedPath: uploadedPaths[f.id] ?? f.uploadedPath })) }
+          : m));
       }
 
       const attachedFilesBlock  = uploadedParts.length > 0 ? `\n\n[ATTACHED FILES: ${uploadedParts.join(", ")}]` : "";
@@ -1830,6 +1893,13 @@ export default function TracyPage({ initialPrompt }: { initialPrompt?: string } 
           case "done": {
             const reply = fullReply || event.reply || "";
             const trimmed = reply.trim();
+            const ids = event.messageIds as { user?: string; assistant?: string } | undefined;
+            if (ids?.user || ids?.assistant) {
+              setMessages((prev) => prev.map((m) =>
+                m.id === userMsg.id ? { ...m, serverId: ids.user ?? m.serverId }
+                : m.id === loadingId ? { ...m, serverId: ids.assistant ?? m.serverId }
+                : m));
+            }
 
             if (typeof event.usageRemaining === "number") setUsageRemaining(event.usageRemaining);
 
@@ -1870,7 +1940,7 @@ export default function TracyPage({ initialPrompt }: { initialPrompt?: string } 
 
                   // Save to history
                   setMessages((current) => {
-                    saveConversation(current.filter((m) => !m.isLoading).concat([{ id: loadingId, role: "tracy", content: bubbleText, timestamp: new Date(), artifactId }]), finalArtifacts);
+                    saveConversation(current.filter((m) => !m.isLoading).concat([{ id: loadingId, role: "tracy", content: bubbleText, timestamp: new Date(), artifactId, serverId: ids?.assistant }]), finalArtifacts);
                     return current;
                   });
                   return;
@@ -1958,6 +2028,7 @@ export default function TracyPage({ initialPrompt }: { initialPrompt?: string } 
         message:     finalPayloadMessage,
         sessionId:   sessionId.current,
         attachments: attachmentsMeta.length > 0 ? attachmentsMeta : undefined,
+        ...(opts?.editMessageId ? { editMessageId: opts.editMessageId } : {}),
       }, processEvent);
 
     } catch (err: any) {
@@ -1973,6 +2044,26 @@ export default function TracyPage({ initialPrompt }: { initialPrompt?: string } 
       inputRef.current?.focus();
     }
   }, [input, pendingFiles, pendingFileContents, isLoading, artifacts, openArtifact, revokeAndClearFiles, saveConversation, tracyStream]);
+
+  // Edit a sent message: drop it and everything after it, then ask again.
+  // Tracy deletes the same turns server-side (editMessageId), so History matches.
+  const editMessage = useCallback((messageId: string, text: string) => {
+    if (isLoading) return;
+    const idx = messages.findIndex((m) => m.id === messageId);
+    const original = messages[idx];
+    if (idx < 0 || !original?.serverId) return;
+    const dropped = messages.slice(idx);
+    if (activeArtifact && dropped.some((m) => m.artifactId === activeArtifact.id)) closePanel();
+    setConfirmation(null);
+    setMessages((prev) => {
+      const at = prev.findIndex((m) => m.id === messageId);
+      return at < 0 ? prev : prev.slice(0, at);
+    });
+    send(text, {
+      editMessageId: original.serverId,
+      files: original.attachments?.filter((f) => f.uploadedPath || f.uploadedUrl),
+    });
+  }, [isLoading, messages, activeArtifact, closePanel, send]);
 
   const handleConfirmationSelect = useCallback((value: string) => {
     setConfirmation(null);
@@ -2196,6 +2287,8 @@ export default function TracyPage({ initialPrompt }: { initialPrompt?: string } 
                           onArtifactClick={openArtifact}
                           isArtifactActive={panelOpen && activeArtifact?.id === m.artifactId}
                           onSend={send}
+                          onEdit={m.role === "user" && m.serverId ? (text) => editMessage(m.id, text) : undefined}
+                          editDisabled={isLoading}
                         />
                       ))}
                     </div>

@@ -50,6 +50,8 @@ export async function POST(req: NextRequest) {
       /** The page is showing a blank chat — Tracy should not inherit earlier chats' history. */
       freshChat?: boolean;
       attachments?: TracyAttachmentRef[];
+      /** Saved id of a sent message the user edited — Tracy replaces it and what followed. */
+      editMessageId?: string;
     };
 
     let enrichedMessage = body.message;
@@ -98,6 +100,7 @@ export async function POST(req: NextRequest) {
         message: enrichedMessage,
         sessionId: body.sessionId,
         freshChat: body.freshChat === true,
+        ...(typeof body.editMessageId === "string" && body.editMessageId ? { editMessageId: body.editMessageId } : {}),
         ...(readable.length > 0 ? { attachments: readable } : {}),
       }),
     });

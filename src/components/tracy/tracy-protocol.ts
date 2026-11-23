@@ -19,7 +19,9 @@ export const ARTIFACT_RE = /(?:^|\s)(?:__)?ARTIFACT(?:__)?\s*:\s*(\{[\s\S]*)/
 export const CONFIRM_RE  = /(?:^|\s)(?:__)?CONFIRM(?:__)?\s*:\s*(\{[\s\S]*)/
 export const NEXT_RE     = /(?:^|\s)(?:__)?NEXT(?:__)?\s*:\s*(\{[\s\S]*)/
 // Teacher-only marker — student chat has no widget rendering surface.
-export const WIDGET_RE         = /(?:^|\s)(?:__)?WIDGET(?:__)?\s*:\s*([\s\S]+)/
+// The model sometimes drops the colon ("__WIDGET__\n<div…"); accept that only
+// in the fully-underscored form followed by HTML, so prose can't trip it.
+export const WIDGET_RE         = /(?:^|\s)(?:(?:__)?WIDGET(?:__)?\s*:|__WIDGET__(?=\s*<))\s*([\s\S]+)/
 export const NEXT_RE_IN_WIDGET = /\s(?:__)?NEXT(?:__)?\s*:\s*(\{[\s\S]*)/
 
 export interface ConfirmationOption {

@@ -27,12 +27,12 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { formatTimeAgo } from '@/lib/utils'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Button } from '@/components/ui/button'
 import type { StudentNote } from '@/lib/actions/student-notes'
 import { submitStudentNote, uploadStudentNote } from '@/lib/actions/student-notes'
 import {
-  generateStudyPlanFromSources,
   generateAudioOverview,
   renameArtifact,
   createArtifactNotification,
@@ -41,6 +41,8 @@ import type { SubjectProgress } from '@/lib/actions/student-dashboard'
 import { getStudentPaceSettings, setMyAssistantName } from '@/lib/actions/study-plans'
 import {
   listAssistantArtifacts,
+  generateStudioArtifact,
+  getAssistantArtifact,
   createAssistantArtifact,
   updateAssistantArtifact,
 } from '@/lib/actions/assistant'
@@ -60,7 +62,10 @@ import { GenerativeUI, EMPTY_QUIZ_DRAFT, type QuizDraft } from '@/components/tra
 import { parseGenerativeUi, stripUiMarker, type GenerativeUi } from '@/components/tracy/generative-ui-protocol'
 import { getTracyChatHistory } from '@/lib/actions/assistant-history'
 import { groupServerConversations, toRows, type ServerConversation } from '@/components/tracy/server-history'
+import { EditMessageButton, UserMessageEditor } from '@/components/tracy/edit-user-message'
+import type { TracyAttachmentRef } from '@/components/tracy/chat-attachments'
 import { UsageRemainingBanner } from '@/components/tracy/usage-remaining-banner'
+import { StudioArtifactViewer, type ViewerState } from '@/components/tracy/studio-artifact-viewer'
 import { noPasteProps } from '@/lib/no-paste'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -75,6 +80,8 @@ interface Artifact {
   status:        'generating' | 'ready' | 'failed'
   plan_id?:      string
   audio_url?:    string
+  /** Studio content is stored on the artifact and opened in-chat. */
+  hasContent?:   boolean
   sourceNoteIds: string[]
   sourceLabels:  string[]
   createdAt:     string
@@ -100,6 +107,10 @@ interface Message {
   saved?: { outcome: string; correct: boolean; attempted: number; achieved: number; mastered: boolean }
   /** Set only when the server confirmed this question passed its syllabus checks. */
   quizVerified?: boolean
+  /** assistant_messages row id, once Tracy has saved this turn — needed to edit it. */
+  serverId?: string
+  /** Uploaded files sent with this message, kept so an edit can re-send them. */
+  attachmentRefs?: TracyAttachmentRef[]
 }
 
 interface ToolStatus {
@@ -494,10 +505,7 @@ function ArtifactItem({ artifact, isRenaming, onOpen, onRename, onDelete, onRetr
   const { Icon, histBg, histColor } = ARTIFACT_CONFIG[artifact.type]
   const [renameVal, setRenameVal] = useState(artifact.title)
 
-  const ago = (() => {
-    const m = Math.round((Date.now() - new Date(artifact.createdAt).getTime()) / 60000)
-    return m < 1 ? 'just now' : m === 1 ? '1 min ago' : `${m} min ago`
-  })()
+  const ago = formatTimeAgo(artifact.createdAt)
 
   return (
     <div
@@ -604,7 +612,7 @@ function ArtifactHistory({ artifacts, onOpen, onRename, onDelete, onRetry, renam
 
 // ── MessageBubble ─────────────────────────────────────────────────────────────
 
-function MessageBubble({ message, activeIds, onGenerateChip, toolStatuses, isLast, onPickOption, onOpenQuiz, quizSent }: {
+function MessageBubble({ message, activeIds, onGenerateChip, toolStatuses, isLast, onPickOption, onOpenQuiz, quizSent, onEdit, editDisabled }: {
   message:        Message
   activeIds:      Set<string>
   onGenerateChip: (type: ArtifactType) => void
@@ -613,11 +621,35 @@ function MessageBubble({ message, activeIds, onGenerateChip, toolStatuses, isLas
   onPickOption?:  (value: string) => void
   onOpenQuiz?:    () => void
   quizSent?:      boolean
+  /** Set on the student's own saved messages: replace this message and re-ask Tracy. */
+  onEdit?:        (text: string) => void
+  editDisabled?:  boolean
 }) {
+  const [editing, setEditing] = useState(false)
   const isUser  = message.role === 'user'
   const content = message.content.replace(/\bNEXT:\s*/g, '').trim()
 
-  if (isUser) return <UserMessage><SentAttachmentChips files={message.attachments} />{content}</UserMessage>
+  if (isUser && editing && onEdit) {
+    const hasFiles = !!message.attachments?.length
+    return (
+      <UserMessageEditor
+        initial={content}
+        hasAttachments={hasFiles ? (message.attachmentRefs?.length ? 'kept' : 'dropped') : undefined}
+        onCancel={() => setEditing(false)}
+        onSave={text => { setEditing(false); onEdit(text) }}
+      />
+    )
+  }
+  if (isUser) return (
+    <div className="group">
+      <UserMessage><SentAttachmentChips files={message.attachments} />{content}</UserMessage>
+      {onEdit && (
+        <div className="mt-1 flex justify-end sm:opacity-0 sm:group-hover:opacity-100 sm:focus-within:opacity-100 transition-opacity">
+          <EditMessageButton onClick={() => setEditing(true)} disabled={editDisabled} />
+        </div>
+      )}
+    </div>
+  )
 
   const chipType = activeIds.size > 0 && content && !message.isLoading ? detectChipType(content) : null
   return (
@@ -720,6 +752,8 @@ export function StudentTracyPage({ user, weakSubjects, currentTopics, initialNot
   const [audioTime,      setAudioTime]      = useState(0)
   const [audioDuration,  setAudioDuration]  = useState(0)
   const [generatingType, setGeneratingType] = useState<ArtifactType | null>(null)
+  // The studio artifact open in the in-chat viewer (null = closed).
+  const [viewer, setViewer] = useState<(ViewerState & { id: string }) | null>(null)
   const [renamingId,     setRenamingId]     = useState<string | null>(null)
   const [inputFocused,   setInputFocused]   = useState(false)
   // One side panel at a time (sources / studio / history / the current quiz question).
@@ -790,6 +824,7 @@ export function StudentTracyPage({ user, weakSubjects, currentTopics, initialNot
         status: a.status,
         plan_id: a.plan_id ?? undefined,
         audio_url: a.audio_url ?? undefined,
+        hasContent: !!a.has_content,
         sourceNoteIds: a.source_note_ids,
         sourceLabels: a.source_labels,
         createdAt: a.createdAt,
@@ -898,6 +933,15 @@ export function StudentTracyPage({ user, weakSubjects, currentTopics, initialNot
     if (activeIds.size === 0) { toast.error('Select at least one source first.'); togglePanel('sources', true); return }
     if (!activeSubject || !activeTopic) { toast.error('Activate a source to set subject and topic.'); togglePanel('sources', true); return }
     togglePanel('studio', true)
+    if (type !== 'audio_overview') {
+      await buildStudio(type, {
+        subject: activeSubject,
+        topic: activeTopic,
+        sourceIds: Array.from(activeIds),
+        sourceLabels: activeNotes.map(n => n.topic),
+      })
+      return
+    }
 
     const tempId       = crypto.randomUUID()
     const sourceIds    = Array.from(activeIds)
@@ -948,17 +992,6 @@ export function StudentTracyPage({ user, weakSubjects, currentTopics, initialNot
         if (realId) void updateAssistantArtifact(realId, { status: 'ready', audio_url: url })
         if (url) loadAndPlayAudio({ ...newArt, id: currentId(), status: 'ready', audio_url: url })
         else toast.info('Audio generation is not currently configured.')
-      } else {
-        const res = await generateStudyPlanFromSources(activeSubject, activeTopic, type as any, sourceIds)
-        await createPromise
-        if (res.error) {
-          updateArtifact(currentId(), { status: 'failed' })
-          if (realId) void updateAssistantArtifact(realId, { status: 'failed' })
-          toast.error(res.error.message); return
-        }
-        updateArtifact(currentId(), { status: 'ready', plan_id: res.data?.plan_id })
-        if (realId) void updateAssistantArtifact(realId, { status: 'ready', plan_id: res.data?.plan_id ?? null })
-        toast.success(`${ARTIFACT_CONFIG[type].label} ready!`)
       }
       if (document.hidden) {
         try { await createArtifactNotification(autoTitle(type, activeTopic)) } catch {}
@@ -972,9 +1005,100 @@ export function StudentTracyPage({ user, weakSubjects, currentTopics, initialNot
     }
   }
 
-  function handleOpenArtifact(artifact: Artifact) {
-    if (artifact.type === 'audio_overview' && artifact.audio_url) loadAndPlayAudio(artifact)
-    else if (artifact.plan_id) router.push(`/student/study-plans/${artifact.plan_id}/studio`)
+  // Studio (flashcards / quiz / slides / guide): built from the student's own
+  // notes, stored on the artifact, and opened in a viewer OVER the chat — the
+  // student never leaves the conversation they're in.
+  async function buildStudio(
+    type: StudioType,
+    src: { subject: string; topic: string; sourceIds: string[]; sourceLabels: string[] },
+    retryOf?: Artifact,
+  ) {
+    const tempId = retryOf?.id ?? crypto.randomUUID()
+    const title  = retryOf?.title ?? autoTitle(type, src.topic)
+    const pending: Artifact = {
+      id: tempId, type, title, status: 'generating',
+      sourceNoteIds: src.sourceIds, sourceLabels: src.sourceLabels,
+      createdAt: retryOf?.createdAt ?? new Date().toISOString(),
+    }
+    persistArtifacts(retryOf ? artifacts.map(a => a.id === tempId ? pending : a) : [pending, ...artifacts])
+    setGeneratingType(type)
+    try {
+      const { data, error } = await generateStudioArtifact({
+        type, subject: src.subject, topic: src.topic, title,
+        source_note_ids: src.sourceIds, source_labels: src.sourceLabels,
+        // The server creates the row with this id if it doesn't exist yet, so a
+        // failed attempt and its retry (or a legacy rebuild) stay one artifact.
+        artifact_id: tempId,
+      })
+      if (error || !data) {
+        updateArtifact(tempId, { status: 'failed' })
+        toast.error(error?.message ?? 'Could not build that — please try again.')
+        return
+      }
+      setArtifacts(prev => {
+        const next = prev.map(a => a.id === tempId
+          ? { ...a, id: data.id, status: 'ready' as const, hasContent: true, plan_id: undefined }
+          : a)
+        try { localStorage.setItem(STORE_KEY, JSON.stringify(next)) } catch {}
+        return next
+      })
+      toast.success(`${ARTIFACT_CONFIG[type].label} ready`)
+      if (data.content) setViewer({ id: data.id, title, type, sourceLabels: src.sourceLabels, content: data.content })
+      if (document.hidden) {
+        try { await createArtifactNotification(title) } catch {}
+      }
+    } catch {
+      updateArtifact(tempId, { status: 'failed' })
+      toast.error('Generation failed — please try again.')
+    } finally {
+      setGeneratingType(null)
+    }
+  }
+
+  /** Subject/topic for an existing artifact, recovered from its source notes. */
+  function sourcesOf(a: Artifact) {
+    const src = notes.filter(n => a.sourceNoteIds.includes(n.id))
+    if (!src.length) return null
+    return { subject: src[0].subject, topic: src[0].topic, sourceIds: src.map(n => n.id), sourceLabels: src.map(n => n.topic) }
+  }
+
+  async function handleRetry(a: Artifact) {
+    if (a.type === 'audio_overview') {
+      persistArtifacts(artifacts.filter(x => x.id !== a.id))
+      handleGenerate(a.type)
+      return
+    }
+    const src = sourcesOf(a)
+    if (!src) { toast.error('The notes this was built from are no longer available.'); return }
+    await buildStudio(a.type, src, a)
+  }
+
+  async function handleOpenArtifact(artifact: Artifact) {
+    if (artifact.type === 'audio_overview') {
+      if (artifact.audio_url) loadAndPlayAudio(artifact)
+      return
+    }
+    const base = { id: artifact.id, title: artifact.title, type: artifact.type, sourceLabels: artifact.sourceLabels }
+    // Legacy rows were lesson plans (now behind curriculum review) — offer an
+    // in-place rebuild instead of navigating away to a lesson that may be locked.
+    if (!artifact.hasContent) { setViewer({ ...base, content: 'legacy' }); return }
+    setViewer({ ...base, content: null })
+    const { data, error } = await getAssistantArtifact(artifact.id)
+    if (error || !data?.content) {
+      setViewer(null)
+      toast.error(error?.message ?? 'Could not open that — try again.')
+      return
+    }
+    setViewer(v => (v && v.id === artifact.id ? { ...v, content: data.content! } : v))
+  }
+
+  async function handleRebuildFromViewer() {
+    if (!viewer) return
+    const a = artifacts.find(x => x.id === viewer.id)
+    const src = a ? sourcesOf(a) : null
+    if (!a || !src) { toast.error('The notes this was built from are no longer available.'); return }
+    setViewer(null)
+    await buildStudio(a.type as StudioType, src, a)
   }
 
   async function handleRenameSubmit(id: string, title: string) {
@@ -986,11 +1110,18 @@ export function StudentTracyPage({ user, weakSubjects, currentTopics, initialNot
     void updateAssistantArtifact(id, { title: title.trim() })
   }
 
-  async function sendMessage(text: string) {
-    if ((!text.trim() && !attach.ready) || streaming) return
-    if (attach.uploading) { toast('Hang on, your file is still uploading…'); return }
-    const { refs: attachmentRefs, sent: sentFiles } = attach.take()
-    setInput('')
+  async function sendMessage(text: string, edit?: { messageId: string; refs?: TracyAttachmentRef[]; sent?: SentAttachment[] }) {
+    // An edit re-asks with the edited text and the original's files; the
+    // composer (and anything attached there) is left for the next message.
+    if (streaming) return
+    if (!edit) {
+      if (!text.trim() && !attach.ready) return
+      if (attach.uploading) { toast('Hang on, your file is still uploading…'); return }
+    } else if (!text.trim()) return
+    const { refs: attachmentRefs, sent: sentFiles } = edit
+      ? { refs: edit.refs ?? [], sent: edit.sent ?? [] }
+      : attach.take()
+    if (!edit) setInput('')
     // Once the question has been answered, any new message that isn't the answer itself
     // (a new topic, "another one"…) clears the old question from the side panel.
     // An unanswered question stays put, so the student can ask for help while it is open.
@@ -999,7 +1130,11 @@ export function StudentTracyPage({ user, weakSubjects, currentTopics, initialNot
     }
     setToolStatuses([])
 
-    const userMsg:    Message = { id: crypto.randomUUID(), role: 'user',  content: text, timestamp: new Date(), attachments: sentFiles.length ? sentFiles : undefined }
+    const userMsg:    Message = {
+      id: crypto.randomUUID(), role: 'user', content: text, timestamp: new Date(),
+      attachments: sentFiles.length ? sentFiles : undefined,
+      attachmentRefs: attachmentRefs.length ? attachmentRefs : undefined,
+    }
     const loadingMsg: Message = { id: crypto.randomUUID(), role: 'tracy', content: '',   timestamp: new Date(), isLoading: true }
     setMessages(prev => [...prev, userMsg, loadingMsg])
     setStreaming(true)
@@ -1054,6 +1189,13 @@ export function StudentTracyPage({ user, weakSubjects, currentTopics, initialNot
           break
         }
         case 'done': {
+          const ids = ev.messageIds as { user?: string; assistant?: string } | undefined
+          if (ids?.user || ids?.assistant) {
+            setMessages(p => p.map(m =>
+              m.id === userMsg.id ? { ...m, serverId: ids.user ?? m.serverId }
+              : m.id === loadingMsg.id ? { ...m, serverId: ids.assistant ?? m.serverId }
+              : m))
+          }
           const rawReply = (accumulated || ev.reply || '').replace(/^[ \t]*__RESULT__[ \t]*:[^\n]*$/gm, '').trim()
           // A typed UI payload (topic picker, quiz question…) becomes a real component;
           // if it is malformed the marker is stripped so raw JSON never reaches the chat.
@@ -1155,6 +1297,7 @@ export function StudentTracyPage({ user, weakSubjects, currentTopics, initialNot
         {
           message: text, sessionId: sessionIdRef.current, mode: 'student', sourceIds: Array.from(activeIds), freshChat: messages.length === 0,
           ...(attachmentRefs.length ? { attachments: attachmentRefs } : {}),
+          ...(edit ? { editMessageId: edit.messageId } : {}),
         },
         onEvent,
       )
@@ -1177,9 +1320,32 @@ export function StudentTracyPage({ user, weakSubjects, currentTopics, initialNot
 
   useEffect(() => { refreshPastChats() }, [])
 
+  // Edit a sent message: drop it and everything after it, then ask again.
+  // Tracy deletes the same turns server-side (editMessageId), so History matches.
+  function editMessage(messageId: string, text: string) {
+    if (streaming) return
+    const idx = messages.findIndex(m => m.id === messageId)
+    const original = messages[idx]
+    if (idx < 0 || !original?.serverId) return
+    if (quizId && messages.slice(idx).some(m => m.id === quizId)) {
+      setQuizId(null)
+      setAside(prev => (prev === 'quiz' ? null : prev))
+    }
+    setMessages(prev => {
+      const at = prev.findIndex(m => m.id === messageId)
+      return at < 0 ? prev : prev.slice(0, at)
+    })
+    void sendMessage(text, {
+      messageId: original.serverId,
+      refs: original.attachmentRefs,
+      sent: original.attachmentRefs?.length ? original.attachments : undefined,
+    })
+  }
+
   function openPastChat(convo: ServerConversation) {
     tracyStream.stop()
-    sessionIdRef.current = crypto.randomUUID()
+    // Keep writing to this same chat, so it stays one entry in History.
+    sessionIdRef.current = convo.id
     setMessages(convo.messages)
     setInput(''); setStreaming(false); setToolStatuses([])
     setAside(null)
@@ -1337,6 +1503,8 @@ export function StudentTracyPage({ user, weakSubjects, currentTopics, initialNot
                   onOpenQuiz={() => { setQuizId(msg.id); setAside('quiz') }}
                   quizSent={!!quizDrafts[msg.id]?.sent}
                   onGenerateChip={type => handleGenerate(type)}
+                  onEdit={msg.role === 'user' && msg.serverId ? text => editMessage(msg.id, text) : undefined}
+                  editDisabled={streaming}
                   toolStatuses={msg.isLoading ? toolStatuses : undefined} />
               ))
             )}
@@ -1462,6 +1630,13 @@ export function StudentTracyPage({ user, weakSubjects, currentTopics, initialNot
             <CreateGrid activeIds={activeIds} generatingType={generatingType} onGenerate={handleGenerate} />
           </div>
 
+          <StudioArtifactViewer
+            state={viewer}
+            onClose={() => setViewer(null)}
+            onRebuild={handleRebuildFromViewer}
+            rebuilding={!!generatingType}
+          />
+
           {/* Scrollable: This session */}
           <div className="flex-1 min-h-0 overflow-y-auto">
             <div className="flex items-center justify-between px-[18px] pt-4 pb-2.5">
@@ -1477,7 +1652,7 @@ export function StudentTracyPage({ user, weakSubjects, currentTopics, initialNot
               onOpen={handleOpenArtifact}
               onRename={setRenamingId}
               onDelete={id => { persistArtifacts(artifacts.filter(a => a.id !== id)); if (currentAudio?.id === id) dismissAudio() }}
-              onRetry={a => { persistArtifacts(artifacts.filter(x => x.id !== a.id)); handleGenerate(a.type) }}
+              onRetry={handleRetry}
               renamingId={renamingId}
               onRenameSubmit={handleRenameSubmit}
             />

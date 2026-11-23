@@ -11,12 +11,16 @@
 // plain text and, occasionally, a trailing __NEXT__ suggestion — so the
 // marker-stripping below only needs to handle NEXT, kept defensive against
 // the others in case the model ever strays.
+//
+// Like the other two chats it has History (past chats, rebuilt from what
+// Tracy saved server-side) and lets the guardian edit a message they sent.
 
 import { useEffect, useRef, useState } from 'react'
-import { Send, Sparkles } from 'lucide-react'
+import { History, MessageSquarePlus, Send, Sparkles } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { TypingDots } from '@/components/tracy/typing-dots'
 import { UsageRemainingBanner } from '@/components/tracy/usage-remaining-banner'
 import {
@@ -27,6 +31,10 @@ import { useTracyChatStream } from '@/hooks/use-tracy-chat-stream'
 import {
   useChatAttachments, AttachButton, PendingAttachmentChips, SentAttachmentChips, type SentAttachment,
 } from '@/components/tracy/chat-attachment-picker'
+import type { TracyAttachmentRef } from '@/components/tracy/chat-attachments'
+import { EditMessageButton, UserMessageEditor } from '@/components/tracy/edit-user-message'
+import { groupServerConversations, toRows, type ServerConversation } from '@/components/tracy/server-history'
+import { getTracyChatHistory } from '@/lib/actions/assistant-history'
 import { toast } from 'sonner'
 
 interface ChatMessage {
@@ -36,6 +44,10 @@ interface ChatMessage {
   isLoading?: boolean
   /** Report cards, letters etc. the guardian sent with this message. */
   attachments?: SentAttachment[]
+  /** The uploaded files themselves, kept so an edit can re-send them. */
+  attachmentRefs?: TracyAttachmentRef[]
+  /** assistant_messages row id, once Tracy has saved this turn — needed to edit it. */
+  serverId?: string
 }
 
 const BARE_MARKER_RE = /(?:^|\n)\s*(?:__)?(?:NEXT|CONFIRM|ARTIFACT)(?:__)?\s*:\s*$/
@@ -46,12 +58,28 @@ const STARTER_PROMPTS = [
   'What topics has my child mastered?',
 ]
 
+function relativeTime(ms: number): string {
+  const diff = Date.now() - ms
+  const m = Math.floor(diff / 60000)
+  const h = Math.floor(diff / 3600000)
+  const d = Math.floor(diff / 86400000)
+  if (m < 1) return 'just now'
+  if (m < 60) return `${m}m ago`
+  if (h < 24) return `${h}h ago`
+  if (d === 1) return 'Yesterday'
+  if (d < 7) return `${d}d ago`
+  return new Date(ms).toLocaleDateString([], { month: 'short', day: 'numeric' })
+}
+
 export function GuardianTracyClient({ guardianName }: { guardianName: string }) {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [input, setInput] = useState('')
   const [streaming, setStreaming] = useState(false)
   const [usageRemaining, setUsageRemaining] = useState<number | null>(null)
   const [nextSuggestion, setNextSuggestion] = useState<string | null>(null)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [historyOpen, setHistoryOpen] = useState(false)
+  const [pastChats, setPastChats] = useState<ServerConversation[]>([])
 
   const sessionIdRef = useRef<string>(crypto.randomUUID())
   const tracyStream = useTracyChatStream()
@@ -62,19 +90,40 @@ export function GuardianTracyClient({ guardianName }: { guardianName: string }) 
     scrollRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
-  async function send(text: string) {
-    const trimmed = text.trim()
-    if ((!trimmed && !attach.ready) || streaming) return
-    if (attach.uploading) { toast('Hang on, your file is still uploading…'); return }
-    const { refs: attachmentRefs, sent: sentFiles } = attach.take()
+  function refreshPastChats() {
+    getTracyChatHistory().then(({ data }) => {
+      setPastChats(groupServerConversations(toRows(data)).sort((a, b) => b.updatedAt - a.updatedAt).slice(0, 30))
+    }).catch(() => { /* offline — the current chat still works */ })
+  }
 
+  useEffect(() => { refreshPastChats() }, [])
+
+  async function send(text: string, edit?: { messageId: string; refs?: TracyAttachmentRef[]; sent?: SentAttachment[] }) {
+    const trimmed = text.trim()
+    if (streaming) return
+    // An edit re-asks with the edited text and the original's files; anything
+    // attached in the composer is left for the next message.
+    if (!edit) {
+      if (!trimmed && !attach.ready) return
+      if (attach.uploading) { toast('Hang on, your file is still uploading…'); return }
+    } else if (!trimmed) return
+    const { refs: attachmentRefs, sent: sentFiles } = edit
+      ? { refs: edit.refs ?? [], sent: edit.sent ?? [] }
+      : attach.take()
+
+    const userId = crypto.randomUUID()
+    const replyId = crypto.randomUUID()
     setNextSuggestion(null)
-    setInput('')
+    if (!edit) setInput('')
     setStreaming(true)
     setMessages((prev) => [
       ...prev,
-      { id: crypto.randomUUID(), role: 'user', content: trimmed, attachments: sentFiles.length ? sentFiles : undefined },
-      { id: crypto.randomUUID(), role: 'assistant', content: '', isLoading: true },
+      {
+        id: userId, role: 'user', content: trimmed,
+        attachments: sentFiles.length ? sentFiles : undefined,
+        attachmentRefs: attachmentRefs.length ? attachmentRefs : undefined,
+      },
+      { id: replyId, role: 'assistant', content: '', isLoading: true },
     ])
 
     let accumulated = ''
@@ -94,6 +143,14 @@ export function GuardianTracyClient({ guardianName }: { guardianName: string }) 
           break
         }
         case 'done': {
+          const ids = ev.messageIds as { user?: string; assistant?: string } | undefined
+          if (ids?.user || ids?.assistant) {
+            setMessages((p) => p.map((m) =>
+              m.id === userId ? { ...m, serverId: ids.user ?? m.serverId }
+              : m.id === replyId ? { ...m, serverId: ids.assistant ?? m.serverId }
+              : m))
+          }
+
           const reply = (accumulated || ev.reply || '').trim()
 
           const confirmMatch = reply.match(CONFIRM_RE)
@@ -130,6 +187,7 @@ export function GuardianTracyClient({ guardianName }: { guardianName: string }) 
         message: trimmed,
         sessionId: sessionIdRef.current,
         ...(attachmentRefs.length ? { attachments: attachmentRefs } : {}),
+        ...(edit ? { editMessageId: edit.messageId } : {}),
       }, onEvent)
     } catch {
       setMessages((p) =>
@@ -140,8 +198,95 @@ export function GuardianTracyClient({ guardianName }: { guardianName: string }) 
     }
   }
 
+  // Edit a sent message: drop it and everything after it, then ask again.
+  // Tracy deletes the same turns server-side (editMessageId), so History matches.
+  function editMessage(messageId: string, text: string) {
+    if (streaming) return
+    const idx = messages.findIndex((m) => m.id === messageId)
+    const original = messages[idx]
+    setEditingId(null)
+    if (idx < 0 || !original?.serverId) return
+    setMessages((prev) => {
+      const at = prev.findIndex((m) => m.id === messageId)
+      return at < 0 ? prev : prev.slice(0, at)
+    })
+    void send(text, {
+      messageId: original.serverId,
+      refs: original.attachmentRefs,
+      sent: original.attachmentRefs?.length ? original.attachments : undefined,
+    })
+  }
+
+  function openPastChat(convo: ServerConversation) {
+    tracyStream.stop()
+    // Keep writing to this same chat, so it stays one entry in History.
+    sessionIdRef.current = convo.id
+    setMessages(convo.messages.map((m) => ({
+      id: m.id,
+      role: m.role === 'user' ? 'user' : 'assistant',
+      content: m.content,
+      attachments: m.attachments,
+      serverId: m.serverId,
+    })))
+    const last = convo.messages.at(-1)
+    setNextSuggestion(last?.role === 'tracy' ? last.nextOptions?.[0]?.value ?? null : null)
+    setEditingId(null)
+    setStreaming(false)
+    setInput('')
+    setHistoryOpen(false)
+  }
+
+  function newChat() {
+    tracyStream.stop()
+    sessionIdRef.current = crypto.randomUUID()
+    setMessages([])
+    setNextSuggestion(null)
+    setEditingId(null)
+    setStreaming(false)
+    setInput('')
+  }
+
   return (
     <div className="flex flex-col h-[calc(100vh-7rem)] max-w-2xl mx-auto w-full">
+      <div className="flex items-center justify-end gap-1 border-b pb-2">
+        {messages.length > 0 && (
+          <Button variant="ghost" size="sm" onClick={newChat} className="gap-1.5 text-muted-foreground">
+            <MessageSquarePlus className="h-4 w-4" /> New chat
+          </Button>
+        )}
+        <Button
+          variant="ghost" size="sm" className="gap-1.5 text-muted-foreground"
+          onClick={() => { refreshPastChats(); setHistoryOpen(true) }}
+        >
+          <History className="h-4 w-4" /> History
+        </Button>
+      </div>
+
+      <Sheet open={historyOpen} onOpenChange={setHistoryOpen}>
+        <SheetContent side="right" className="w-full sm:max-w-sm overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle>Past chats</SheetTitle>
+          </SheetHeader>
+          <div className="mt-4 flex flex-col gap-1 px-1">
+            {pastChats.length === 0 && (
+              <p className="px-3 text-sm text-muted-foreground">Your chats with Tracy will show up here.</p>
+            )}
+            {pastChats.map((c) => (
+              <button
+                key={c.id}
+                onClick={() => openPastChat(c)}
+                className={`rounded-lg px-3 py-2.5 text-left transition-colors hover:bg-muted ${c.id === sessionIdRef.current ? 'bg-muted' : ''}`}
+              >
+                <p className="truncate text-sm font-medium">{c.title}</p>
+                <p className="truncate text-xs text-muted-foreground">
+                  {relativeTime(c.updatedAt)}{c.lastMessage ? ` · ${c.lastMessage}` : ''}
+                </p>
+              </button>
+            ))}
+          </div>
+        </SheetContent>
+      </Sheet>
+
       <div className="flex-1 overflow-y-auto space-y-4 py-4">
         {messages.length === 0 && (
           <div className="flex flex-col items-center justify-center h-full text-center gap-4 px-4">
@@ -168,20 +313,38 @@ export function GuardianTracyClient({ guardianName }: { guardianName: string }) 
           </div>
         )}
 
-        {messages.map((m) => (
-          <div key={m.id} className={m.role === 'user' ? 'flex justify-end' : 'flex justify-start'}>
-            <div
-              className={
-                m.role === 'user'
-                  ? 'max-w-[85%] rounded-2xl bg-gold text-gold-foreground px-4 py-2.5 text-sm'
-                  : 'max-w-[85%] rounded-2xl bg-muted px-4 py-2.5 text-sm whitespace-pre-wrap'
-              }
-            >
-              {m.role === 'user' && <SentAttachmentChips files={m.attachments} />}
-              {m.isLoading && !m.content ? <TypingDots /> : m.content}
+        {messages.map((m) => {
+          if (m.role === 'user' && editingId === m.id) {
+            return (
+              <UserMessageEditor
+                key={m.id}
+                initial={m.content}
+                hasAttachments={m.attachments?.length ? (m.attachmentRefs?.length ? 'kept' : 'dropped') : undefined}
+                onCancel={() => setEditingId(null)}
+                onSave={(text) => editMessage(m.id, text)}
+              />
+            )
+          }
+          return (
+            <div key={m.id} className={m.role === 'user' ? 'group flex flex-col items-end' : 'flex justify-start'}>
+              <div
+                className={
+                  m.role === 'user'
+                    ? 'max-w-[85%] rounded-2xl bg-gold text-gold-foreground px-4 py-2.5 text-sm whitespace-pre-wrap'
+                    : 'max-w-[85%] rounded-2xl bg-muted px-4 py-2.5 text-sm whitespace-pre-wrap'
+                }
+              >
+                {m.role === 'user' && <SentAttachmentChips files={m.attachments} />}
+                {m.isLoading && !m.content ? <TypingDots /> : m.content}
+              </div>
+              {m.role === 'user' && m.serverId && (
+                <div className="mt-1 sm:opacity-0 sm:group-hover:opacity-100 sm:focus-within:opacity-100 transition-opacity">
+                  <EditMessageButton onClick={() => setEditingId(m.id)} disabled={streaming} />
+                </div>
+              )}
             </div>
-          </div>
-        ))}
+          )
+        })}
 
         {nextSuggestion && !streaming && (
           <div className="flex justify-start">
