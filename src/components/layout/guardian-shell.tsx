@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { isStandalone } from '@/lib/pwa'
 import { usePathname, useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { LayoutDashboard, Settings, LogOut, GraduationCap, Menu, Sparkles } from 'lucide-react'
@@ -43,7 +44,9 @@ export function GuardianShell({ children, user }: GuardianShellProps) {
     try {
       const result = await logout()
       if (!result.success) throw new Error(result.error as string)
-      router.push('/')
+      // Inside the installed app, '/' is the marketing page — go back to the
+      // sign-in chooser instead.
+      router.push(isStandalone() ? '/app' : '/')
       router.refresh()
     } catch (err) {
       toast.error('Error', {

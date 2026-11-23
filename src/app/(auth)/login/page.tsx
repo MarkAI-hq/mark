@@ -1,8 +1,10 @@
 // src/app/(auth)/login/page.tsx
 import { Metadata } from 'next'
 import Image from 'next/image'
-import { Sparkles, Clock, TrendingUp, ArrowLeft } from 'lucide-react'
+import { Sparkles, Clock, TrendingUp } from 'lucide-react'
 import { LoginForm } from '@/components/auth/login-form'
+import { SigninSwitchLink } from '@/components/auth/signin-switch-link'
+import { BackHomeLink } from '@/components/auth/back-home-link'
 import Link from 'next/link'
 
 export const metadata: Metadata = {
@@ -110,13 +112,7 @@ export default function LoginPage() {
 
         {/* Top navigation */}
         <div className="absolute top-6 left-6 right-6 flex items-center justify-between">
-          <Link
-            href="/"
-            className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-gold transition-colors"
-          >
-            <ArrowLeft className="h-3.5 w-3.5" />
-            Back to home
-          </Link>
+          <BackHomeLink />
           <p className="text-sm text-muted-foreground">
             New here?{' '}
             <Link href="/register" className="font-semibold text-gold hover:underline underline-offset-2">
@@ -145,6 +141,8 @@ export default function LoginPage() {
               <LoginForm />
             </div>
           </div>
+
+          <SigninSwitchLink to="student" prompt="Are you a student?" label="Sign in with your school code" />
 
         </div>
 

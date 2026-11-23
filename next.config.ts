@@ -7,6 +7,30 @@ const withPWA = withPWAInit({
   cacheOnFrontEndNav: true,
   aggressiveFrontEndNavCaching: true,
   reloadOnOnline: true,
+  // Don't precache marketing media on first visit: by default every file in
+  // /public is downloaded at SW install (~16 MB incl. a 7 MB video + PDF),
+  // which burns mobile data and delays SW activation — and with it the
+  // install prompt. Images are still runtime-cached when actually viewed.
+  publicExcludes: [
+    '!noprecache/**/*',
+    '!assets/images/**/*',
+    '!assets/screenshots/**/*',
+    '!**/*.{mp4,webm,pdf}',
+  ],
+  // Same reasoning for build output: by default every JS chunk of every
+  // route (~470 files, ~9.6 MB) is precached at install. Over slow links
+  // that exceeds Chrome's 5-minute SW event limit, install is aborted, and
+  // the app never becomes installable. Precache only the core runtime
+  // (~450 KB); route/vendor chunks and fonts are runtime-cached on first use
+  // by the default CacheFirst/StaleWhileRevalidate rules.
+  workboxOptions: {
+    exclude: [
+      /\.map$/,
+      /^manifest.*\.js$/,
+      /^static\/media\//,
+      /^static\/chunks\/(?!(framework|main|main-app|webpack|polyfills)-)/,
+    ],
+  },
 });
 
 const nextConfig: NextConfig = {

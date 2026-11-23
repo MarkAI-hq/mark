@@ -34,7 +34,13 @@ type CookieStore = Awaited<ReturnType<typeof cookies>>
 // Shared across mirror.education and intel.mirror.education so a session
 // started on one domain (e.g. an Admin logging in via the platform-sales
 // site) still reaches /dashboard on the other.
-const COOKIE_DOMAIN = process.env.NODE_ENV === 'production' ? '.mirror.education' : undefined
+// COOKIE_DOMAIN env overrides it — set it to an empty string for host-only
+// cookies when running a production build behind ngrok/preview hosts, where
+// a `.mirror.education` cookie would be rejected and login would silently fail.
+const COOKIE_DOMAIN =
+  process.env.COOKIE_DOMAIN !== undefined
+    ? process.env.COOKIE_DOMAIN || undefined
+    : process.env.NODE_ENV === 'production' ? '.mirror.education' : undefined
 
 export async function setAuthCookies(cookieStore: CookieStore, data: LoginResponse) {
   const isProd = process.env.NODE_ENV === 'production'
