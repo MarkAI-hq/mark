@@ -20,7 +20,7 @@ import {
 import { useTracyChatStream } from "@/hooks/use-tracy-chat-stream";
 import { uploadChatFile, type TracyAttachmentRef } from "@/components/tracy/chat-attachments";
 import {
-  ARTIFACT_RE, CONFIRM_RE, NEXT_RE, WIDGET_RE, NEXT_RE_IN_WIDGET,
+  ARTIFACT_RE, CONFIRM_RE, NEXT_RE, WIDGET_RE, NEXT_RE_IN_WIDGET, stoppedReplyText,
   extractJson,
   type ConfirmationOption, type ConfirmationPayload, type ToolStatus,
 } from "@/components/tracy/tracy-protocol";
@@ -1763,7 +1763,7 @@ export default function TracyPage({ initialPrompt }: { initialPrompt?: string } 
     setMessages((prev) =>
       prev.map((m) =>
         m.isLoading
-          ? { ...m, isLoading: false, content: m.content || "[stopped]" }
+          ? { ...m, isLoading: false, content: stoppedReplyText(m.content) || "[stopped]" }
           : m
       )
     );

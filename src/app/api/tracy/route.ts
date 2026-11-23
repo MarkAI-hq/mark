@@ -92,6 +92,9 @@ export async function POST(req: NextRequest) {
 
     const tracyRes = await fetch(`${TRACY_URL}/chat/stream`, {
       method: "POST",
+      // Stop: when the chat aborts its request, this aborts Tracy's too, so it
+      // cancels the model call instead of writing a reply nobody will read.
+      signal: req.signal,
       headers: {
         "Content-Type": "application/json",
         "Authorization": `Bearer ${jwt}`,

@@ -24,6 +24,19 @@ export const NEXT_RE     = /(?:^|\s)(?:__)?NEXT(?:__)?\s*:\s*(\{[\s\S]*)/
 export const WIDGET_RE         = /(?:^|\s)(?:(?:__)?WIDGET(?:__)?\s*:|__WIDGET__(?=\s*<))\s*([\s\S]+)/
 export const NEXT_RE_IN_WIDGET = /\s(?:__)?NEXT(?:__)?\s*:\s*(\{[\s\S]*)/
 
+// Any machine marker, complete or cut off mid-name ("__WID", "__UI__:{\"comp…").
+const STOPPED_MARKER_RE = /(?:^|\s)__[A-Z]*(?:__)?/
+
+/**
+ * The visible text of a reply the user stopped mid-stream: everything before
+ * the first (possibly half-written) marker, since a cut-off card, widget or
+ * JSON can't be rendered. Tracy keeps the same cut server-side.
+ */
+export function stoppedReplyText(raw: string): string {
+  const at = raw.search(STOPPED_MARKER_RE)
+  return (at < 0 ? raw : raw.slice(0, at)).trim()
+}
+
 export interface ConfirmationOption {
   label: string
   value: string

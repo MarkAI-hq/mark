@@ -16,7 +16,7 @@
 // Tracy saved server-side) and lets the guardian edit a message they sent.
 
 import { useEffect, useRef, useState } from 'react'
-import { History, MessageSquarePlus, Send, Sparkles } from 'lucide-react'
+import { History, MessageSquarePlus, Send, Sparkles, Square } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
@@ -25,7 +25,7 @@ import { TypingDots } from '@/components/tracy/typing-dots'
 import { UsageRemainingBanner } from '@/components/tracy/usage-remaining-banner'
 import {
   ARTIFACT_RE, CONFIRM_RE, NEXT_RE, extractJson,
-  type TracySseEvent,
+  type TracySseEvent, stoppedReplyText,
 } from '@/components/tracy/tracy-protocol'
 import { useTracyChatStream } from '@/hooks/use-tracy-chat-stream'
 import {
@@ -42,6 +42,8 @@ interface ChatMessage {
   role: 'user' | 'assistant'
   content: string
   isLoading?: boolean
+  /** The guardian pressed Stop while this reply was being written. */
+  stopped?: boolean
   /** Report cards, letters etc. the guardian sent with this message. */
   attachments?: SentAttachment[]
   /** The uploaded files themselves, kept so an edit can re-send them. */
@@ -189,7 +191,8 @@ export function GuardianTracyClient({ guardianName }: { guardianName: string }) 
         ...(attachmentRefs.length ? { attachments: attachmentRefs } : {}),
         ...(edit ? { editMessageId: edit.messageId } : {}),
       }, onEvent)
-    } catch {
+    } catch (err) {
+      if ((err as Error)?.name === 'AbortError') return // Stop: stopGeneration already settled the bubble
       setMessages((p) =>
         p.map((m) => (m.isLoading ? { ...m, content: 'Sorry, I had trouble responding. Please try again.', isLoading: false } : m)),
       )
@@ -234,6 +237,16 @@ export function GuardianTracyClient({ guardianName }: { guardianName: string }) 
     setStreaming(false)
     setInput('')
     setHistoryOpen(false)
+  }
+
+  // Stop, as in Claude's chat: abort the request (Tracy cancels the model call
+  // and keeps whatever text had already streamed) and keep that text here.
+  function stopGeneration() {
+    tracyStream.stop()
+    setStreaming(false)
+    setMessages((p) => p.map((m) => (m.isLoading
+      ? { ...m, isLoading: false, stopped: true, content: stoppedReplyText(m.content) }
+      : m)))
   }
 
   function newChat() {
@@ -336,6 +349,7 @@ export function GuardianTracyClient({ guardianName }: { guardianName: string }) 
               >
                 {m.role === 'user' && <SentAttachmentChips files={m.attachments} />}
                 {m.isLoading && !m.content ? <TypingDots /> : m.content}
+                {m.stopped && <p className={`${m.content ? 'mt-1 ' : ''}text-xs italic text-muted-foreground`}>Stopped</p>}
               </div>
               {m.role === 'user' && m.serverId && (
                 <div className="mt-1 sm:opacity-0 sm:group-hover:opacity-100 sm:focus-within:opacity-100 transition-opacity">
@@ -379,9 +393,15 @@ export function GuardianTracyClient({ guardianName }: { guardianName: string }) 
           className="min-h-[44px] max-h-32 resize-none"
           disabled={streaming}
         />
-        <Button size="icon" onClick={() => send(input)} disabled={streaming || attach.uploading || (!input.trim() && !attach.ready)}>
-          <Send className="h-4 w-4" />
-        </Button>
+        {streaming ? (
+          <Button size="icon" variant="secondary" onClick={stopGeneration} title="Stop" aria-label="Stop">
+            <Square className="h-3.5 w-3.5 fill-current" />
+          </Button>
+        ) : (
+          <Button size="icon" onClick={() => send(input)} disabled={attach.uploading || (!input.trim() && !attach.ready)}>
+            <Send className="h-4 w-4" />
+          </Button>
+        )}
       </div>
       </div>
     </div>

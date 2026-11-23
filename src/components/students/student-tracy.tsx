@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import {
   Headphones, Layers, HelpCircle, Monitor, BookOpen,
   PenLine, FileText, ImageIcon, Check,
-  X, Upload, RotateCcw, Play, Pause, Plus, ArrowUp,
+  X, Upload, RotateCcw, Play, Pause, Plus, ArrowUp, Square,
   Sparkles, Zap, MoreHorizontal, ChevronRight, History, Menu,
 } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
@@ -48,7 +48,7 @@ import {
 } from '@/lib/actions/assistant'
 import { useTracyChatStream } from '@/hooks/use-tracy-chat-stream'
 import {
-  ARTIFACT_RE, CONFIRM_RE, NEXT_RE, WIDGET_RE, NEXT_RE_IN_WIDGET,
+  ARTIFACT_RE, CONFIRM_RE, NEXT_RE, WIDGET_RE, NEXT_RE_IN_WIDGET, stoppedReplyText,
   extractJson,
 } from '@/components/tracy/tracy-protocol'
 import { AssistantMessage, UserMessage } from '@/components/tracy/chat-message'
@@ -95,6 +95,8 @@ interface Message {
   /** Photos/PDFs the student sent with this message. */
   attachments?: SentAttachment[]
   isLoading?: boolean
+  /** The student pressed Stop while this reply was being written. */
+  stopped?: boolean
   /** Tools Tracy used to produce this reply, kept for the collapsed trace row. */
   tools?:    ToolStatus[]
   /** Inline visual (score card, chart…) Tracy attached to this reply. */
@@ -658,6 +660,9 @@ function MessageBubble({ message, activeIds, onGenerateChip, toolStatuses, isLas
       streaming={!!message.isLoading}
       tools={message.isLoading ? toolStatuses : message.tools}
     >
+      {message.stopped && (
+        <p className="mt-1 text-[12px] italic text-muted-foreground">Stopped</p>
+      )}
       {message.saved && (
         <p className="mt-2 inline-flex flex-wrap items-center gap-x-1.5 text-[12px] text-muted-foreground">
           <Check className="h-3.5 w-3.5 text-[#4f7d3f]" strokeWidth={2.5} />
@@ -1351,6 +1356,16 @@ export function StudentTracyPage({ user, weakSubjects, currentTopics, initialNot
     setAside(null)
   }
 
+  // Stop, as in Claude's chat: abort the request (Tracy cancels the model call
+  // and keeps whatever text had already streamed) and keep that text here.
+  function stopGeneration() {
+    tracyStream.stop()
+    setStreaming(false); setToolStatuses([])
+    setMessages(p => p.map(m => m.isLoading
+      ? { ...m, isLoading: false, stopped: true, content: stoppedReplyText(m.content) }
+      : m))
+  }
+
   function newChat() {
     tracyStream.stop()
     sessionIdRef.current = crypto.randomUUID()
@@ -1532,6 +1547,15 @@ export function StudentTracyPage({ user, weakSubjects, currentTopics, initialNot
                 placeholder={`Ask ${assistantName} anything…`}
                 className="flex-1 border-0 bg-transparent outline-none text-[14px] text-[#2a2722] dark:text-[#f4ead8] placeholder:text-[#938b7c] font-[inherit] py-2"
               />
+              {streaming ? (
+              <button
+                onClick={stopGeneration}
+                title="Stop"
+                aria-label="Stop"
+                className="w-[38px] h-[38px] rounded-[10px] flex items-center justify-center shrink-0 border-0 bg-foreground/10 text-foreground hover:bg-foreground/20 transition-colors">
+                <Square className="h-3.5 w-3.5 fill-current" />
+              </button>
+              ) : (
               <button
                 onClick={() => sendMessage(input)}
                 disabled={(!input.trim() && !attach.ready) || streaming || attach.uploading}
@@ -1539,6 +1563,7 @@ export function StudentTracyPage({ user, weakSubjects, currentTopics, initialNot
                 style={{ background: 'linear-gradient(150deg, #b88a1f, #8a6713)', boxShadow: '0 3px 8px rgba(138,103,19,.30)' }}>
                 <ArrowUp className="h-4 w-4 text-white" strokeWidth={2} />
               </button>
+              )}
             </div>
             <UsageRemainingBanner remaining={usageRemaining} />
             <p className="text-center text-[11px] text-[#938b7c] mt-2.5">{assistantName} can make mistakes. Always verify with your teacher.</p>

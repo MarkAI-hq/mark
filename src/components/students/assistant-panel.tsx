@@ -20,7 +20,7 @@ import { useTracyChatStream } from '@/hooks/use-tracy-chat-stream'
 import { AssistantMessage, UserMessage } from '@/components/tracy/chat-message'
 import { GenerativeUI, EMPTY_QUIZ_DRAFT, type QuizDraft } from '@/components/tracy/generative-ui'
 import { parseGenerativeUi, stripUiMarker, type GenerativeUi } from '@/components/tracy/generative-ui-protocol'
-import { ARTIFACT_RE, CONFIRM_RE, NEXT_RE, WIDGET_RE, extractJson, type ToolStatus } from '@/components/tracy/tracy-protocol'
+import { ARTIFACT_RE, CONFIRM_RE, NEXT_RE, WIDGET_RE, extractJson, stoppedReplyText, type ToolStatus } from '@/components/tracy/tracy-protocol'
 import { UsageRemainingBanner } from '@/components/tracy/usage-remaining-banner'
 import { noPasteProps } from '@/lib/no-paste'
 
@@ -162,7 +162,7 @@ export function AssistantPanel() {
     } catch (err: any) {
       patch(
         err?.name === 'AbortError'
-          ? { content: accumulated || 'Stopped.', loading: false }
+          ? { content: stoppedReplyText(accumulated) || 'Stopped.', loading: false }
           : { content: 'Sorry, I had trouble responding. Please try again.', loading: false },
       )
     } finally {
