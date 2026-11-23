@@ -1,11 +1,13 @@
 'use client'
 
-// Focus dock (Focus Mode v1, spec §5.4). A pill fixed bottom-right on every
-// student portal page; expands into the start / control / end panel.
-// Hidden entirely while a timed assessment holds the exam lock.
+// Focus dock (Focus Mode v1, spec §5.4). A pill on every student portal page
+// (bottom-right by default, draggable anywhere — see use-draggable-dock.ts);
+// expands into the start / control / end panel, always toward the middle of
+// the screen. Hidden entirely while a timed assessment holds the exam lock.
 
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
-import { Bell, ChevronDown, Pause, PictureInPicture2, Play, Square, Star, Timer, Volume2, X } from 'lucide-react'
+import { createPortal } from 'react-dom'
+import { Bell, ChevronDown, GripVertical, Pause, PictureInPicture2, Play, Square, Star, Timer, Volume2, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -23,9 +25,13 @@ import {
 import { useFocus } from './focus-provider'
 import { clockText, phaseLabel } from './focus-timer'
 import { PlayMode } from './play-mode'
+import { useDraggableDock } from './use-draggable-dock'
+
+type Dock = ReturnType<typeof useDraggableDock>
 
 export function FocusDock() {
   const f = useFocus()
+  const dock = useDraggableDock()
   const [open, setOpen] = useState(false)
   const [subject, setSubject] = useState('')
   const [topic, setTopic] = useState('')
@@ -59,7 +65,11 @@ export function FocusDock() {
     }
   }
 
-  return (
+  // Portalled to <body>: the dock is mounted inside the portal's page
+  // wrapper, whose child-spacing rules (e.g. space-y-*) gave it a stray
+  // margin-top that shifted it once it could be dragged to the top half.
+  // Context still flows through the portal, so useFocus() is unaffected.
+  return createPortal(
     <>
       <PlayMode />
       <div
@@ -68,7 +78,14 @@ export function FocusDock() {
         aria-label="Focus timer"
         tabIndex={-1}
         onKeyDown={onKeyDown}
-        className="fixed bottom-4 right-4 z-40 flex flex-col items-end gap-2 outline-none print:hidden"
+        style={dock.containerStyle}
+        className={cn(
+          'fixed z-40 m-0 flex gap-2 outline-none print:hidden',
+          // Pill is last in the DOM: column puts panels above it (dock in the
+          // bottom half), column-reverse puts them below it (top half).
+          dock.fromTop ? 'flex-col-reverse' : 'flex-col',
+          dock.fromLeft ? 'items-start' : 'items-end',
+        )}
       >
         {f.resumeOffer && !running && (
           <div className="w-72 rounded-xl border bg-background p-3 text-sm shadow-lg">
@@ -98,7 +115,10 @@ export function FocusDock() {
         )}
 
         {open && (
-          <div className="w-80 max-w-[calc(100vw-2rem)] rounded-2xl border bg-background p-4 shadow-xl">
+          <div
+            className="w-80 max-w-[calc(100vw-2rem)] overflow-y-auto overscroll-contain rounded-2xl border bg-background p-4 shadow-xl"
+            style={{ maxHeight: dock.panelMaxHeight }}
+          >
             <div className="mb-3 flex items-center justify-between">
               <p className="flex items-center gap-1.5 text-sm font-semibold"><Timer className="h-4 w-4" /> Focus</p>
               <button aria-label="Collapse" className="rounded p-1 text-muted-foreground hover:bg-muted" onClick={() => setOpen(false)}>
@@ -131,29 +151,44 @@ export function FocusDock() {
           </div>
         )}
 
-        <Pill open={open} onToggle={() => setOpen((o) => !o)} />
+        <Pill open={open} onToggle={() => setOpen((o) => !o)} dock={dock} />
       </div>
-    </>
+    </>,
+    document.body,
   )
 }
 
-function Pill({ open, onToggle }: { open: boolean; onToggle: () => void }) {
+function Pill({ open, onToggle, dock }: { open: boolean; onToggle: () => void; dock: Dock }) {
   const f = useFocus()
   const v = f.view
   const running = v.phase === 'focusing' || v.phase === 'break'
   return (
     <div
+      ref={dock.pillRef}
+      {...dock.pillHandlers}
+      // touch-none: a finger drag moves the dock instead of scrolling the page.
       className={cn(
-        'flex items-center gap-1 rounded-full border shadow-lg transition-colors',
+        'flex touch-none select-none items-center gap-1 rounded-full border shadow-lg transition-[colors,box-shadow,transform]',
+        dock.dragging ? 'scale-105 cursor-grabbing shadow-2xl' : 'cursor-grab',
         f.flashing ? 'bg-amber-400 text-black' : v.phase === 'break' ? 'bg-emerald-50 text-emerald-950 dark:bg-emerald-950 dark:text-emerald-50' : 'bg-background',
       )}
     >
       <button
         type="button"
+        aria-label="Move focus timer. Drag, or use arrow keys. Home or double-click returns it to the corner."
+        title="Drag to move · double-click to reset"
+        onKeyDown={dock.onGripKeyDown}
+        onDoubleClick={dock.reset}
+        className="-mr-1 flex h-8 w-5 items-center justify-center rounded-full pl-1 text-muted-foreground/70 hover:text-foreground"
+      >
+        <GripVertical className="h-4 w-4" />
+      </button>
+      <button
+        type="button"
         onClick={onToggle}
         aria-expanded={open}
         aria-label={running ? `Focus timer, ${phaseLabel(f)}, ${clockText(f)} left` : 'Open focus timer'}
-        className="flex items-center gap-2 rounded-full py-2 pl-3 pr-2 text-sm"
+        className="flex cursor-[inherit] items-center gap-2 rounded-full py-2 pl-1 pr-2 text-sm"
       >
         <Timer className="h-4 w-4" />
         {running ? (

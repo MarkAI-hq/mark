@@ -42,19 +42,37 @@ export function fireAlert(msg: AlertMessage) {
     typeof document !== 'undefined' &&
     document.visibilityState === 'hidden'
   ) {
-    try {
-      const n = new Notification(msg.title, {
-        body: msg.body,
-        tag: 'mirror-focus',
-        silent: true, // our own chime already played
-      })
-      n.onclick = () => {
-        window.focus()
-        n.close()
-      }
-    } catch {
-      /* some platforms only allow notifications from a service worker */
+    void showSystemNotification(msg)
+  }
+}
+
+// Android Chrome (and installed PWAs on Android) throw on `new Notification()`
+// — notifications there must go through the service worker registration.
+// Prefer the SW when one is active; fall back to the page constructor.
+async function showSystemNotification(msg: AlertMessage) {
+  const options: NotificationOptions = {
+    body: msg.body,
+    tag: 'mirror-focus',
+    icon: '/icons/icon-192.png',
+    silent: true, // our own chime already played
+  }
+  try {
+    const reg = await navigator.serviceWorker?.getRegistration()
+    if (reg?.active) {
+      await reg.showNotification(msg.title, options)
+      return
     }
+  } catch {
+    /* fall through to the page constructor */
+  }
+  try {
+    const n = new Notification(msg.title, options)
+    n.onclick = () => {
+      window.focus()
+      n.close()
+    }
+  } catch {
+    /* no notification route on this platform — the chime still played */
   }
 }
 
