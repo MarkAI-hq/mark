@@ -25,6 +25,7 @@ import {
 import { DataTable } from '@/components/ui/data-table'
 import { CompletedPlansTable } from '@/components/students/completed-plans-table'
 import { PendingPlansTable } from '@/components/students/pending-plans-table'
+import { ReviewListCard } from '@/components/students/review-list-card'
 
 import {
   checkInStudySession, selfInitiateFromEntry,
@@ -827,6 +828,9 @@ export function StudyPlansClient({ user, initialPlans, gradebook, suggestion, er
 
       {/* Spaced-repetition reviews due */}
       <ReviewStrip plans={plans} onStudio={goStudio} />
+
+      {/* The student's own "still tricky" list from end-of-lesson review logs */}
+      <ReviewListCard />
 
       {/* Subject-grouped learning queue */}
       {subjects.length > 0 && (
