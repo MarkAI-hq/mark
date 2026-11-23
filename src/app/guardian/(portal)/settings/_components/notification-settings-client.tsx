@@ -18,12 +18,13 @@ const PREFERENCE_LABELS: Record<keyof GuardianNotificationPreferences, string> =
   streak_at_risk: 'Study streak at risk',
   exam_registration: 'Exam registration updates',
   digest: 'Weekly summary',
+  daily_digest: 'Daily summary (evenings, with teacher notes)',
 }
 
 // Every preference above defaults to ON (opt-out) except `digest`, a new
 // recurring summary that defaults to OFF (opt-in) until a guardian turns it
 // on themselves.
-const OPT_IN_KEYS = new Set<keyof GuardianNotificationPreferences>(['digest'])
+const OPT_IN_KEYS = new Set<keyof GuardianNotificationPreferences>(['digest', 'daily_digest'])
 
 function isChecked(
   prefs: GuardianNotificationPreferences,
